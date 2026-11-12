@@ -1,0 +1,80 @@
+{
+  "schemaVersion": 1,
+  "project": "mars_reboot.py",
+  "scene": "habitat-representative-scene-v1",
+  "directionStatus": "Dipilih: crisp pixel art 2D top-down 3/4 + floating draggable terminal; Usulan: skala tile 32x32, palet terukur The Martian Outpost, dan sprite placeholder konsisten",
+  "filtering": "Nearest",
+  "license": "Internal project procedural pixel art (created specifically for MarsReboot; no third-party or reference game assets copied)",
+  "assets": [
+    {
+      "id": "mars_soil_tile",
+      "path": "habitat/mars_soil_tile.png",
+      "sizePx": [
+        32,
+        32
+      ],
+      "worldAlignment": "Tiled exterior background outside FLOOR (40,40,880,520)",
+      "status": "placeholder-consistent"
+    },
+    {
+      "id": "floor_tile",
+      "path": "habitat/floor_tile.png",
+      "sizePx": [
+        32,
+        32
+      ],
+      "worldAlignment": "Tiled inside FLOOR (40,40,880,520)",
+      "status": "placeholder-consistent"
+    },
+    {
+      "id": "partition_wall",
+      "path": "habitat/partition_wall.png",
+      "sizePx": [
+        32,
+        200
+      ],
+      "worldAlignment": "Exact 1:1 collider Box(480,160,32,200)",
+      "status": "placeholder-consistent"
+    },
+    {
+      "id": "water_panel",
+      "path": "habitat/water_panel.png",
+      "sizePx": [
+        100,
+        40
+      ],
+      "worldAlignment": "Exact 1:1 collider Facility.PANEL Box(240,400,100,40)",
+      "status": "placeholder-consistent"
+    },
+    {
+      "id": "robot_terminal",
+      "path": "habitat/robot_terminal.png",
+      "sizePx": [
+        100,
+        52
+      ],
+      "worldAlignment": "Exact 1:1 collider Facility.TERMINAL Box(720,400,100,52)",
+      "status": "placeholder-consistent"
+    },
+    {
+      "id": "hydro_garden",
+      "path": "habitat/hydro_garden.png",
+      "sizePx": [
+        180,
+        100
+      ],
+      "worldAlignment": "Exact 1:1 collider GARDEN Box(620,160,180,100)",
+      "status": "placeholder-consistent"
+    },
+    {
+      "id": "astronaut_eva",
+      "path": "habitat/astronaut_eva.png",
+      "sizePx": [
+        24,
+        28
+      ],
+      "worldAlignment": "Exact 1:1 astronaut bounds (world.x, world.y, 24, 28)",
+      "status": "placeholder-consistent"
+    }
+  ]
+}
