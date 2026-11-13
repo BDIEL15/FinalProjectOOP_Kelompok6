@@ -10,72 +10,132 @@ import com.badlogic.gdx.graphics.Texture.TextureFilter;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.GlyphLayout;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
+import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.utils.Disposable;
 import com.badlogic.gdx.utils.viewport.Viewport;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Outdoor Mars Outpost 2D top-down 3/4 pixel-art renderer (MewnBase x Pathway style).
- * Renders open Martian regolith, Hab Airlock + Solar Array, Central Conduit Spine,
- * Open Hydroponic Bio-Dome Platform (with partial transparent dome ribs, water tank & Rover),
- * and Pump Station while keeping authoritative colliders in {@link HabitatWorld} 100% intact.
+ * Uses 2x crisp pixel-art sprites (TextureFilter.Nearest), smooth radial 2D lighting,
+ * animated 4-direction astronaut sprite sheet, and Hi-DPI world badges while keeping
+ * authoritative colliders in {@link HabitatWorld} 100% intact.
  */
 public final class HabitatRenderer implements Disposable {
-    private static final Color COL_SHADOW_LONG = new Color(0.11f, 0.04f, 0.03f, 0.62f);
-    private static final Color COL_PERIMETER_ROCK = Color.valueOf("3D1910");
-    private static final Color COL_PERIMETER_HI = Color.valueOf("8A3F2B");
-    private static final Color COL_DECK_OUTER = Color.valueOf("283240");
-    private static final Color COL_DECK_SURFACE = Color.valueOf("3A4656");
-    private static final Color COL_DECK_RIM = Color.valueOf("94A3B8");
-    private static final Color COL_PIPE_TRENCH = Color.valueOf("1B0E0B");
+    private static final Color COL_PERIMETER_ROCK = Color.valueOf("3A160D");
+    private static final Color COL_PERIMETER_HI = Color.valueOf("9B4529");
+    private static final Color COL_PIPE_TRENCH = Color.valueOf("1B0D0A");
+    private static final Color COL_PIPE_RIM = Color.valueOf("334155");
     private static final Color COL_PIPE_OFF = Color.valueOf("475569");
     private static final Color COL_WATER_CYAN = Color.valueOf("22D3EE");
     private static final Color COL_MARS_ACCENT = Color.valueOf("F59E0B");
     private static final Color COL_HYDRO_GREEN = Color.valueOf("34D399");
-    private static final Color COL_BADGE_BG = new Color(0.06f, 0.09f, 0.14f, 0.92f);
-    private static final Color COL_BADGE_ACTIVE_BG = new Color(0.08f, 0.20f, 0.29f, 0.96f);
+    private static final Color COL_BADGE_BG = new Color(0.05f, 0.08f, 0.13f, 0.92f);
+    private static final Color COL_BADGE_ACTIVE_BG = new Color(0.06f, 0.19f, 0.28f, 0.96f);
     private static final Color COL_TEXT_MAIN = Color.valueOf("F8FAFC");
     private static final Color COL_TEXT_MUTED = Color.valueOf("94A3B8");
 
     private final ShapeRenderer shapes = new ShapeRenderer();
     private final SpriteBatch batch = new SpriteBatch();
-    private final BitmapFont font = new BitmapFont();
+    private final BitmapFont font;
+    private final Texture fontTexture;
     private final GlyphLayout layout = new GlyphLayout();
+    private final List<Texture> ownedTextures = new ArrayList<>();
 
-    private final Texture marsSoilTile;
+    private final Texture[] marsSoilVariants = new Texture[4];
     private final Texture floorTile;
-    private final Texture partitionTexture;
+    private final Texture craterSm;
+    private final Texture craterLg;
+    private final Texture rockA;
+    private final Texture rockB;
+    private final Texture cargoCrate;
+    private final Texture walkwayH;
+    private final Texture walkwayV;
+
+    private final Texture habAirlockTexture;
+    private final Texture solarDustyTexture;
+    private final Texture solarCleanTexture;
+    private final Texture partitionOffTexture;
+    private final Texture partitionOnTexture;
     private final Texture panelTexture;
     private final Texture terminalTexture;
+    private final Texture pumpStationTexture;
+    private final Texture bioDomeDeckOffTexture;
+    private final Texture bioDomeDeckOnTexture;
+    private final Texture bioDomeCanopyTexture;
     private final Texture gardenDryTexture;
     private final Texture gardenRestoredTexture;
-    private final Texture habAirlockTexture;
-    private final Texture pumpStationTexture;
     private final Texture roverTexture;
-    private final Texture astronautTexture;
+    private final TextureRegion[][] astronautFrames;
+    private final Texture lightGlowTexture;
 
     private float animTime;
+    private float prevAstroX = Float.NaN;
+    private float prevAstroY = Float.NaN;
+    private int astroDir = 0; // 0:Down, 1:Up, 2:Left, 3:Right
+    private float walkTimer = 0f;
+    private boolean isWalking = false;
 
     public HabitatRenderer() {
-        marsSoilTile = loadNearest("habitat/mars_soil_tile.png", 32, 32, Color.valueOf("6B2E1E"));
-        floorTile = loadNearest("habitat/floor_tile.png", 32, 32, Color.valueOf("7A3624"));
-        partitionTexture = loadNearest("habitat/partition_wall.png", 32, 200, Color.valueOf("3B495B"));
-        panelTexture = loadNearest("habitat/water_panel.png", 100, 40, COL_WATER_CYAN);
-        terminalTexture = loadNearest("habitat/robot_terminal.png", 100, 52, COL_MARS_ACCENT);
-        gardenDryTexture = loadNearest("habitat/hydro_garden.png", 180, 100, COL_MARS_ACCENT);
-        gardenRestoredTexture = loadNearest("habitat/hydro_garden_restored.png", 180, 100, COL_HYDRO_GREEN);
-        habAirlockTexture = loadNearest("habitat/hab_airlock.png", 144, 112, Color.valueOf("CBD5E1"));
-        pumpStationTexture = loadNearest("habitat/pump_station.png", 96, 88, Color.valueOf("475569"));
-        roverTexture = loadNearest("habitat/mars_rover.png", 36, 32, COL_MARS_ACCENT);
-        astronautTexture = loadNearest("habitat/astronaut_eva.png", 24, 28, COL_TEXT_MAIN);
-        font.setUseIntegerPositions(true);
+        for (int i = 0; i < 4; i++) {
+            marsSoilVariants[i] = loadNearest("habitat/mars_soil_" + i + ".png", 64, 64, Color.valueOf("6B2E1E"));
+        }
+        floorTile = loadNearest("habitat/floor_tile.png", 64, 64, Color.valueOf("7A3624"));
+        craterSm = loadNearest("habitat/mars_crater_sm.png", 64, 40, Color.valueOf("542013"));
+        craterLg = loadNearest("habitat/mars_crater_lg.png", 96, 56, Color.valueOf("542013"));
+        rockA = loadNearest("habitat/mars_rock_a.png", 44, 36, Color.valueOf("944026"));
+        rockB = loadNearest("habitat/mars_rock_b.png", 36, 28, Color.valueOf("944026"));
+        cargoCrate = loadNearest("habitat/cargo_crate.png", 32, 32, Color.valueOf("475569"));
+        walkwayH = loadNearest("habitat/walkway_h.png", 64, 40, Color.valueOf("334155"));
+        walkwayV = loadNearest("habitat/walkway_v.png", 44, 64, Color.valueOf("334155"));
+
+        habAirlockTexture = loadNearest("habitat/hab_airlock.png", 288, 224, Color.valueOf("CBD5E1"));
+        solarDustyTexture = loadNearest("habitat/solar_array_dusty.png", 176, 88, Color.valueOf("78350F"));
+        solarCleanTexture = loadNearest("habitat/solar_array_clean.png", 176, 88, Color.valueOf("1D4ED8"));
+        partitionOffTexture = loadNearest("habitat/partition_wall.png", 64, 400, Color.valueOf("3B495B"));
+        partitionOnTexture = loadNearest("habitat/partition_wall_restored.png", 64, 400, COL_WATER_CYAN);
+        panelTexture = loadNearest("habitat/water_panel.png", 200, 80, COL_WATER_CYAN);
+        terminalTexture = loadNearest("habitat/robot_terminal.png", 200, 104, COL_MARS_ACCENT);
+        pumpStationTexture = loadNearest("habitat/pump_station.png", 192, 176, Color.valueOf("475569"));
+        bioDomeDeckOffTexture = loadNearest("habitat/biodome_deck.png", 576, 304, Color.valueOf("384556"));
+        bioDomeDeckOnTexture = loadNearest("habitat/biodome_deck_restored.png", 576, 304, Color.valueOf("384556"));
+        bioDomeCanopyTexture = loadNearest("habitat/biodome_canopy.png", 576, 304, new Color(0.2f, 0.75f, 0.97f, 0.25f));
+        gardenDryTexture = loadNearest("habitat/hydro_garden.png", 360, 200, COL_MARS_ACCENT);
+        gardenRestoredTexture = loadNearest("habitat/hydro_garden_restored.png", 360, 200, COL_HYDRO_GREEN);
+        roverTexture = loadNearest("habitat/mars_rover.png", 72, 64, COL_MARS_ACCENT);
+
+        Texture astroSheet = loadNearest("habitat/astronaut_eva_sheet.png", 192, 224, COL_TEXT_MAIN);
+        astronautFrames = TextureRegion.split(astroSheet, 48, 56);
+
+        lightGlowTexture = loadLinear("habitat/light_glow.png", 128, 128);
+
+        FileHandle fntHandle = resolveAsset("ui/ui_sans_bold.fnt");
+        FileHandle pngHandle = resolveAsset("ui/ui_sans_bold.png");
+        if (fntHandle.exists() && pngHandle.exists()) {
+            fontTexture = new Texture(pngHandle, true);
+            fontTexture.setFilter(TextureFilter.MipMapLinearLinear, TextureFilter.Linear);
+            font = new BitmapFont(fntHandle, new TextureRegion(fontTexture), false);
+            font.setUseIntegerPositions(false);
+            font.getData().setScale(0.37f);
+        } else {
+            fontTexture = null;
+            font = new BitmapFont();
+            font.setUseIntegerPositions(true);
+        }
     }
 
-    private static Texture loadNearest(String path, int fallbackW, int fallbackH, Color fallbackColor) {
+    private static FileHandle resolveAsset(String path) {
         FileHandle handle = Gdx.files.internal(path);
         if (!handle.exists()) {
             handle = Gdx.files.local("assets/" + path);
         }
+        return handle;
+    }
+
+    private Texture loadNearest(String path, int fallbackW, int fallbackH, Color fallbackColor) {
+        FileHandle handle = resolveAsset(path);
         Texture texture;
         if (handle.exists()) {
             texture = new Texture(handle);
@@ -87,12 +147,31 @@ public final class HabitatRenderer implements Disposable {
             pixmap.dispose();
         }
         texture.setFilter(TextureFilter.Nearest, TextureFilter.Nearest);
+        ownedTextures.add(texture);
+        return texture;
+    }
+
+    private Texture loadLinear(String path, int fallbackW, int fallbackH) {
+        FileHandle handle = resolveAsset(path);
+        Texture texture;
+        if (handle.exists()) {
+            texture = new Texture(handle, true);
+            texture.setFilter(TextureFilter.MipMapLinearLinear, TextureFilter.Linear);
+        } else {
+            Pixmap pixmap = new Pixmap(fallbackW, fallbackH, Pixmap.Format.RGBA8888);
+            pixmap.setColor(1f, 1f, 1f, 0.25f);
+            pixmap.fill();
+            texture = new Texture(pixmap);
+            pixmap.dispose();
+            texture.setFilter(TextureFilter.Linear, TextureFilter.Linear);
+        }
+        ownedTextures.add(texture);
         return texture;
     }
 
     private static void enableSafeAlphaBlend() {
         Gdx.gl.glEnable(GL20.GL_BLEND);
-        // Preserve destination framebuffer alpha = 1.0 so framebuffer PNG captures stay opaque
+        // Preserve destination framebuffer alpha = 1.0 so PNG captures stay opaque
         Gdx.gl.glBlendFuncSeparate(
             GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA,
             GL20.GL_ONE, GL20.GL_ONE
@@ -103,198 +182,127 @@ public final class HabitatRenderer implements Disposable {
         viewport.apply();
         boolean restored = HabitatUi.isOutpostRestored();
         boolean reducedMotion = HabitatUi.isReducedMotion();
+        float dt = Gdx.graphics.getDeltaTime();
         if (!reducedMotion) {
-            animTime += Gdx.graphics.getDeltaTime();
+            animTime += dt;
         }
-        float pulse = reducedMotion ? 1.0f : (0.82f + 0.18f * (float) Math.sin(animTime * 3.2f));
+        float pulse = reducedMotion ? 1.0f : (0.85f + 0.15f * (float) Math.sin(animTime * 3.0f));
         HabitatWorld.Facility nearby = world.nearbyFacility();
 
-        // 1. Tiled Outdoor Martian Regolith across entire canvas + Outpost Yard
+        float ax = world.x();
+        float ay = world.y();
+        updateAstronautAnimation(ax, ay, dt);
+
+        // 1. Multi-variant Tiled Outdoor Martian Regolith + Compacted Courtyard Dust
+        batch.setColor(Color.WHITE);
+        batch.setBlendFunctionSeparate(
+            GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA,
+            GL20.GL_ONE, GL20.GL_ONE
+        );
         batch.setProjectionMatrix(viewport.getCamera().combined);
         batch.begin();
-        for (int y = 0; y < (int) HabitatWorld.HEIGHT; y += 32) {
-            for (int x = 0; x < (int) HabitatWorld.WIDTH; x += 32) {
-                batch.draw(marsSoilTile, x, y, 32, 32);
+        for (int gy = 0; gy < (int) HabitatWorld.HEIGHT; gy += 32) {
+            for (int gx = 0; gx < (int) HabitatWorld.WIDTH; gx += 32) {
+                int variant = Math.floorMod((gx / 32) * 73856093 ^ (gy / 32) * 19349663, 4);
+                batch.draw(marsSoilVariants[variant], gx, gy, 32, 32);
             }
         }
         int floorRight = (int) HabitatWorld.FLOOR.right();
         int floorTop = (int) HabitatWorld.FLOOR.top();
-        for (int y = (int) HabitatWorld.FLOOR.y(); y < floorTop; y += 32) {
-            int drawH = Math.min(32, floorTop - y);
-            for (int x = (int) HabitatWorld.FLOOR.x(); x < floorRight; x += 32) {
-                int drawW = Math.min(32, floorRight - x);
-                batch.draw(floorTile, x, y, drawW, drawH, 0, 0, drawW, drawH, false, false);
+        for (int gy = (int) HabitatWorld.FLOOR.y(); gy < floorTop; gy += 32) {
+            int drawH = Math.min(32, floorTop - gy);
+            for (int gx = (int) HabitatWorld.FLOOR.x(); gx < floorRight; gx += 32) {
+                int drawW = Math.min(32, floorRight - gx);
+                batch.draw(floorTile, gx, gy, drawW, drawH, 0, 0, drawW * 2, drawH * 2, false, false);
             }
         }
+        // Pixel-art Martian Craters on open regolith
+        batch.draw(craterLg, 68, 78, 56, 32);
+        batch.draw(craterSm, 360, 82, 36, 22);
+        batch.draw(craterLg, 820, 68, 56, 32);
+        batch.draw(craterSm, 408, 494, 36, 22);
         batch.end();
 
-        // 2. Outdoor Martian terrain details (sand dunes, craters, rocks with Pathway shadows, tire tracks, perimeter ridge)
+        // 2. Perimeter Canyon Rim, Tire Tracks, and Industrial Pipe Conduits
         enableSafeAlphaBlend();
         shapes.setProjectionMatrix(viewport.getCamera().combined);
         shapes.begin(ShapeRenderer.ShapeType.Filled);
 
-        // Subtle sand dune bands across outpost ground
-        shapes.setColor(0.36f, 0.14f, 0.09f, 0.32f);
-        shapes.rect(44, 92, 420, 38);
-        shapes.rect(520, 74, 380, 32);
-        shapes.rect(180, 468, 520, 28);
-
-        // Perimeter Martian canyon rock ridge & outpost boundary markers around FLOOR(40,40,880,520)
+        // Canyon Perimeter Framing around walkable FLOOR(40,40,880,520)
         shapes.setColor(COL_PERIMETER_ROCK);
-        shapes.rect(32, 34, 896, 6);
-        shapes.rect(32, 560, 896, 6);
-        shapes.rect(32, 34, 8, 532);
-        shapes.rect(920, 34, 8, 532);
+        shapes.rect(32, 33, 896, 7);
+        shapes.rect(32, 560, 896, 7);
+        shapes.rect(32, 33, 8, 534);
+        shapes.rect(920, 33, 8, 534);
         shapes.setColor(COL_PERIMETER_HI);
-        for (int rx = 64; rx <= 880; rx += 96) {
-            shapes.rect(rx, 558, 28, 4);
-            shapes.rect(rx + 24, 36, 28, 4);
+        shapes.rect(38, 560, 884, 2);
+        shapes.rect(38, 38, 884, 2);
+        for (int rx = 64; rx <= 880; rx += 88) {
+            shapes.rect(rx, 557, 24, 3);
+            shapes.rect(rx + 28, 36, 24, 3);
         }
-
-        // Martian craters (outer rim + deep shadow pit)
-        drawCrater(116, 102, 34, 16);
-        drawCrater(392, 96, 28, 13);
-        drawCrater(856, 88, 38, 17);
-        drawCrater(436, 508, 26, 12);
-
-        // Martian surface boulders with long directional shadows (Pathway style)
-        drawMarsRock(72, 296, 18, 11);
-        drawMarsRock(348, 240, 16, 10);
-        drawMarsRock(548, 488, 20, 12);
-        drawMarsRock(868, 312, 18, 11);
 
         // Rover tire tracks in Martian dust connecting Hab -> Conduit Spine -> Bio-Dome Platform
-        shapes.setColor(0.26f, 0.10f, 0.06f, 0.55f);
-        for (int tx = 140; tx <= 456; tx += 18) {
-            shapes.rect(tx, 122, 10, 3);
-            shapes.rect(tx, 132, 10, 3);
+        shapes.setColor(0.24f, 0.09f, 0.05f, 0.52f);
+        for (int tx = 132; tx <= 456; tx += 14) {
+            shapes.rect(tx, 120, 8, 3);
+            shapes.rect(tx, 130, 8, 3);
         }
-        for (int tx = 516; tx <= 580; tx += 18) {
-            shapes.rect(tx, 196, 10, 3);
-            shapes.rect(tx, 206, 10, 3);
+        for (int tx = 518; tx <= 576; tx += 14) {
+            shapes.rect(tx, 198, 8, 3);
+            shapes.rect(tx, 208, 8, 3);
         }
 
-        // 3. Outdoor Metallic Grated Walkways & Industrial Pipe Network
-        // Walkway from Hab Airlock (top-left) -> Astronaut Spawn (160,200) -> Solar/Water Panel (240,400)
-        drawWalkwayStrip(96, 360, 24, 86);
-        drawWalkwayStrip(96, 360, 144, 20);
-        // Walkways through north & south passages of Central Conduit Spine
-        drawWalkwayStrip(456, 368, 80, 18);
-        drawWalkwayStrip(456, 132, 80, 18);
-
-        // Industrial Pipe Trenches & Conduits (Hab -> Panel -> Spine -> Bio-Dome & Terminal -> Pump Station)
+        // Shaded Industrial Pipe Network connecting Hab -> Panel -> Spine -> Bio-Dome & Terminal -> Pump Station
         Color activePipeCol = restored ? COL_WATER_CYAN : COL_PIPE_OFF;
         Color bioPipeCol = restored ? COL_HYDRO_GREEN : Color.valueOf("64748B");
+        drawPipeSegment(172, 470, 122, 12, activePipeCol, restored);
+        drawPipeSegment(284, 438, 12, 44, activePipeCol, restored);
+        drawPipeSegment(284, 372, 12, 28, activePipeCol, restored);
+        drawPipeSegment(284, 372, 492, 12, activePipeCol, restored);
+        drawPipeSegment(766, 372, 12, 28, activePipeCol, restored);
+        drawPipeSegment(662, 282, 12, 92, bioPipeCol, restored);
+        drawPipeSegment(816, 422, 58, 12, activePipeCol, restored);
+        drawPipeSegment(862, 422, 12, 44, activePipeCol, restored);
 
-        // Pipe 1: Hab Airlock (168,476) -> Solar/Water Panel (290,420)
-        drawPipeSegment(168, 472, 126, 10, activePipeCol, restored);
-        drawPipeSegment(284, 436, 10, 44, activePipeCol, restored);
-
-        // Pipe 2: Solar/Water Panel (290,400) -> Spine -> Terminal (770,400) -> Bio-Dome Platform (680,260)
-        drawPipeSegment(284, 372, 10, 28, activePipeCol, restored);
-        drawPipeSegment(284, 372, 492, 10, activePipeCol, restored);
-        drawPipeSegment(766, 372, 10, 28, activePipeCol, restored);
-        drawPipeSegment(664, 282, 10, 92, bioPipeCol, restored);
-
-        // Pipe 3: Terminal (820,426) -> Pump Station (868,462)
-        drawPipeSegment(818, 422, 56, 10, activePipeCol, restored);
-        drawPipeSegment(864, 422, 10, 42, activePipeCol, restored);
-
-        // 4. Open Hydroponic Bio-Dome Base Platform (Opsi A) around GARDEN(620, 160, 180, 100)
-        // Visual raised metallic deck (574, 134, 288, 152) with long Pathway directional shadow
-        shapes.setColor(COL_SHADOW_LONG);
-        shapes.rect(588, 120, 292, 154);
-
-        shapes.setColor(COL_DECK_OUTER);
-        shapes.rect(574, 134, 288, 152);
-        shapes.setColor(COL_DECK_SURFACE);
-        shapes.rect(578, 138, 280, 144);
-        shapes.setColor(COL_DECK_RIM);
-        shapes.rect(574, 134, 288, 3);
-        shapes.rect(574, 283, 288, 3);
-        shapes.rect(574, 134, 3, 152);
-        shapes.rect(859, 134, 3, 152);
-
-        // Access steps on west & north sides of Bio-Dome deck
-        shapes.setColor(Color.valueOf("64748B"));
-        shapes.rect(562, 188, 12, 44);
-        shapes.rect(690, 286, 48, 10);
-
-        // Cylindrical Water Tank on left side of Bio-Dome deck (584, 156, 28, 96)
-        shapes.setColor(Color.valueOf("1E293B"));
-        shapes.rect(584, 156, 28, 96);
-        shapes.setColor(Color.valueOf("94A3B8"));
-        shapes.rect(586, 158, 24, 92);
-        shapes.setColor(restored ? COL_WATER_CYAN : COL_MARS_ACCENT);
-        shapes.rect(590, 166, 16, restored ? 74 : 36);
-
-        // Rover Dock Pad on right side of Bio-Dome deck (808, 158, 46, 92)
-        shapes.setColor(Color.valueOf("1E293B"));
-        shapes.rect(808, 158, 46, 92);
-        shapes.setColor(COL_MARS_ACCENT);
-        shapes.rect(810, 160, 42, 2);
-        shapes.rect(810, 246, 42, 2);
-
-        // Solar Array beside Hab Airlock (52, 376, 86, 42) - Dusty vs Clean
-        shapes.setColor(COL_SHADOW_LONG);
-        shapes.rect(60, 368, 86, 42);
-        shapes.setColor(Color.valueOf("1E293B"));
-        shapes.rect(52, 376, 86, 42);
-        shapes.setColor(restored ? Color.valueOf("2563EB") : Color.valueOf("78350F"));
-        shapes.rect(56, 380, 78, 34);
-        shapes.setColor(restored ? Color.valueOf("93C5FD") : Color.valueOf("B45309"));
-        shapes.rect(80, 380, 2, 34);
-        shapes.rect(108, 380, 2, 34);
-        shapes.rect(56, 396, 78, 2);
-
-        // Long directional shadows under Hab Airlock, Pump Station, Spine, Panel, Terminal
-        shapes.setColor(COL_SHADOW_LONG);
-        shapes.rect(60, 430, 132, 96);
-        shapes.rect(836, 444, 80, 72);
-        shapes.rect(HabitatWorld.PARTITION.x() + 10, HabitatWorld.PARTITION.y() - 8,
-            HabitatWorld.PARTITION.width(), HabitatWorld.PARTITION.height());
-        shapes.rect(HabitatWorld.Facility.PANEL.bounds.x() + 8, HabitatWorld.Facility.PANEL.bounds.y() - 6,
-            HabitatWorld.Facility.PANEL.bounds.width(), HabitatWorld.Facility.PANEL.bounds.height());
-        shapes.rect(HabitatWorld.Facility.TERMINAL.bounds.x() + 8, HabitatWorld.Facility.TERMINAL.bounds.y() - 6,
-            HabitatWorld.Facility.TERMINAL.bounds.width(), HabitatWorld.Facility.TERMINAL.bounds.height());
-
-        // 5. Pathway-inspired soft 2D point lighting
-        drawSoftGlow(116, 476, 95, 65, restored ? COL_WATER_CYAN : COL_MARS_ACCENT, 0.12f * pulse);
-        drawSoftGlow(290, 420, 96, 62, COL_WATER_CYAN, (nearby == HabitatWorld.Facility.PANEL ? 0.22f : 0.12f) * pulse);
-        drawSoftGlow(770, 426, 104, 68, COL_MARS_ACCENT, (nearby == HabitatWorld.Facility.TERMINAL ? 0.22f : 0.12f) * pulse);
-        drawSoftGlow(710, 210, 155, 92, restored ? COL_HYDRO_GREEN : COL_MARS_ACCENT, (restored ? 0.18f : 0.09f) * pulse);
-
-        // Interactive facility brackets
-        drawInteractionZone(HabitatWorld.Facility.PANEL.bounds, COL_WATER_CYAN,
-            nearby == HabitatWorld.Facility.PANEL);
-        drawInteractionZone(HabitatWorld.Facility.TERMINAL.bounds, COL_MARS_ACCENT,
-            nearby == HabitatWorld.Facility.TERMINAL);
-
-        // Position ring & connection line under astronaut
-        float ax = world.x();
-        float ay = world.y();
-        shapes.setColor(0.22f, 0.83f, 0.93f, nearby != null ? 0.60f : 0.32f);
-        shapes.rect(ax - 2, ay - 2, HabitatWorld.PLAYER_WIDTH + 4, 6);
-
-        if (nearby != null && world.mode() == HabitatWorld.Mode.EXPLORING) {
-            HabitatWorld.Box b = nearby.bounds;
-            float cx = ax + HabitatWorld.PLAYER_WIDTH * 0.5f;
-            float cy = ay + HabitatWorld.PLAYER_HEIGHT * 0.5f;
-            float tx = Math.max(b.x(), Math.min(b.right(), cx));
-            float ty = Math.max(b.y(), Math.min(b.top(), cy));
-            shapes.setColor(COL_WATER_CYAN.r, COL_WATER_CYAN.g, COL_WATER_CYAN.b, 0.78f);
-            shapes.rectLine(cx, cy, tx, ty, 2f);
+        // Animated coolant pulses along pipe network when restored
+        if (restored && !reducedMotion) {
+            float flowX = 288 + ((animTime * 90f) % 480f);
+            shapes.setColor(0.88f, 0.99f, 1.0f, 0.95f);
+            shapes.rect(flowX, 375, 14, 6);
+            float flowY = 372 - ((animTime * 60f) % 80f);
+            shapes.rect(665, flowY, 6, 10);
         }
         shapes.end();
 
-        // 6. Crisp 1:1 Pixel-Art Sprites
+        // 3. Textured Grated Walkways & All 2x Crisp Pixel-Art Structures & Props
         batch.begin();
-        // Outdoor decorative outpost modules (outside walking path or in corners)
-        batch.draw(habAirlockTexture, 48, 436, 136, 104);
-        batch.draw(pumpStationTexture, 826, 450, 84, 76);
+        // Walkways
+        drawTiledWalkwayV(batch, 94, 360, 22, 82);
+        drawTiledWalkwayH(batch, 94, 360, 148, 20);
+        drawTiledWalkwayH(batch, 456, 366, 80, 20);
+        drawTiledWalkwayH(batch, 456, 132, 80, 20);
 
-        // Authoritative colliders
-        batch.draw(partitionTexture,
+        // Faceted Martian Surface Boulders (Pathway style)
+        batch.draw(rockA, 68, 294, 22, 18);
+        batch.draw(rockB, 344, 238, 18, 14);
+        batch.draw(rockA, 544, 488, 22, 18);
+        batch.draw(rockB, 868, 308, 18, 14);
+
+        // Hab Airlock Dome + Cargo Crates + Dusty/Clean Solar Array
+        batch.draw(habAirlockTexture, 48, 434, 144, 112);
+        batch.draw(cargoCrate, 198, 492, 18, 18);
+        batch.draw(cargoCrate, 202, 472, 16, 16);
+        batch.draw(restored ? solarCleanTexture : solarDustyTexture, 52, 374, 88, 44);
+
+        // Booster Pump Station (Mission 3)
+        batch.draw(pumpStationTexture, 820, 444, 96, 88);
+
+        // Raised Bio-Dome Base Platform (surrounds authoritative GARDEN)
+        batch.draw(restored ? bioDomeDeckOnTexture : bioDomeDeckOffTexture, 574, 134, 288, 152);
+
+        // Authoritative Colliders (1:1 aligned to HabitatWorld.Box)
+        batch.draw(restored ? partitionOnTexture : partitionOffTexture,
             HabitatWorld.PARTITION.x(), HabitatWorld.PARTITION.y(),
             HabitatWorld.PARTITION.width(), HabitatWorld.PARTITION.height());
         batch.draw(restored ? gardenRestoredTexture : gardenDryTexture,
@@ -307,37 +315,69 @@ public final class HabitatRenderer implements Disposable {
         batch.draw(terminalTexture,
             HabitatWorld.Facility.TERMINAL.bounds.x(), HabitatWorld.Facility.TERMINAL.bounds.y(),
             HabitatWorld.Facility.TERMINAL.bounds.width(), HabitatWorld.Facility.TERMINAL.bounds.height());
-        batch.draw(astronautTexture,
-            ax, ay,
-            HabitatWorld.PLAYER_WIDTH, HabitatWorld.PLAYER_HEIGHT);
+
+        // Animated 4-Direction Astronaut Sprite aligned 1:1 to PLAYER_WIDTH x PLAYER_HEIGHT (24x28)
+        int frameIdx = isWalking ? ((int) (walkTimer * 8f) % 4) : 0;
+        TextureRegion astroRegion = astronautFrames[astroDir][frameIdx];
+        batch.draw(astroRegion, ax, ay, HabitatWorld.PLAYER_WIDTH, HabitatWorld.PLAYER_HEIGHT);
+
+        // Partial Transparent Bio-Dome Geodesic Canopy Overhang
+        batch.draw(bioDomeCanopyTexture, 574, 134, 288, 152);
         batch.end();
 
-        // 7. Partial Transparent Bio-Dome Ribs (drawn over garden so it reads as an Open Bio-Dome without hiding plants)
+        // 4. Smooth Additive Radial 2D Lighting (Pathway style) & Interactive Brackets
+        batch.setBlendFunctionSeparate(
+            GL20.GL_SRC_ALPHA, GL20.GL_ONE,
+            GL20.GL_ZERO, GL20.GL_ONE
+        );
+        batch.begin();
+        drawRadialGlow(batch, 120, 488, 170, 130, restored ? COL_WATER_CYAN : COL_MARS_ACCENT, 0.28f * pulse);
+        drawRadialGlow(batch, 290, 420, 160, 110, COL_WATER_CYAN, (nearby == HabitatWorld.Facility.PANEL ? 0.45f : 0.24f) * pulse);
+        drawRadialGlow(batch, 770, 426, 170, 120, COL_MARS_ACCENT, (nearby == HabitatWorld.Facility.TERMINAL ? 0.45f : 0.24f) * pulse);
+        drawRadialGlow(batch, 718, 210, 290, 175, restored ? COL_HYDRO_GREEN : COL_MARS_ACCENT, (restored ? 0.34f : 0.16f) * pulse);
+        drawRadialGlow(batch, ax + 12, ay + 14, 72, 72, COL_WATER_CYAN, nearby != null ? 0.30f : 0.16f);
+        batch.end();
+        batch.setColor(Color.WHITE);
+        batch.setBlendFunctionSeparate(
+            GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA,
+            GL20.GL_ONE, GL20.GL_ONE
+        );
+
         enableSafeAlphaBlend();
         shapes.begin(ShapeRenderer.ShapeType.Filled);
-        shapes.setColor(0.73f, 0.90f, 0.99f, 0.28f);
-        shapes.rect(584, 272, 268, 4);
-        shapes.rect(584, 144, 268, 4);
-        shapes.rect(658, 144, 3, 132);
-        shapes.rect(762, 144, 3, 132);
+        drawInteractionZone(HabitatWorld.Facility.PANEL.bounds, COL_WATER_CYAN,
+            nearby == HabitatWorld.Facility.PANEL);
+        drawInteractionZone(HabitatWorld.Facility.TERMINAL.bounds, COL_MARS_ACCENT,
+            nearby == HabitatWorld.Facility.TERMINAL);
 
-        // Optional atmospheric Martian dust motes when Reduced Motion is off
+        // Ground interaction tether when astronaut is within reach
+        if (nearby != null && world.mode() == HabitatWorld.Mode.EXPLORING) {
+            HabitatWorld.Box b = nearby.bounds;
+            float cx = ax + HabitatWorld.PLAYER_WIDTH * 0.5f;
+            float cy = ay + HabitatWorld.PLAYER_HEIGHT * 0.5f;
+            float tx = Math.max(b.x(), Math.min(b.right(), cx));
+            float ty = Math.max(b.y(), Math.min(b.top(), cy));
+            shapes.setColor(COL_WATER_CYAN.r, COL_WATER_CYAN.g, COL_WATER_CYAN.b, 0.80f);
+            shapes.rectLine(cx, cy, tx, ty, 2f);
+        }
+
+        // Subtle Martian dust motes when Reduced Motion is off
         if (!reducedMotion) {
-            shapes.setColor(0.98f, 0.75f, 0.55f, 0.30f);
-            for (int i = 0; i < 8; i++) {
-                float dx = (110 * i + animTime * (22 + i * 3)) % 860 + 48;
-                float dy = (70 * i + 95) % 480 + 52;
-                shapes.rect(dx, dy, 3, 2);
+            shapes.setColor(0.98f, 0.78f, 0.60f, 0.28f);
+            for (int i = 0; i < 9; i++) {
+                float dx = (108 * i + animTime * (20 + i * 3)) % 860 + 48;
+                float dy = (72 * i + 88) % 470 + 52;
+                shapes.rect(dx, dy, 2, 2);
             }
         }
         shapes.end();
 
-        // 8. High-contrast Outdoor Outpost World Badges
-        drawWorldBadge("HAB AIRLOCK", 116, 544,
+        // 5. Crisp Hi-DPI World Badges
+        drawWorldBadge("HAB AIRLOCK", 120, 548,
             restored ? COL_HYDRO_GREEN : COL_MARS_ACCENT, COL_TEXT_MAIN, false);
-        drawWorldBadge(restored ? "SOLAR: 100% AKTIF" : "SOLAR: DEBU 78%", 95, 362,
+        drawWorldBadge(restored ? "SOLAR: 100% AKTIF" : "SOLAR: DEBU 78%", 96, 358,
             restored ? COL_WATER_CYAN : COL_MARS_ACCENT, COL_TEXT_MAIN, false);
-        drawWorldBadge("POMPA UTAMA [M3]", 868, 536,
+        drawWorldBadge("POMPA UTAMA [M3]", 868, 538,
             Color.valueOf("64748B"), COL_TEXT_MUTED, false);
 
         boolean panelNear = nearby == HabitatWorld.Facility.PANEL;
@@ -372,7 +412,7 @@ public final class HabitatRenderer implements Disposable {
                 ? "BIO-DOME BASE (4x4): PULIH & MENGALIR [OK]"
                 : "BIO-DOME BASE (4x4): 2 Kering [!] | Rover Siaga",
             718,
-            118,
+            116,
             restored ? COL_HYDRO_GREEN : COL_MARS_ACCENT,
             COL_TEXT_MAIN,
             false
@@ -407,58 +447,69 @@ public final class HabitatRenderer implements Disposable {
         Gdx.gl.glDisable(GL20.GL_BLEND);
     }
 
-    private void drawCrater(float cx, float cy, float rx, float ry) {
-        shapes.setColor(0.58f, 0.25f, 0.16f, 0.65f);
-        shapes.rect(cx - rx, cy - ry, rx * 2, ry * 2);
-        shapes.setColor(0.28f, 0.11f, 0.07f, 0.72f);
-        shapes.rect(cx - rx + 4, cy - ry + 3, rx * 2 - 8, ry * 2 - 6);
+    private void updateAstronautAnimation(float ax, float ay, float dt) {
+        if (Float.isNaN(prevAstroX)) {
+            prevAstroX = ax;
+            prevAstroY = ay;
+            return;
+        }
+        float dx = ax - prevAstroX;
+        float dy = ay - prevAstroY;
+        float distSq = dx * dx + dy * dy;
+        if (distSq > 0.01f) {
+            isWalking = true;
+            walkTimer += Math.max(dt, 0.016f);
+            if (Math.abs(dx) >= Math.abs(dy)) {
+                astroDir = dx > 0 ? 3 : 2;
+            } else {
+                // Note: world Y grows upward in libGDX
+                astroDir = dy > 0 ? 1 : 0;
+            }
+        } else {
+            isWalking = false;
+            walkTimer = 0f;
+        }
+        prevAstroX = ax;
+        prevAstroY = ay;
     }
 
-    private void drawMarsRock(float x, float y, float w, float h) {
-        shapes.setColor(COL_SHADOW_LONG);
-        shapes.rect(x + 6, y - 4, w + 4, h);
-        shapes.setColor(Color.valueOf("9A4830"));
-        shapes.rect(x, y, w, h);
-        shapes.setColor(Color.valueOf("B85D43"));
-        shapes.rect(x + 2, y + h - 3, w - 4, 3);
+    private void drawTiledWalkwayH(SpriteBatch batch, float x, float y, float w, float h) {
+        float seg = 32f;
+        for (float cur = x; cur < x + w; cur += seg) {
+            float dw = Math.min(seg, x + w - cur);
+            batch.draw(walkwayH, cur, y, dw, h, 0, 0, Math.round(dw * 2), 40, false, false);
+        }
     }
 
-    private void drawWalkwayStrip(float x, float y, float w, float h) {
-        shapes.setColor(Color.valueOf("263240"));
-        shapes.rect(x, y, w, h);
-        shapes.setColor(Color.valueOf("64748B"));
-        shapes.rect(x, y, w, 2);
-        shapes.rect(x, y + h - 2, w, 2);
+    private void drawTiledWalkwayV(SpriteBatch batch, float x, float y, float w, float h) {
+        float seg = 32f;
+        for (float cur = y; cur < y + h; cur += seg) {
+            float dh = Math.min(seg, y + h - cur);
+            batch.draw(walkwayV, x, cur, w, dh, 0, 0, 44, Math.round(dh * 2), false, false);
+        }
     }
 
     private void drawPipeSegment(float x, float y, float w, float h, Color pipeCol, boolean glowing) {
         shapes.setColor(COL_PIPE_TRENCH);
         shapes.rect(x, y, w, h);
+        shapes.setColor(COL_PIPE_RIM);
+        shapes.rect(x + 1, y + 1, w - 2, h - 2);
         shapes.setColor(pipeCol);
         if (w >= h) {
             shapes.rect(x + 2, y + 3, w - 4, h - 6);
-            if (glowing) {
-                shapes.setColor(0.80f, 0.98f, 1.0f, 0.85f);
-                shapes.rect(x + 4, y + 4, w - 8, 2);
-            }
+            shapes.setColor(glowing ? 0.78f : 0.45f, glowing ? 0.98f : 0.52f, glowing ? 1.0f : 0.60f, 0.80f);
+            shapes.rect(x + 3, y + h - 5, w - 6, 2);
         } else {
             shapes.rect(x + 3, y + 2, w - 6, h - 4);
-            if (glowing) {
-                shapes.setColor(0.80f, 0.98f, 1.0f, 0.85f);
-                shapes.rect(x + 4, y + 4, 2, h - 8);
-            }
+            shapes.setColor(glowing ? 0.78f : 0.45f, glowing ? 0.98f : 0.52f, glowing ? 1.0f : 0.60f, 0.80f);
+            shapes.rect(x + 3, y + 3, 2, h - 6);
         }
     }
 
-    private void drawSoftGlow(float cx, float cy, float rx, float ry, Color color, float maxAlpha) {
-        int steps = 4;
-        for (int i = steps; i >= 1; i--) {
-            float scale = i / (float) steps;
-            float w = rx * 2f * scale;
-            float h = ry * 2f * scale;
-            shapes.setColor(color.r, color.g, color.b, maxAlpha * (1.1f - scale * 0.75f) / steps * 1.8f);
-            shapes.rect(cx - w * 0.5f, cy - h * 0.5f, w, h);
-        }
+    private void drawRadialGlow(SpriteBatch batch, float cx, float cy, float w, float h, Color col, float alpha) {
+        batch.setColor(col.r, col.g, col.b, alpha);
+        batch.draw(lightGlowTexture, cx - w * 0.5f, cy - h * 0.5f, w, h);
+        batch.setColor(Color.WHITE);
     }
 
     private void drawInteractionZone(HabitatWorld.Box bounds, Color accent, boolean active) {
@@ -469,13 +520,13 @@ public final class HabitatRenderer implements Disposable {
         float h = bounds.height() + pad * 2f;
 
         if (active) {
-            shapes.setColor(accent.r, accent.g, accent.b, 0.18f);
+            shapes.setColor(accent.r, accent.g, accent.b, 0.16f);
             shapes.rect(x - 4, y - 4, w + 8, h + 8);
         }
 
-        float alpha = active ? 0.95f : 0.50f;
+        float alpha = active ? 0.95f : 0.52f;
         float len = active ? 14f : 10f;
-        float thick = active ? 3f : 2f;
+        float thick = active ? 2.5f : 1.8f;
         shapes.setColor(accent.r, accent.g, accent.b, alpha);
 
         shapes.rect(x, y, len, thick);
@@ -491,7 +542,7 @@ public final class HabitatRenderer implements Disposable {
     private void drawWorldBadge(String text, float centerX, float centerY, Color borderCol, Color textCol, boolean active) {
         layout.setText(font, text);
         float padX = 8f;
-        float padY = 5f;
+        float padY = 4.5f;
         float bw = layout.width + padX * 2f;
         float bh = layout.height + padY * 2f;
         float bx = Math.round(centerX - bw * 0.5f);
@@ -499,15 +550,15 @@ public final class HabitatRenderer implements Disposable {
 
         enableSafeAlphaBlend();
         shapes.begin(ShapeRenderer.ShapeType.Filled);
-        shapes.setColor(borderCol.r, borderCol.g, borderCol.b, active ? 0.95f : 0.72f);
-        shapes.rect(bx - (active ? 2 : 1), by - (active ? 2 : 1), bw + (active ? 4 : 2), bh + (active ? 4 : 2));
+        shapes.setColor(borderCol.r, borderCol.g, borderCol.b, active ? 0.96f : 0.72f);
+        shapes.rect(bx - (active ? 1.5f : 1f), by - (active ? 1.5f : 1f), bw + (active ? 3f : 2f), bh + (active ? 3f : 2f));
         shapes.setColor(active ? COL_BADGE_ACTIVE_BG : COL_BADGE_BG);
         shapes.rect(bx, by, bw, bh);
         shapes.end();
 
         batch.begin();
         font.setColor(textCol);
-        font.draw(batch, text, Math.round(bx + padX), Math.round(by + bh - padY));
+        font.draw(batch, text, bx + padX, by + bh - padY);
         font.setColor(Color.WHITE);
         batch.end();
     }
@@ -517,16 +568,12 @@ public final class HabitatRenderer implements Disposable {
         shapes.dispose();
         batch.dispose();
         font.dispose();
-        marsSoilTile.dispose();
-        floorTile.dispose();
-        partitionTexture.dispose();
-        panelTexture.dispose();
-        terminalTexture.dispose();
-        gardenDryTexture.dispose();
-        gardenRestoredTexture.dispose();
-        habAirlockTexture.dispose();
-        pumpStationTexture.dispose();
-        roverTexture.dispose();
-        astronautTexture.dispose();
+        if (fontTexture != null) {
+            fontTexture.dispose();
+        }
+        for (Texture texture : ownedTextures) {
+            texture.dispose();
+        }
+        ownedTextures.clear();
     }
 }

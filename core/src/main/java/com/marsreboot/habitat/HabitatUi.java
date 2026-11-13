@@ -65,6 +65,11 @@ public final class HabitatUi implements Disposable {
     private final Stage stage = new Stage(new FitViewport(960, 600));
     private final Skin skin = new Skin(Gdx.files.internal("ui/uiskin.json"));
     private final List<Texture> ownedTextures = new ArrayList<>();
+    private final List<BitmapFont> ownedFonts = new ArrayList<>();
+
+    private final BitmapFont uiFont;
+    private final BitmapFont uiBoldFont;
+    private final BitmapFont monoFont;
 
     private final Label prompt;
     private final Label modeBadge;
@@ -110,16 +115,22 @@ public final class HabitatUi implements Disposable {
         outpostRestored = false;
         reducedMotion = false;
 
-        BitmapFont font = skin.getFont("default");
-        font.setUseIntegerPositions(true);
+        BitmapFont fallbackFont = skin.getFont("default");
+        fallbackFont.setUseIntegerPositions(true);
+        uiFont = loadHiDpiFont("ui/ui_sans.fnt", "ui/ui_sans.png", 0.37f, fallbackFont);
+        uiBoldFont = loadHiDpiFont("ui/ui_sans_bold.fnt", "ui/ui_sans_bold.png", 0.37f, fallbackFont);
+        monoFont = loadHiDpiFont("ui/ui_mono.fnt", "ui/ui_mono.png", 0.36f, fallbackFont);
 
-        LabelStyle primaryStyle = new LabelStyle(font, COL_TEXT_PRIMARY);
-        LabelStyle secondaryStyle = new LabelStyle(font, COL_TEXT_SECONDARY);
-        LabelStyle mutedStyle = new LabelStyle(font, COL_TEXT_MUTED);
-        LabelStyle cyanStyle = new LabelStyle(font, COL_CYAN);
-        LabelStyle marsStyle = new LabelStyle(font, COL_MARS);
-        LabelStyle greenStyle = new LabelStyle(font, COL_GREEN);
-        LabelStyle alertStyle = new LabelStyle(font, COL_ALERT);
+        LabelStyle primaryStyle = new LabelStyle(uiFont, COL_TEXT_PRIMARY);
+        LabelStyle boldPrimaryStyle = new LabelStyle(uiBoldFont, COL_TEXT_PRIMARY);
+        LabelStyle secondaryStyle = new LabelStyle(uiFont, COL_TEXT_SECONDARY);
+        LabelStyle mutedStyle = new LabelStyle(uiFont, COL_TEXT_MUTED);
+        LabelStyle cyanStyle = new LabelStyle(uiBoldFont, COL_CYAN);
+        LabelStyle marsStyle = new LabelStyle(uiBoldFont, COL_MARS);
+        LabelStyle greenStyle = new LabelStyle(uiBoldFont, COL_GREEN);
+        LabelStyle alertStyle = new LabelStyle(uiBoldFont, COL_ALERT);
+        LabelStyle monoCyanStyle = new LabelStyle(monoFont, COL_CYAN);
+        LabelStyle monoMutedStyle = new LabelStyle(monoFont, COL_TEXT_MUTED);
 
         promptIdleBg = createBoxDrawable("131C28", "334155", 1, 8, 8, 3, 3);
         promptNearBg = createBoxDrawable("0F293A", "38BDF8", 2, 8, 8, 3, 3);
@@ -128,10 +139,10 @@ public final class HabitatUi implements Disposable {
         consoleErrorBg = createBoxDrawable("221014", "EF4444", 2, 8, 8, 5, 5);
         consoleWarnBg = createBoxDrawable("23180C", "F59E0B", 2, 8, 8, 5, 5);
 
-        prompt = new Label("", primaryStyle);
+        prompt = new Label("", boldPrimaryStyle);
         modeBadge = new Label("MODE: OUTPOST", greenStyle);
         focusStatusLabel = new Label("FOKUS: EDITOR AKTIF", cyanStyle);
-        lineNumbersLabel = new Label("1\n2\n3", mutedStyle);
+        lineNumbersLabel = new Label("1\n2\n3", monoMutedStyle);
         lineNumbersLabel.setAlignment(Align.topRight);
 
         // 1. Sci-Fi Top & Bottom HUD Bars (leaves y=40..560 outdoor Mars yard 100% unobstructed)
@@ -184,7 +195,7 @@ public final class HabitatUi implements Disposable {
 
         // 2. Outdoor Solar & Water Panel Inspection Modal Window
         WindowStyle cyanWinStyle = new WindowStyle(
-            font, COL_TEXT_PRIMARY, createWindowDrawable("111924", "172638", "38BDF8", 2, 30)
+            uiBoldFont, COL_TEXT_PRIMARY, createWindowDrawable("101925", "16263A", "38BDF8", 2, 30)
         );
         inspection = new Window("  INSPEKSI OUTPOST MARS  |  PANEL SURYA & TANGKI AIR", cyanWinStyle);
         inspection.setModal(true);
@@ -233,7 +244,7 @@ public final class HabitatUi implements Disposable {
 
         // 3. Upgraded Sci-Fi Floating Draggable Terminal Window (08_scifi_floating_terminal_hud.png)
         WindowStyle terminalWinStyle = new WindowStyle(
-            font, COL_TEXT_PRIMARY, createWindowDrawable("0E151F", "162436", "38BDF8", 2, 30)
+            uiBoldFont, COL_TEXT_PRIMARY, createWindowDrawable("0D141E", "152336", "38BDF8", 2, 30)
         );
         terminal = new Window("  ::: TERMINAL LAPANGAN BIO-DOME  |  M1-P2 (geser judul)", terminalWinStyle);
         terminal.setModal(true);
@@ -264,7 +275,7 @@ public final class HabitatUi implements Disposable {
         for (String chip : new String[] {"move()", "turn_left()", "water()", "scan()"}) {
             Table chipBox = new Table();
             chipBox.setBackground(createBoxDrawable("132238", "334155", 1, 5, 5, 2, 2));
-            chipBox.add(new Label(chip, cyanStyle));
+            chipBox.add(new Label(chip, monoCyanStyle));
             chipsRow.add(chipBox).padRight(4);
         }
         terminal.add(chipsRow).growX().padBottom(6).row();
@@ -272,12 +283,12 @@ public final class HabitatUi implements Disposable {
         // Editor header bar
         Table editorHeader = new Table();
         editorHeader.setBackground(createBoxDrawable("162232", "334155", 1, 6, 6, 3, 3));
-        editorHeader.add(new Label(">_ solusi_biodome.py", cyanStyle)).left().expandX();
+        editorHeader.add(new Label(">_ solusi_biodome.py", monoCyanStyle)).left().expandX();
         editorHeader.add(new Label("Draf aman | Esc keluar", mutedStyle)).right();
         terminal.add(editorHeader).growX().row();
 
         TextFieldStyle editorStyle = new TextFieldStyle(
-            font,
+            monoFont,
             COL_TEXT_PRIMARY,
             createFlatDrawable("38BDF8", 2, 16),
             createFlatDrawable("1E4E68", 4, 16),
@@ -286,7 +297,7 @@ public final class HabitatUi implements Disposable {
         editorStyle.focusedBackground = createBoxDrawable("0B131E", "38BDF8", 2, 8, 8, 6, 6);
         editorStyle.disabledBackground = createBoxDrawable("090E14", "1E293B", 1, 8, 8, 6, 6);
         editorStyle.focusedFontColor = COL_TEXT_PRIMARY;
-        editorStyle.messageFont = font;
+        editorStyle.messageFont = monoFont;
         editorStyle.messageFontColor = COL_TEXT_MUTED;
 
         editor = new TextArea(
@@ -375,7 +386,7 @@ public final class HabitatUi implements Disposable {
 
         // 5. Field Log Astronaut Modal [J] (10_field_log_and_mission_map.png)
         WindowStyle goldWinStyle = new WindowStyle(
-            font, COL_TEXT_PRIMARY, createWindowDrawable("111823", "241D12", "F59E0B", 2, 30)
+            uiBoldFont, COL_TEXT_PRIMARY, createWindowDrawable("101723", "241C12", "F59E0B", 2, 30)
         );
         fieldLogWindow = new Window("  FIELD LOG ASTRONAUT [J]  |  CATATAN INSPEKSI OUTPOST", goldWinStyle);
         fieldLogWindow.setModal(true);
@@ -643,9 +654,9 @@ public final class HabitatUi implements Disposable {
         Table card = new Table();
         card.setBackground(createBoxDrawable("0C131D", borderHex, 1, 8, 8, 6, 6));
         card.add(new Label(title, titleStyle)).left().growX().padBottom(3).row();
-        card.add(new Label("Status: " + status, new LabelStyle(skin.getFont("default"), COL_TEXT_SECONDARY)))
+        card.add(new Label("Status: " + status, new LabelStyle(uiFont, COL_TEXT_SECONDARY)))
             .left().growX().padBottom(2).row();
-        card.add(new Label(record, new LabelStyle(skin.getFont("default"), COL_TEXT_MUTED))).left().growX();
+        card.add(new Label(record, new LabelStyle(uiFont, COL_TEXT_MUTED))).left().growX();
         return card;
     }
 
@@ -678,12 +689,11 @@ public final class HabitatUi implements Disposable {
     }
 
     private TextButton smallHudButton(String text, String bgHex, String borderHex, Runnable onClick) {
-        BitmapFont font = skin.getFont("default");
         TextButtonStyle style = new TextButtonStyle(
             createBoxDrawable(bgHex, borderHex, 1, 7, 7, 2, 2),
             createBoxDrawable("0F293A", "38BDF8", 2, 7, 7, 2, 2),
             createBoxDrawable(bgHex, borderHex, 1, 7, 7, 2, 2),
-            font
+            uiBoldFont
         );
         style.over = createBoxDrawable("1E3A5F", "BAE6FD", 1, 7, 7, 2, 2);
         style.fontColor = COL_TEXT_PRIMARY;
@@ -699,12 +709,11 @@ public final class HabitatUi implements Disposable {
     }
 
     private TextButton closeButton(String label, Runnable onClose) {
-        BitmapFont font = skin.getFont("default");
         TextButtonStyle btnStyle = new TextButtonStyle(
             createBoxDrawable("1A2D3D", "38BDF8", 1, 10, 10, 4, 4),
             createBoxDrawable("0F293A", "38BDF8", 2, 10, 10, 4, 4),
             createBoxDrawable("1A2D3D", "38BDF8", 1, 10, 10, 4, 4),
-            font
+            uiBoldFont
         );
         btnStyle.over = createBoxDrawable("233D52", "BAE6FD", 2, 10, 10, 4, 4);
         btnStyle.focused = createBoxDrawable("1F374B", "38BDF8", 2, 10, 10, 4, 4);
@@ -723,6 +732,24 @@ public final class HabitatUi implements Disposable {
         return button;
     }
 
+    private BitmapFont loadHiDpiFont(String fntPath, String pngPath, float scale, BitmapFont fallback) {
+        var fntHandle = Gdx.files.internal(fntPath);
+        if (!fntHandle.exists()) fntHandle = Gdx.files.local("assets/" + fntPath);
+        var pngHandle = Gdx.files.internal(pngPath);
+        if (!pngHandle.exists()) pngHandle = Gdx.files.local("assets/" + pngPath);
+        if (!fntHandle.exists() || !pngHandle.exists()) {
+            return fallback;
+        }
+        Texture fontTex = new Texture(pngHandle, true);
+        fontTex.setFilter(TextureFilter.MipMapLinearLinear, TextureFilter.Linear);
+        ownedTextures.add(fontTex);
+        BitmapFont loaded = new BitmapFont(fntHandle, new TextureRegion(fontTex), false);
+        loaded.setUseIntegerPositions(false);
+        loaded.getData().setScale(scale);
+        ownedFonts.add(loaded);
+        return loaded;
+    }
+
     private Drawable createFlatDrawable(String hex, int w, int h) {
         Pixmap pixmap = new Pixmap(w, h, Pixmap.Format.RGBA8888);
         pixmap.setColor(Color.valueOf(hex));
@@ -736,23 +763,37 @@ public final class HabitatUi implements Disposable {
 
     private Drawable createBoxDrawable(String fillHex, String borderHex, int borderThickness,
                                        int padLeft, int padRight, int padTop, int padBottom) {
-        int size = 12;
+        // 3x supersampled sci-fi box texture so borders & rounded corner highlights stay silky crisp
+        int scale = 3;
+        int size = 14 * scale;
         Pixmap pixmap = new Pixmap(size, size, Pixmap.Format.RGBA8888);
-        pixmap.setColor(Color.valueOf(fillHex));
+        Color fill = Color.valueOf(fillHex);
+        Color border = Color.valueOf(borderHex);
+        pixmap.setColor(0, 0, 0, 0);
         pixmap.fill();
+
+        // Fill body with 2px chamfered corner cuts in 3x space
+        pixmap.setColor(fill);
+        pixmap.fillRectangle(1, 1, size - 2, size - 2);
+        // Subtle top inner sheen
+        pixmap.setColor(Math.min(1f, fill.r + 0.06f), Math.min(1f, fill.g + 0.08f), Math.min(1f, fill.b + 0.11f), 0.95f);
+        pixmap.fillRectangle(scale, scale, size - scale * 2, scale);
+
         if (borderThickness > 0) {
-            pixmap.setColor(Color.valueOf(borderHex));
-            for (int i = 0; i < borderThickness; i++) {
+            int t = borderThickness * scale;
+            pixmap.setColor(border);
+            for (int i = 0; i < t; i++) {
                 pixmap.drawRectangle(i, i, size - i * 2, size - i * 2);
             }
         }
-        Texture texture = new Texture(pixmap);
-        texture.setFilter(TextureFilter.Nearest, TextureFilter.Nearest);
+        Texture texture = new Texture(pixmap, true);
+        texture.setFilter(TextureFilter.MipMapLinearLinear, TextureFilter.Linear);
         pixmap.dispose();
         ownedTextures.add(texture);
 
-        int split = Math.max(2, borderThickness + 1);
+        int split = Math.max(2, borderThickness + 2) * scale;
         NinePatch patch = new NinePatch(texture, split, split, split, split);
+        patch.scale(1f / scale, 1f / scale);
         NinePatchDrawable drawable = new NinePatchDrawable(patch);
         drawable.setLeftWidth(padLeft);
         drawable.setRightWidth(padRight);
@@ -763,25 +804,38 @@ public final class HabitatUi implements Disposable {
 
     private Drawable createWindowDrawable(String bodyHex, String headerHex, String borderHex,
                                           int borderThickness, int headerHeight) {
-        int w = 24;
-        int h = headerHeight + 16;
+        int scale = 3;
+        int w = 24 * scale;
+        int h = (headerHeight + 16) * scale;
+        int hh = headerHeight * scale;
         Pixmap pixmap = new Pixmap(w, h, Pixmap.Format.RGBA8888);
-        pixmap.setColor(Color.valueOf(bodyHex));
+        Color body = Color.valueOf(bodyHex);
+        Color header = Color.valueOf(headerHex);
+        Color border = Color.valueOf(borderHex);
+
+        pixmap.setColor(body);
         pixmap.fill();
-        pixmap.setColor(Color.valueOf(headerHex));
-        pixmap.fillRectangle(0, 0, w, headerHeight);
-        pixmap.setColor(Color.valueOf(borderHex));
-        pixmap.fillRectangle(0, headerHeight - 2, w, 2);
-        for (int i = 0; i < borderThickness; i++) {
+        pixmap.setColor(header);
+        pixmap.fillRectangle(0, 0, w, hh);
+        // Subtle top inner glass specular line
+        pixmap.setColor(border.r, border.g, border.b, 0.35f);
+        pixmap.fillRectangle(0, scale * borderThickness, w, scale);
+        // Header divider line
+        pixmap.setColor(border);
+        pixmap.fillRectangle(0, hh - 2 * scale, w, 2 * scale);
+
+        int t = borderThickness * scale;
+        for (int i = 0; i < t; i++) {
             pixmap.drawRectangle(i, i, w - i * 2, h - i * 2);
         }
-        Texture texture = new Texture(pixmap);
-        texture.setFilter(TextureFilter.Nearest, TextureFilter.Nearest);
+        Texture texture = new Texture(pixmap, true);
+        texture.setFilter(TextureFilter.MipMapLinearLinear, TextureFilter.Linear);
         pixmap.dispose();
         ownedTextures.add(texture);
 
-        int sideSplit = Math.max(3, borderThickness + 1);
-        NinePatch patch = new NinePatch(texture, sideSplit, sideSplit, headerHeight + 2, sideSplit);
+        int sideSplit = Math.max(3, borderThickness + 2) * scale;
+        NinePatch patch = new NinePatch(texture, sideSplit, sideSplit, (headerHeight + 2) * scale, sideSplit);
+        patch.scale(1f / scale, 1f / scale);
         return new NinePatchDrawable(patch);
     }
 
@@ -893,6 +947,10 @@ public final class HabitatUi implements Disposable {
     public void dispose() {
         stage.dispose();
         skin.dispose();
+        for (BitmapFont bf : ownedFonts) {
+            bf.dispose();
+        }
+        ownedFonts.clear();
         for (Texture texture : ownedTextures) {
             texture.dispose();
         }

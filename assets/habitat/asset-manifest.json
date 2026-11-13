@@ -1,84 +1,38 @@
 {
-  "scene": "outdoor_mars_outpost_v2",
-  "license": "Project-internal procedural pixel art (CC0 / MIT compatible, no third-party assets)",
-  "filter": "Nearest",
+  "status": "placeholder_2x_crisp_pixel_art",
+  "artDirection": "MewnBase x The Martian x Pathway (2D Top-Down 3/4, TextureFilter.Nearest)",
+  "origin": "Generated procedurally by MarsReboot project (zero third-party assets)",
+  "license": "Project-owned internal assets",
   "assets": [
-    {
-      "path": "habitat/astronaut_eva.png",
-      "width": 24,
-      "height": 28,
-      "sha256": "2e1c700c7abd06b76801a1c05ccfc7f216b8817eefa1e06ca0254aa4d6551f23",
-      "status": "placeholder_consistent"
-    },
-    {
-      "path": "habitat/floor_tile.png",
-      "width": 32,
-      "height": 32,
-      "sha256": "bf93f2f7771edf8a0b6cac319f5791cfa54d494acb3038585ab0e45a48e0bfc7",
-      "status": "placeholder_consistent"
-    },
-    {
-      "path": "habitat/hab_airlock.png",
-      "width": 144,
-      "height": 112,
-      "sha256": "65be30b40b65968ef0b59837d155748e69b0cb45731e79cd2060c9ad353748e1",
-      "status": "placeholder_consistent"
-    },
-    {
-      "path": "habitat/hydro_garden.png",
-      "width": 180,
-      "height": 100,
-      "sha256": "dd1b8fc69a64746fb27d2665e06b3f3cdc519098d9df333fd39f39997f7c93b1",
-      "status": "placeholder_consistent"
-    },
-    {
-      "path": "habitat/hydro_garden_restored.png",
-      "width": 180,
-      "height": 100,
-      "sha256": "68898019721a36d95b20106630c9046495602ae34bf5c4c1ec780bfc757d371a",
-      "status": "placeholder_consistent"
-    },
-    {
-      "path": "habitat/mars_rover.png",
-      "width": 36,
-      "height": 32,
-      "sha256": "575ffb1163c00ee74a37669be82e6af19f47eb1a6261dc5cb37e068588efa004",
-      "status": "placeholder_consistent"
-    },
-    {
-      "path": "habitat/mars_soil_tile.png",
-      "width": 32,
-      "height": 32,
-      "sha256": "94458de60d21eb296e4eb12a664e348beeaf0e97b85d7718219fbcb7e565e8bb",
-      "status": "placeholder_consistent"
-    },
-    {
-      "path": "habitat/partition_wall.png",
-      "width": 32,
-      "height": 200,
-      "sha256": "f5f7203f18ba2eaa718cc9edc18c1ba95485f966a534cdec7e24600006777490",
-      "status": "placeholder_consistent"
-    },
-    {
-      "path": "habitat/pump_station.png",
-      "width": 96,
-      "height": 88,
-      "sha256": "32255cf24dc69b9c4a4d99c95b25bf6837d9e94fd450ead6aef5e24f905639f2",
-      "status": "placeholder_consistent"
-    },
-    {
-      "path": "habitat/robot_terminal.png",
-      "width": 100,
-      "height": 52,
-      "sha256": "cc3c3154f49b5ef29cf83fda39d1a111df2dfe6c3b162923e23074e7888f6c9f",
-      "status": "placeholder_consistent"
-    },
-    {
-      "path": "habitat/water_panel.png",
-      "width": 100,
-      "height": 40,
-      "sha256": "c0cc4d9319eaaf6854b880b23cd0a517a23197d7fd16bdcc9332165ea58dc2b2",
-      "status": "placeholder_consistent"
-    }
+    {"path": "habitat/mars_soil_0.png", "width": 64, "height": 64, "worldBounds": "32x32 world tile", "role": "Martian regolith terrain variant 0"},
+    {"path": "habitat/mars_soil_1.png", "width": 64, "height": 64, "worldBounds": "32x32 world tile", "role": "Martian regolith terrain variant 1"},
+    {"path": "habitat/mars_soil_2.png", "width": 64, "height": 64, "worldBounds": "32x32 world tile", "role": "Martian regolith terrain variant 2"},
+    {"path": "habitat/mars_soil_3.png", "width": 64, "height": 64, "worldBounds": "32x32 world tile", "role": "Martian regolith terrain variant 3"},
+    {"path": "habitat/mars_soil_tile.png", "width": 64, "height": 64, "worldBounds": "32x32 world tile", "role": "Primary Martian regolith tile"},
+    {"path": "habitat/floor_tile.png", "width": 64, "height": 64, "worldBounds": "32x32 world tile", "role": "Compacted outpost yard regolith tile"},
+    {"path": "habitat/mars_crater_sm.png", "width": 64, "height": 40, "worldBounds": "32x20 world prop", "role": "Small Martian impact crater"},
+    {"path": "habitat/mars_crater_lg.png", "width": 96, "height": 56, "worldBounds": "48x28 world prop", "role": "Large Martian impact crater"},
+    {"path": "habitat/mars_rock_a.png", "width": 44, "height": 36, "worldBounds": "22x18 world prop", "role": "Faceted Mars boulder A with Pathway shadow"},
+    {"path": "habitat/mars_rock_b.png", "width": 36, "height": 28, "worldBounds": "18x14 world prop", "role": "Faceted Mars boulder B with Pathway shadow"},
+    {"path": "habitat/cargo_crate.png", "width": 32, "height": 32, "worldBounds": "16x16 world prop", "role": "Pressurized EVA supply crate"},
+    {"path": "habitat/walkway_h.png", "width": 64, "height": 40, "worldBounds": "32x20 world walkway", "role": "Horizontal grated metal catwalk"},
+    {"path": "habitat/walkway_v.png", "width": 44, "height": 64, "worldBounds": "22x32 world walkway", "role": "Vertical grated metal catwalk"},
+    {"path": "habitat/hab_airlock.png", "width": 288, "height": 224, "worldBounds": "144x112 world zone", "role": "MewnBase-style octagonal Hab Airlock dome"},
+    {"path": "habitat/solar_array_dusty.png", "width": 176, "height": 88, "worldBounds": "88x44 world zone", "role": "Dust-covered solar array wing (Before)"},
+    {"path": "habitat/solar_array_clean.png", "width": 176, "height": 88, "worldBounds": "88x44 world zone", "role": "Cleaned active solar array wing (After)"},
+    {"path": "habitat/partition_wall.png", "width": 64, "height": 400, "worldBounds": "32x200 world collider", "role": "Central conduit spine (Before / inactive)"},
+    {"path": "habitat/partition_wall_restored.png", "width": 64, "height": 400, "worldBounds": "32x200 world collider", "role": "Central conduit spine (After / active cyan core)"},
+    {"path": "habitat/water_panel.png", "width": 200, "height": 80, "worldBounds": "100x40 world PANEL", "role": "Interactive Solar & Water Panel console"},
+    {"path": "habitat/robot_terminal.png", "width": 200, "height": 104, "worldBounds": "100x52 world TERMINAL", "role": "Interactive Bio-Dome Field Coding Terminal"},
+    {"path": "habitat/pump_station.png", "width": 192, "height": 176, "worldBounds": "96x88 world zone", "role": "Mission 3 Main Booster Pump Station"},
+    {"path": "habitat/biodome_deck.png", "width": 576, "height": 304, "worldBounds": "288x152 world platform", "role": "Raised Bio-Dome steel platform + water tank + rover pad (Before)"},
+    {"path": "habitat/biodome_deck_restored.png", "width": 576, "height": 304, "worldBounds": "288x152 world platform", "role": "Raised Bio-Dome steel platform + full cyan water tank (After)"},
+    {"path": "habitat/biodome_canopy.png", "width": 576, "height": 304, "worldBounds": "288x152 world overlay", "role": "Partial transparent geodesic glass dome ribs"},
+    {"path": "habitat/hydro_garden.png", "width": 360, "height": 200, "worldBounds": "180x100 world GARDEN", "role": "4x4 Hydroponic garden beds (Before: dry cracks [!] + damp sprouts)"},
+    {"path": "habitat/hydro_garden_restored.png", "width": 360, "height": 200, "worldBounds": "180x100 world GARDEN", "role": "4x4 Hydroponic garden beds (After: lush Martian crops & glowing flora)"},
+    {"path": "habitat/mars_rover.png", "width": 72, "height": 64, "worldBounds": "36x32 world unit", "role": "Automated Mars rover inside Bio-Dome docking bay"},
+    {"path": "habitat/astronaut_eva_sheet.png", "width": 192, "height": 224, "worldBounds": "24x28 world collider (4x4 frames of 48x56)", "role": "4-direction EVA astronaut walk & idle sprite sheet"},
+    {"path": "habitat/astronaut_eva.png", "width": 48, "height": 56, "worldBounds": "24x28 world collider", "role": "EVA astronaut default facing frame"},
+    {"path": "habitat/light_glow.png", "width": 128, "height": 128, "worldBounds": "radial 2D glow", "role": "Smooth radial point light map for Pathway-style 2D lighting"}
   ]
 }

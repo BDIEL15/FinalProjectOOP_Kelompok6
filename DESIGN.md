@@ -128,16 +128,16 @@ Reduced motion meniadakan gerak kamera/flash berlebihan dan mempersingkat transi
 
 Palette di atas telah diterapkan pada adegan representatif desktop namun tetap berstatus **Usulan** sampai disetujui final oleh pengguna. Blueprint layout, token awal, dan contoh floating terminal tersedia di Figma (`z5Q44g0NLnulWXFMaA4Hlz`) dan FigJam (`1cSWTDnhTvzMJjk8jb15vI`) sebagai referensi alur/layout/aset.
 
-| Keluarga aset | Kebutuhan minimum | Status adegan representatif (`assets/habitat/`) |
+| Keluarga aset | Kebutuhan minimum | Status adegan representatif (`assets/habitat/` & `assets/ui/`) |
 | --- | --- | --- |
-| Astronaut | Idle/jalan empat arah | **Placeholder konsisten (`astronaut_eva.png`, `24×28`)**: selaras 1:1 dengan collider `PLAYER_WIDTH/HEIGHT`. |
+| Astronaut | Idle/jalan empat arah | **Aset 2× sprite sheet (`astronaut_eva_sheet.png`, `192×224`, 4 arah × 4 frame `48×56`) + `astronaut_eva.png`**: selaras 1:1 dengan collider `PLAYER_WIDTH/HEIGHT` (`24×28`). |
 | Robot | Idle/gerak/panen/siram | Belum diimplementasikan (menunggu kontrak runtime/puzzle). |
-| Habitat | Lantai/dinding/panel/terminal/kebun/pompa | **Placeholder konsisten**: `mars_soil_tile.png` (`32×32`), `floor_tile.png` (`32×32`), `partition_wall.png` (`32×200`), `water_panel.png` (`100×40`), `robot_terminal.png` (`100×52`). |
-| Tanaman/petak | Empty/young/ripe, dry/lembap | **Placeholder konsisten (`hydro_garden.png`, `180×100`)**: 4 petak hidroponik dengan tanda non-warna (`[!]` retak kering, tetesan air, tunas muda, tanaman matang). |
-| UI | Tombol, fokus, status, ikon air/aksi | NinePatch prosedural tajam (`HabitatUi`) dengan bingkai fokus `2px` cyan, state hover/down/focused, dan badge status. |
+| Habitat & Outpost | Lantai/dinding/kawah/batu/walkway/panel/terminal/pompa/rover | **Aset 2× crisp pixel art (`TextureFilter.Nearest`)**: `mars_soil_0..3.png` (`64×64`), `floor_tile.png` (`64×64`), `mars_crater_sm/lg.png`, `mars_rock_a/b.png`, `cargo_crate.png`, `walkway_h/v.png`, `solar_array_dusty/clean.png`, `partition_wall(_restored).png` (`64×400`), `water_panel.png` (`200×80`), `robot_terminal.png` (`200×104`), `hab_airlock.png` (`288×224`), `pump_station.png` (`192×176`), `biodome_deck(_restored).png` (`576×304`), `biodome_canopy.png` (`576×304`), `mars_rover.png` (`72×64`), dan `light_glow.png` (`128×128`). |
+| Tanaman/petak | Empty/young/ripe, dry/lembap | **Aset 2× (`hydro_garden.png` & `hydro_garden_restored.png`, `360×200`)**: bed hidroponik 4×4 dengan tanda non-warna (`[!]` kering, tunas muda, tanaman matang). |
+| UI | Tombol, fokus, status, ikon air/aksi, font | **Hi-DPI BMFont `30px` (`ui_sans.fnt`, `ui_sans_bold.fnt`, `ui_mono.fnt` dgn `MipMapLinearLinear`)** + **NinePatch 3× supersampled mipmapped** (`HabitatUi`, tetap pada kanvas virtual `960×600` yang disyaratkan smoke test), bingkai fokus `2px` cyan, state hover/down/focused, dan badge status. |
 | Audio | Interaksi, gerak/aksi, hasil, ambience opsional | Belum ada aset audio pada tahap ini. |
 
-Aset adegan representatif di `MarsReboot/assets/habitat/` dibuat secara prosedural oleh proyek (tanpa mengambil aset pihak ketiga) dengan skala grid usulan `32×32` dan `TextureFilter.Nearest`, serta didokumentasikan lengkap di `MarsReboot/assets/habitat/asset-manifest.json` (path, dimensi, keselarasan collider, asal, lisensi internal proyek, dan status `placeholder_consistent`). Skala sprite/tiles final (`16×16` vs `32×32`), `TextureAtlas`, frame animasi 4 arah, dan font beresolusi tinggi diputuskan setelah adegan representatif ini direview.
+Aset adegan Outpost Mars di `assets/habitat/` dan font/UI di `assets/ui/` dibuat secara prosedural oleh proyek (tanpa aset pihak ketiga; tanpa dependensi Gradle baru) dengan skala sprite `2×` untuk raster `TextureFilter.Nearest`, serta didokumentasikan lengkap di `assets/habitat/asset-manifest.json` dan `assets/assets.txt`. Skala tile final, penyesuaian kontras teks/badge akhir, serta frame animasi robot/tanaman gameplay tetap berstatus **Usulan / implementasi kandidat** sampai review tim/pengguna final.
 
 ## 9. Pemeriksaan dan keputusan desain
 

@@ -9,7 +9,7 @@ Status 12 November 2026. File ini mencatat bukti aktual untuk Mars; [bukti proto
 | Java/libGDX habitat | Proyek existing terpisah `MarsReboot`; kompilasi Java 21 target, 40 assertion kontrol dan 29 assertion desktop lulus | Habitat dasar tersedia; Wrapper belum lulus. Evaluator robot belum ada. |
 | Runtime script dan Stop desktop | Belum ada eksperimen produk Mars | Belum diuji. |
 | Backend/auth/skor | Belum ada implementasi atau integrasi nyata | Belum diuji. |
-| UI/aset/Figma | Adegan representatif 2D top-down 3/4 + lighting 2D ringan (`HabitatRenderer`), HUD + panel inspeksi + floating draggable terminal (`HabitatUi`), 7 sprite pixel-art placeholder konsisten (`assets/habitat/`), screenshot desktop `1280×720`, `1440×900`, `900×600`, `640×480` | Teruji pada desktop; aset produksi penuh, font skala kecil (`640×480`), aksesibilitas penuh, dan EXP-02 lengkap belum selesai. |
+| UI/aset/Figma | Adegan Outpost Permukaan Mars pixel art `2×` (`HabitatRenderer`), animasi astronaut 4 arah (`astronaut_eva_sheet.png`), pencahayaan radial 2D aditif (`light_glow.png`), font Hi-DPI `ui_sans`/`ui_sans_bold`/`ui_mono` + NinePatch 3× supersampled (`HabitatUi`), screenshot desktop `1280×720`, `1440×900`, `900×600`, `640×480` | Teruji pada desktop; aset robot/puzzle gameplay, wrapper Gradle, dan verifikasi manual OS penuh belum dijalankan. |
 | Puzzle 1–9 | Kandidat konten/fixture; belum test Java/runtime | Belum terverifikasi. |
 | Distribusi/playtest/publikasi | Tidak ada bukti rilis atau sesi manusia | Belum dilakukan. |
 
@@ -75,3 +75,15 @@ Root: `C:\Users\abdie\OneDrive\Desktop\Folder_Abdiel\PRAKTIKUM\FINDIH\MarsReboot
 ## Konsolidasi konteks tim — 13 November 2026
 
 Dokumentasi/skill dan referensi disiapkan untuk root repo libGDX; README lama diarsipkan, prototype web dipisahkan ke prototype-web, dan sumber awal dipertahankan. Verifikasi transfer memakai manifest hash, tautan/anchor Markdown, ID kebutuhan/pemetaan test, resource skill lengkap, serta pembandingan source Java/aset/build existing. Bukan pengujian fitur game, aplikasi AI di komputer teman, atau keberhasilan Wrapper. Catatan jumlah file/hash final berada di docs/setup/context-files.sha256.json setelah transfer; manifest adalah snapshot migrasi, bukan larangan mengedit dokumen pada sesi berikutnya. Tidak ada build/test aplikasi baru, commit/push atau deployment dari sesi ini.
+
+## 6. Upgrade ketajaman UI (Hi-DPI) & grafis Outpost pixel art `2×` — 13 November 2026
+
+Root: `C:\Users\abdie\OneDrive\Desktop\Folder_Abdiel\PRAKTIKUM\FINDIH\MarsReboot`. Kontrak non-visual (`HabitatWorld`, `HabitatInput`, `HabitatScreen`, `MarsRebootGame`, `Lwjgl3Launcher`, `StartupHelper`, `HabitatControlTest`, `HabitatDesktopSmokeTest`) diverifikasi tidak berubah lewat SHA-256 terhadap baseline (`lwjgl3/build/reports/habitat/source-sha256.txt`); hanya `HabitatRenderer.java`, `HabitatUi.java`, `assets/habitat/`, `assets/ui/`, dan `assets/assets.txt` yang diperbarui.
+
+| Pemeriksaan | Hasil aktual | Bukti / batas |
+| --- | --- | --- |
+| Kompilasi `core` + `lwjgl3` (`javac --release 21 -encoding UTF-8 -Xlint:deprecation`) | PASS | Kompilasi penuh main + test terhadap `.gradle-local/manual/*` selesai tanpa error/warning; Wrapper `.\gradlew.bat` tidak dipakai karena unduhan Gradle 9.8.0 offline terhalang jaringan. |
+| `com.marsreboot.habitat.HabitatControlTest` | PASS, 40 assertion | Kontrak gerak, collision, jarak interaksi, penguncian input, dan kontrol `Esc`/`E` lulus tanpa OpenGL. |
+| `com.marsreboot.habitat.HabitatDesktopSmokeTest` | PASS, 29 assertion | Stage virtual `960×600`, fokus editor `TextArea`, `Esc` keluar modal, pertahanan draf, dan resize `1440×900`, `900×600`, `640×480` lulus di LWJGL3/OpenGL nyata. |
+| Inspeksi visual screenshot (`exploring.png`, `inspection.png`, `terminal.png`, `terminal-1440x900.png`, `terminal-900x600.png`, `terminal-640x480.png`) | PASS | Font Hi-DPI (`ui_sans`, `ui_sans_bold`, `ui_mono` `30px` mipmapped) dan border NinePatch 3× supersampled terbaca tajam tanpa clipping; sprite `2×` regolith multivarian, kawah, batu, walkway, Hab Airlock, Panel Surya, Terminal, Bio-Dome + kanopi transparan + 4×4 kebun + rover, Pompa Utama, dan astronaut 4 arah selaras dengan collider dan pencahayaan radial aditif. |
+| Wrapper Gradle (`.\gradlew.bat`) & pengujian input/drag manual OS | BELUM DIJALANKAN | Pengujian drag jendela/scroll mouse serta penekanan tombol fisik jangka panjang perlu verifikasi interaktif manual; Wrapper perlu diuji di lingkungan dengan distribusi Gradle tersedia. |

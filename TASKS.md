@@ -338,3 +338,21 @@ Langkah berikutnya dan kriteria selesai:
 - **Permintaan/hasil:** memasang mars_reboot_banner.gif milik pengguna di bawah judul README. GIF ditemukan pada workspace dokumentasi lama dan disalin tanpa edit ke docs/mars/design-refs/mars_reboot_banner.gif pada repo utama; referensi README memakai path relatif agar ikut clone/GitHub.
 - **Ownership/verifikasi:** README.md, tambahan TASKS.md, dan satu GIF; signature/dimensi GIF serta SHA-256 salinan diperiksa, referensi lokal tersedia, dan isi README lainnya dipertahankan persis. Tidak mengubah gameplay, tabel status, dependency, atau aset lain. Tidak mengklaim render/animasi GitHub telah dilihat; tidak menjalankan test aplikasi.
 - **Langkah berikutnya:** review lalu commit/push sesuai otorisasi untuk menampilkan banner di GitHub. Tidak ada commit/push/deployment dilakukan sesi ini; file sumber lama tetap disimpan.
+
+### 13 November 2026 — Implementasi Tahap 1 (Hi-DPI UI) & Tahap 2 (Grafis Outpost 2× Pixel Art) (Antigravity)
+
+- **Tanggal / alat / tugas aktif:** 13 November 2026 / Antigravity / Menjalankan rencana peningkatan grafis & ketajaman UI (`ui_graphics_polish_roadmap.md`) di repository terpadu `MarsReboot` sambil menjaga 100% kontrak `HabitatWorld`, `HabitatInput`, `HabitatScreen`, `HabitatControlTest`, dan `HabitatDesktopSmokeTest`.
+- **Hasil dan file yang berubah:**
+  - `assets/ui/ui_sans.fnt/.png`, `assets/ui/ui_sans_bold.fnt/.png`, `assets/ui/ui_mono.fnt/.png`: baked BMFont anti-aliased `30px` (`Segoe UI`, `Segoe UI Semibold`, `Consolas`, ASCII + simbol UI `· • → ← ↑ ↓ × — – ■ ▶ … °`) dimuat dengan `TextureFilter.MipMapLinearLinear` & scaling sub-pixel.
+  - `core/src/main/java/com/marsreboot/habitat/HabitatUi.java`: mengganti `BitmapFont` `15px` bawaan dengan `uiFont`, `uiBoldFont`, dan `monoFont` (editor + nomor baris + chip API), mengganti box `12×12` kasar menjadi `NinePatch` 3× supersampled mipmapped (`scale 1/3`), tanpa mengubah ukuran virtual stage `960×600` yang disyaratkan smoke test.
+  - `assets/habitat/` (30 PNG `2×` crisp pixel art + `light_glow.png` + `asset-manifest.json`) & `assets/assets.txt`: regolith Mars 4 varian (`mars_soil_0..3.png`), lantai terpadat (`floor_tile.png`), kawah/batu/peti kargo/walkway, `hab_airlock.png`, `solar_array_dusty/clean.png`, `water_panel.png`, `robot_terminal.png`, `pump_station.png`, `biodome_deck(_restored).png`, `biodome_canopy.png`, `hydro_garden(_restored).png`, `mars_rover.png`, dan sprite sheet astronaut 4 arah × 4 frame (`astronaut_eva_sheet.png`).
+  - `core/src/main/java/com/marsreboot/habitat/HabitatRenderer.java`: merender tile regolith multivarian, properti permukaan, walkway kisi, jalur pipa berbayang + aliran animasi saat mode pulih, sprite struktur/Bio-Dome `2×` selaras collider, animasi jalan astronaut 4 arah, pencahayaan radial aditif dengan reset warna `SpriteBatch` yang aman, dan badge dunia menggunakan `ui_sans_bold`.
+  - Seluruh 8 file kontrak non-visual milik Codex memiliki SHA-256 identik dengan baseline (`lwjgl3/build/reports/habitat/source-sha256.txt`).
+- **Verifikasi aktual:**
+  - `javac --release 21 -encoding UTF-8 -Xlint:deprecation`: **PASS** (0 error, 0 warning pada file proyek).
+  - `HabitatControlTest`: **PASS (40 assertion)**.
+  - `HabitatDesktopSmokeTest`: **PASS (29 assertion)** pada window OpenGL/LWJGL3 nyata (`1280×720`, `1440×900`, `900×600`, `640×480`).
+  - Screenshot OpenGL di `lwjgl3/build/reports/habitat/` (`exploring.png`, `inspection.png`, `terminal.png`, `terminal-1440x900.png`, `terminal-900x600.png`, `terminal-640x480.png`) diverifikasi langsung secara visual.
+- **Sisa pekerjaan / blocker:**
+  - `.\gradlew.bat` tetap belum diuji karena unduhan Gradle 9.8.0 offline terhalang; verifikasi interaktif mouse drag, scroll editor panjang, dan penekanan keyboard fisik OS jangka panjang perlu dicek manual (`Lwjgl3Launcher`).
+  - Lanjut koordinasi kontrak `M-01` (runtime Python CPython) dan `M-09` (Spring Boot) sebelum implementasi gameplay robot/puzzle.
