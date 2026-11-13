@@ -1,5 +1,7 @@
 # mars_reboot.py — MarsReboot
 
+![Banner animasi mars_reboot.py](docs/mars/design-refs/mars_reboot_banner.gif)
+
 Repository utama tim: game Java/libGDX, dokumentasi, aset, dan skill Codex–Antigravity berada dalam satu clone. Mulai dari **[TEAM_GUIDE.md](TEAM_GUIDE.md)** untuk memahami game, struktur, pembagian empat orang, urutan pengerjaan dan workflow review. Gunakan **[TEAM_PROMPTS.md](TEAM_PROMPTS.md)** untuk prompt onboarding dan tugas tiap peran.
 
 ## Status dan target

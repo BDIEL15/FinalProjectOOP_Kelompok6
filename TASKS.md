@@ -331,3 +331,10 @@ Langkah berikutnya dan kriteria selesai:
 - **Dasar status:** TASKS dan VERIFICATION existing; hasil sempit habitat/terminal sementara dibedakan dari penerimaan milestone penuh. Preview akun/hasil/Before–After tidak dianggap runtime, backend atau progres nyata. Tidak ada perubahan checkbox milestone atau persetujuan usulan teknis.
 - **Ownership/verifikasi:** hanya README.md dan tambahan handoff TASKS.md; tautan/anchor Markdown, susunan kolom, status dan referensi M-ID diperiksa. Hasil historis tidak dijalankan ulang; tidak ada render GitHub, test aplikasi, perubahan source/dependency, commit/push/deployment.
 - **Langkah berikutnya:** pemilik tiap tugas memperbarui ringkasan bersama bukti pada TASKS/VERIFICATION. Tabel terlihat di repo GitHub setelah perubahan lokal dipublikasikan melalui Git sesuai otorisasi; bukan klaim sudah di-push oleh sesi ini.
+
+
+### 13 November 2026 — GIF banner README (Codex)
+
+- **Permintaan/hasil:** memasang mars_reboot_banner.gif milik pengguna di bawah judul README. GIF ditemukan pada workspace dokumentasi lama dan disalin tanpa edit ke docs/mars/design-refs/mars_reboot_banner.gif pada repo utama; referensi README memakai path relatif agar ikut clone/GitHub.
+- **Ownership/verifikasi:** README.md, tambahan TASKS.md, dan satu GIF; signature/dimensi GIF serta SHA-256 salinan diperiksa, referensi lokal tersedia, dan isi README lainnya dipertahankan persis. Tidak mengubah gameplay, tabel status, dependency, atau aset lain. Tidak mengklaim render/animasi GitHub telah dilihat; tidak menjalankan test aplikasi.
+- **Langkah berikutnya:** review lalu commit/push sesuai otorisasi untuk menampilkan banner di GitHub. Tidak ada commit/push/deployment dilakukan sesi ini; file sumber lama tetap disimpan.
