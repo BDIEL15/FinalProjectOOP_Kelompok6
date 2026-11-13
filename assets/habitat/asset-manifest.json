@@ -1,80 +1,84 @@
 {
-  "schemaVersion": 1,
-  "project": "mars_reboot.py",
-  "scene": "habitat-representative-scene-v1",
-  "directionStatus": "Dipilih: crisp pixel art 2D top-down 3/4 + floating draggable terminal; Usulan: skala tile 32x32, palet terukur The Martian Outpost, dan sprite placeholder konsisten",
-  "filtering": "Nearest",
-  "license": "Internal project procedural pixel art (created specifically for MarsReboot; no third-party or reference game assets copied)",
+  "scene": "outdoor_mars_outpost_v2",
+  "license": "Project-internal procedural pixel art (CC0 / MIT compatible, no third-party assets)",
+  "filter": "Nearest",
   "assets": [
     {
-      "id": "mars_soil_tile",
-      "path": "habitat/mars_soil_tile.png",
-      "sizePx": [
-        32,
-        32
-      ],
-      "worldAlignment": "Tiled exterior background outside FLOOR (40,40,880,520)",
-      "status": "placeholder-consistent"
-    },
-    {
-      "id": "floor_tile",
-      "path": "habitat/floor_tile.png",
-      "sizePx": [
-        32,
-        32
-      ],
-      "worldAlignment": "Tiled inside FLOOR (40,40,880,520)",
-      "status": "placeholder-consistent"
-    },
-    {
-      "id": "partition_wall",
-      "path": "habitat/partition_wall.png",
-      "sizePx": [
-        32,
-        200
-      ],
-      "worldAlignment": "Exact 1:1 collider Box(480,160,32,200)",
-      "status": "placeholder-consistent"
-    },
-    {
-      "id": "water_panel",
-      "path": "habitat/water_panel.png",
-      "sizePx": [
-        100,
-        40
-      ],
-      "worldAlignment": "Exact 1:1 collider Facility.PANEL Box(240,400,100,40)",
-      "status": "placeholder-consistent"
-    },
-    {
-      "id": "robot_terminal",
-      "path": "habitat/robot_terminal.png",
-      "sizePx": [
-        100,
-        52
-      ],
-      "worldAlignment": "Exact 1:1 collider Facility.TERMINAL Box(720,400,100,52)",
-      "status": "placeholder-consistent"
-    },
-    {
-      "id": "hydro_garden",
-      "path": "habitat/hydro_garden.png",
-      "sizePx": [
-        180,
-        100
-      ],
-      "worldAlignment": "Exact 1:1 collider GARDEN Box(620,160,180,100)",
-      "status": "placeholder-consistent"
-    },
-    {
-      "id": "astronaut_eva",
       "path": "habitat/astronaut_eva.png",
-      "sizePx": [
-        24,
-        28
-      ],
-      "worldAlignment": "Exact 1:1 astronaut bounds (world.x, world.y, 24, 28)",
-      "status": "placeholder-consistent"
+      "width": 24,
+      "height": 28,
+      "sha256": "2e1c700c7abd06b76801a1c05ccfc7f216b8817eefa1e06ca0254aa4d6551f23",
+      "status": "placeholder_consistent"
+    },
+    {
+      "path": "habitat/floor_tile.png",
+      "width": 32,
+      "height": 32,
+      "sha256": "bf93f2f7771edf8a0b6cac319f5791cfa54d494acb3038585ab0e45a48e0bfc7",
+      "status": "placeholder_consistent"
+    },
+    {
+      "path": "habitat/hab_airlock.png",
+      "width": 144,
+      "height": 112,
+      "sha256": "65be30b40b65968ef0b59837d155748e69b0cb45731e79cd2060c9ad353748e1",
+      "status": "placeholder_consistent"
+    },
+    {
+      "path": "habitat/hydro_garden.png",
+      "width": 180,
+      "height": 100,
+      "sha256": "dd1b8fc69a64746fb27d2665e06b3f3cdc519098d9df333fd39f39997f7c93b1",
+      "status": "placeholder_consistent"
+    },
+    {
+      "path": "habitat/hydro_garden_restored.png",
+      "width": 180,
+      "height": 100,
+      "sha256": "68898019721a36d95b20106630c9046495602ae34bf5c4c1ec780bfc757d371a",
+      "status": "placeholder_consistent"
+    },
+    {
+      "path": "habitat/mars_rover.png",
+      "width": 36,
+      "height": 32,
+      "sha256": "575ffb1163c00ee74a37669be82e6af19f47eb1a6261dc5cb37e068588efa004",
+      "status": "placeholder_consistent"
+    },
+    {
+      "path": "habitat/mars_soil_tile.png",
+      "width": 32,
+      "height": 32,
+      "sha256": "94458de60d21eb296e4eb12a664e348beeaf0e97b85d7718219fbcb7e565e8bb",
+      "status": "placeholder_consistent"
+    },
+    {
+      "path": "habitat/partition_wall.png",
+      "width": 32,
+      "height": 200,
+      "sha256": "f5f7203f18ba2eaa718cc9edc18c1ba95485f966a534cdec7e24600006777490",
+      "status": "placeholder_consistent"
+    },
+    {
+      "path": "habitat/pump_station.png",
+      "width": 96,
+      "height": 88,
+      "sha256": "32255cf24dc69b9c4a4d99c95b25bf6837d9e94fd450ead6aef5e24f905639f2",
+      "status": "placeholder_consistent"
+    },
+    {
+      "path": "habitat/robot_terminal.png",
+      "width": 100,
+      "height": 52,
+      "sha256": "cc3c3154f49b5ef29cf83fda39d1a111df2dfe6c3b162923e23074e7888f6c9f",
+      "status": "placeholder_consistent"
+    },
+    {
+      "path": "habitat/water_panel.png",
+      "width": 100,
+      "height": 40,
+      "sha256": "c0cc4d9319eaaf6854b880b23cd0a517a23197d7fd16bdcc9332165ea58dc2b2",
+      "status": "placeholder_consistent"
     }
   ]
 }
