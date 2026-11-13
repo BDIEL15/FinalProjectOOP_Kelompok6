@@ -323,3 +323,11 @@ Langkah berikutnya dan kriteria selesai:
 - **Batas:** tidak mengubah source Java/aset game/dependency Gradle, menyalin .git, cache/credential, menjalankan build game, menginstal tool, atau membuat commit/push/deployment. File lama dipertahankan untuk rollback; setelah publikasi konteks lewat Git barulah clone teman mendapat file.
 - **Verifikasi:** manifest SHA-256 snapshot konteks disiapkan; pemeriksaan link/anchor, ID dan resource skill serta hash source/konfigurasi existing dilakukan pada proses transfer. Hasil aktual dan batas ada pada VERIFICATION. Discovery skill pada laptop teman, build Wrapper serta backend belum diuji oleh sesi ini.
 - **Langkah berikutnya:** koordinator meninjau diff dan pembagian nama/peran, memberi otorisasi publikasi Git bila siap; teman membaca TEAM_GUIDE dan memakai TEAM_PROMPTS di root clone. Mulai audit status/source lalu satu M-ID, bukan seluruh backlog. Riwayat path absolut pada entri lama hanya bukti historis, bukan prasyarat komputer anggota.
+
+
+### 13 November 2026 — Tabel progres pada README GitHub (Codex)
+
+- **Permintaan/hasil:** pengguna meminta daftar pekerjaan dan status langsung pada README. Ditambahkan tabel ringkasan dengan simbol selesai/sebagian/belum/terhambat, peran pemilik, ID backlog dan bukti/sisa pekerjaan; diposisikan sebelum petunjuk menjalankan game.
+- **Dasar status:** TASKS dan VERIFICATION existing; hasil sempit habitat/terminal sementara dibedakan dari penerimaan milestone penuh. Preview akun/hasil/Before–After tidak dianggap runtime, backend atau progres nyata. Tidak ada perubahan checkbox milestone atau persetujuan usulan teknis.
+- **Ownership/verifikasi:** hanya README.md dan tambahan handoff TASKS.md; tautan/anchor Markdown, susunan kolom, status dan referensi M-ID diperiksa. Hasil historis tidak dijalankan ulang; tidak ada render GitHub, test aplikasi, perubahan source/dependency, commit/push/deployment.
+- **Langkah berikutnya:** pemilik tiap tugas memperbarui ringkasan bersama bukti pada TASKS/VERIFICATION. Tabel terlihat di repo GitHub setelah perubahan lokal dipublikasikan melalui Git sesuai otorisasi; bukan klaim sudah di-push oleh sesi ini.
