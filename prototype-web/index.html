@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#245C3C" />
+    <meta name="description" content="Tulis Python, terbangkan drone, dan temukan cara paling efisien untuk memanen kebun." />
+    <title>Farm Code Lab — Kebun kecil, ide besar</title>
+  </head>
+  <body>
+    <header class="app-header">
+      <a class="brand" href="./" aria-label="Farm Code Lab, halaman utama">
+        <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 27V14m0 5C6 20 4 12 5 6c8-1 13 4 11 13Zm0-5C16 6 22 3 28 4c1 7-4 12-12 10Z" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round"/></svg>
+        Farm Code Lab
+      </a>
+      <span class="prototype">Prototype v0.1 <span>·</span> Python</span>
+      <a class="help-link" href="#panduan">Panduan perintah <span aria-hidden="true">↗</span></a>
+    </header>
+    <main>
+      <section class="challenge" aria-labelledby="challenge-title">
+        <div><h1 id="challenge-title">Kebun kecil, ide besar.</h1><p>Panen <strong>36 tanaman</strong> dalam ≤200 tick. Tulis, jalankan, lalu buat lebih efisien.</p></div>
+        <div class="best"><span>Rekor lokal</span><strong id="best">Belum ada</strong><small>Lebih sedikit tick, lebih baik</small></div>
+      </section>
+      <p class="mobile-note">Untuk menulis Python dengan nyaman, gunakan laptop atau PC.</p>
+      <div class="workspace">
+        <section class="editor-panel" aria-labelledby="editor-title">
+          <div class="panel-heading"><h2 id="editor-title">Kode Python</h2><span class="file-label">player.py</span></div>
+          <div class="toolbar">
+            <button id="run" class="primary" disabled><svg viewBox="0 0 16 16" aria-hidden="true"><path d="m5 3 8 5-8 5Z" fill="currentColor"/></svg>Run</button>
+            <button id="stop" disabled><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4h8v8H4z" fill="currentColor"/></svg>Stop</button>
+            <button id="reset" title="Kembalikan kebun dan log; kode dan rekor tetap disimpan"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 6a5 5 0 1 1 0 5M3 2v4h4" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>Reset</button>
+            <span class="shortcut">Ctrl / ⌘ + Enter</span>
+          </div>
+          <div class="code-editor"><div id="line-numbers" aria-hidden="true"></div><label class="sr-only" for="source">Editor kode Python</label><textarea id="source" spellcheck="false" autocomplete="off" autocapitalize="off" wrap="off" aria-describedby="editor-hint"></textarea></div>
+          <div class="editor-footer"><span id="editor-hint">Python asli · indentasi 4 spasi</span><span id="source-size">0 / 32 KiB</span></div>
+        </section>
+        <section class="farm-panel" aria-labelledby="farm-title">
+          <div class="panel-heading"><h2 id="farm-title">Kebun percobaan</h2><span class="file-label">6 × 6 petak</span></div>
+          <div class="metrics"><div><span>Panen</span><strong><span id="harvested">0</span><small> / 36</small></strong></div><div><span>Tick terpakai</span><strong><span id="tick">0</span><small> / 200</small></strong></div><div class="position"><span>Posisi drone</span><strong id="position">(0, 0)</strong></div></div>
+          <div class="canvas-wrap"><canvas id="farm" width="600" height="600" role="img" aria-label="Kebun enam kali enam; ringkasan dan data petak tersedia di bawah."></canvas></div>
+          <div class="farm-bottom"><div class="legend"><span><i class="ripe"></i>Siap panen</span><span><i class="young"></i>Tunas</span><span><i class="empty"></i>Kosong</span><span><i class="drone"></i>Drone</span></div><div class="speed"><span id="speed-label">Kecepatan animasi</span><div role="group" aria-labelledby="speed-label"><button data-speed="1" aria-pressed="true">1×</button><button data-speed="2" aria-pressed="false">2×</button><button data-speed="4" aria-pressed="false">4×</button></div></div></div>
+        </section>
+        <section id="panduan" class="guide-panel" aria-labelledby="guide-title">
+          <div class="panel-heading"><h2 id="guide-title">Perintah kecil, banyak kemungkinan.</h2></div>
+          <table class="api-table"><caption class="sr-only">API Python dan biaya tick</caption><tbody>
+            <tr><th scope="row"><code>move(direction)</code></th><td>Bergerak satu petak</td><td>1 tick</td></tr>
+            <tr><th scope="row"><code>harvest()</code></th><td>Panen tanaman matang</td><td>2 tick</td></tr>
+            <tr><th scope="row"><code>wait()</code></th><td>Tunggu satu tick</td><td>1 tick</td></tr>
+            <tr><th scope="row"><code>can_harvest()</code></th><td>Cek kesiapan panen</td><td>0 tick</td></tr>
+            <tr><th scope="row"><code>get_pos()</code></th><td>Baca posisi (x, y)</td><td>0 tick</td></tr>
+          </tbody></table>
+          <details class="guide-details"><summary>Koordinat, aturan, dan tips</summary><p>Titik (0, 0) berada di kiri bawah. Arah: <code>"north"</code>, <code>"east"</code>, <code>"south"</code>, <code>"west"</code>. Peta tidak membungkus di tepi.</p><p>Tanaman matang sejak tick 0 atau 8 sesuai pola petak. Sensor tidak memajukan waktu; gunakan <code>wait()</code>. Gerakan ke tepi dan panen gagal tetap memakai tick. Panen dicek sebelum biaya 2 tick ditambahkan.</p><p>Setiap Run memulai kebun yang sama. Kecepatan animasi tidak mengubah skor. Contoh awal selesai dalam 112 tick. Bisakah kamu lebih hemat?</p><button id="restore">Gunakan lagi kode contoh</button></details>
+        </section>
+        <section class="result-panel" aria-labelledby="result-title">
+          <div class="panel-heading"><h2 id="result-title">Hasil & output</h2><span id="phase-label" class="phase-label">Memuat Python</span></div>
+          <div class="status-area"><p id="status" role="status" aria-live="polite">Menyiapkan Python… pemuatan pertama bisa lebih lama.</p><button id="retry" hidden>Muat ulang Python</button><p id="action-feedback">Setiap percobaan adalah kesempatan untuk menemukan cara baru.</p></div>
+          <pre id="output" aria-label="Output Python" tabindex="0">Output print() akan muncul di sini.</pre>
+          <details class="world-details"><summary>Ringkasan kebun dan data petak</summary><p id="world-summary">Menunggu state dari Python.</p><div class="world-table-wrap"><table id="world-table"><caption>Petak berdasarkan koordinat (x, y)</caption><thead><tr><th scope="col">y \ x</th><th scope="col">0</th><th scope="col">1</th><th scope="col">2</th><th scope="col">3</th><th scope="col">4</th><th scope="col">5</th></tr></thead><tbody></tbody></table></div></details>
+        </section>
+      </div>
+      <p id="storage-notice" class="storage-notice" role="status" hidden>Penyimpanan lokal tidak tersedia; kamu tetap bisa bermain.</p>
+    </main>
+    <footer><span>Eksperimen hari ini. Algoritma lebih baik besok.</span><span>Kode tersimpan di browser ini · Tanpa akun</span><details><summary>Tentang runtime</summary><p>Python berjalan lokal melalui Pyodide. Worker bukan sandbox aman untuk script bermusuhan. Jalankan kode yang kamu pahami; jangan memasukkan secret. Unduhan runtime memerlukan koneksi internet.</p></details></footer>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
