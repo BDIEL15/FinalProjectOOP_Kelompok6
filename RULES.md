@@ -1,6 +1,6 @@
 # RULES — mars_reboot.py
 
-Status: rancangan lengkap untuk review, 12 November 2026; belum diimplementasikan. Acuan kebutuhan: [PRD](PRD.md). Keputusan pengguna tetap di [PROJECT](PROJECT.md). Semua angka, fixture, nama API, dan kebijakan rinci baru di dokumen ini berstatus **Usulan**, bukan aturan yang sudah disetujui. Kontrak final baru berlaku setelah dipilih dan diuji. Aturan prototype di [arsip](docs/prototype/RULES.md) tidak berlaku otomatis.
+Status: rancangan lengkap untuk review; per 13 November 2026 subset kandidat p1-a diimplementasikan dan diuji pada domain Java (bagian 10). Acuan kebutuhan: [PRD](PRD.md). Keputusan pengguna tetap di [PROJECT](PROJECT.md). Semua angka, fixture, nama API, dan kebijakan rinci baru di dokumen ini berstatus **Usulan**, bukan aturan yang sudah disetujui. Implementasi eksperimen tidak menjadikan seluruh kontrak final. Aturan prototype di [arsip](docs/prototype/RULES.md) tidak berlaku otomatis.
 
 ## 1. Istilah dan sumber state
 
@@ -152,3 +152,18 @@ Latihan loop pada puzzle 2 dan fungsi pada puzzle 6 berbeda dari tujuan dunia. P
 | R-04 | Apa kontrak peta/checkpoint/pompa dan fixture 5–9? | Lengkapi sebelum tiap puzzle dikerjakan. |
 
 Kebutuhan FR/NFR/AC tetap di [PRD](PRD.md); struktur dan pembatalan di [ARCHITECTURE](ARCHITECTURE.md); daftar test di [TEST_PLAN](TEST_PLAN.md).
+
+## 10. Tahap domain kandidat sebelum integrasi — 13 November 2026
+
+`com.marsreboot.robot.RobotSimulation` mengimplementasikan eksperimen `p1-a`: grid 2×1, robot `(0,0)`, dua tanaman ripe pada `(0,0)`/`(1,0)`, target keduanya, batas 6 aksi dan 1.024 panggilan API. Urutan referensi `harvest → move("east") → harvest → finish` menghasilkan 3 aksi, 1 gerak berhasil dan 2 panen.
+
+- API **Java** saat ini: `move(String)`, `harvest()`, `canHarvest()`, `getPos()`; penghubung nama Python belum dibuat. Gerak empat arah, tepi/penghalang dan panen gagal tetap mengikuti biaya kandidat. Sensor menghitung request tanpa menambah aksi.
+- `snapshot()` memberikan salinan immutable tanpa biaya request. `reset()` memulihkan fixture dan seluruh penghitung; tidak mengelola source, rekor, identitas Run atau progres aplikasi.
+- `finish()` dipanggil host hanya pada akhir normal: target lengkap menjadi `SUCCESS`, target parsial `INCOMPLETE`. Target tercapai di tengah program belum berarti sukses. Argumen arah salah menetapkan `ERROR`; batas terlampaui menetapkan `LIMIT_EXCEEDED`; keduanya tidak dipromosikan oleh `finish()`. Panggilan setelah hasil terminal ditolak sampai reset.
+- Nilai enum ini hasil **skenario domain**, belum status sukses aplikasi/replay. Aksi melampaui batas tidak memutasi dunia; tepat batas masih dapat sukses. API over-budget tidak menambah penghitung melewati cap. Fixture dan snapshot tidak dapat diubah dari luar.
+
+Belum tercakup: `water`/`needs_water`, kebijakan gagal panen young puzzle 3 (baru metrik), evaluator multi-skenario/latihan, skor, timeout/Stop, runtime dan progres. Bukti 81 assertion ada di [VERIFICATION](VERIFICATION.md#7-domain-robot-dan-kandidat-puzzle-1--13-november-2026); jangan menganggap puzzle 1–4 atau penerimaan produk selesai.
+
+## 11. Integrasi kandidat p1-a ke terminal
+
+Per 13 November 2026, kandidat puzzle 1 panen terhubung ke terminal Python nyata, robot/replay/hasil, Run/Stop/Reset dan progres sesi. Paket Windows x64 menyertakan CPython 3.15.2; Java 21+ masih diperlukan. Backend, puzzle 2–9, save lintas restart dan komputer kedua belum terverifikasi. Untuk subset p1, API Python `move(direction)`, `harvest()`, `can_harvest()`, `get_pos()` sudah meneruskan request ke domain Java. Tidak memakai parser Python buatan atau urutan aksi hardcode. Biaya/fixture/batas bagian 10 tetap kandidat yang sama. Kandidat lifecycle dan batas waktu/output kini diimplementasikan untuk p1 sesuai [kontrak runtime](docs/mars/PYTHON_RUNTIME.md); bagian 10 mencatat tahap domain sebelumnya, bukan batas implementasi terbaru. Source snapshot, akhir normal + exit 0, replay selesai dan identitas Run sah wajib sebelum progres sesi. Stop/Reset/error mempertahankan draf; reset tidak menghapus pencapaian sesi. Skor, siram, verifikator konsep dan puzzle lanjutan belum tersedia.

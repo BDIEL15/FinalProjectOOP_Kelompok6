@@ -1,17 +1,17 @@
 # VERIFICATION — mars_reboot.py
 
-Status 12 November 2026. File ini mencatat bukti aktual untuk Mars; [bukti prototype historis](docs/prototype/VERIFICATION.md) disimpan terpisah. Rencana di [TEST_PLAN](TEST_PLAN.md) bukan hasil lulus.
+Status diperbarui 14 November 2026. Bukti terbaru penyempurnaan UI, keterbacaan `18` unit UI, dan alur Puzzle 1 ada di bagian 9; bagian 8 dan sebelumnya adalah bukti historis tahap terdahulu. Rencana TEST_PLAN bukan hasil uji; prototype tetap terpisah di docs/prototype/VERIFICATION.md.
 
 ## 1. Status produk
 
 | Area | Bukti aktual | Status |
 | --- | --- | --- |
-| Java/libGDX habitat | Proyek existing terpisah `MarsReboot`; kompilasi Java 21 target, 40 assertion kontrol dan 29 assertion desktop lulus | Habitat dasar tersedia; Wrapper belum lulus. Evaluator robot belum ada. |
-| Runtime script dan Stop desktop | Belum ada eksperimen produk Mars | Belum diuji. |
+| Java/libGDX habitat | Root MarsReboot; `.\gradlew.bat --offline` lulus 14 Nov 2026: 40 assertion kontrol (`:core:controlTest`) dan 29 assertion desktop/Scene2D (`:lwjgl3:desktopSmokeTest`) | Habitat teruji; input tahan tombol OS manusia penuh belum disimulasikan. |
+| Runtime script dan Stop desktop | CPython bundel (`build/python/windows-x64`): 81 assertion robot (`:core:robotTest`), 33 controller/protokol (`:core:runtimeTest`), 33 integrasi Python (`:core:pythonIntegrationTest`) lulus 14 Nov 2026 | Teruji untuk p1 Windows x64; bukan sandbox atau seluruh platform. |
 | Backend/auth/skor | Belum ada implementasi atau integrasi nyata | Belum diuji. |
-| UI/aset/Figma | Adegan Outpost Permukaan Mars pixel art `2×` (`HabitatRenderer`), animasi astronaut 4 arah (`astronaut_eva_sheet.png`), pencahayaan radial 2D aditif (`light_glow.png`), font Hi-DPI `ui_sans`/`ui_sans_bold`/`ui_mono` + NinePatch 3× supersampled (`HabitatUi`), screenshot desktop `1280×720`, `1440×900`, `900×600`, `640×480` | Teruji pada desktop; aset robot/puzzle gameplay, wrapper Gradle, dan verifikasi manual OS penuh belum dijalankan. |
-| Puzzle 1–9 | Kandidat konten/fixture; belum test Java/runtime | Belum terverifikasi. |
-| Distribusi/playtest/publikasi | Tidak ada bukti rilis atau sesi manusia | Belum dilakukan. |
+| UI/aset/Figma | Adegan Outpost Mars `2×` (`HabitatRenderer`) dgn petak panen 2×1 tidak tertutup dan penanda lokal `PANEN P1 SELESAI (SESI)`; font BMFont `ui_sans`/`ui_sans_bold` (`36px`, skala `0.50f`) & `ui_mono` (`34px`, skala `0.53f`) ~`18` unit UI (`~12px` di `640×480`); terminal `556×518` di kiri + editor/output scroll berbatas + footer `Coba lagi`/`Kembali ke habitat` + `[O] Setelan` Preview Visual + Peta Misi P1 berbasis `RunCoordinator.View`; screenshot `1280×720`, `1440×900`, `900×600`, `640×480` diperiksa visual 14 Nov 2026 | Teruji desktop otomatis & inspeksi PNG pada keempat resolusi; drag mouse OS manusia dan review playtest tetap terbuka. |
+| Puzzle 1–9 | Kandidat p1-a melalui Python–Java–desktop (41 assertion desktop puzzle pada `:lwjgl3:puzzleDesktopTest`, 14 Nov 2026); P2–9 tampil jujur `BELUM TERSEDIA` | P1 teruji lintas alur inspeksi → terminal → Run → replay → hasil → ulang/kembali; puzzle 2–9 belum ada. |
+| Distribusi/playtest/publikasi | ZIP Windows + Python diuji 13 Nov dari folder spasi tanpa Python PATH; `:lwjgl3:bundleWindows` belum dibangun ulang pasca-penyempurnaan UI 14 Nov | Paket 13 Nov teruji lokal; re-bundle 14 Nov, komputer kedua, manusia, dan publikasi belum dilakukan. |
 
 ## 2. Pemeriksaan dokumentasi sesi rewrite
 
@@ -87,3 +87,86 @@ Root: `C:\Users\abdie\OneDrive\Desktop\Folder_Abdiel\PRAKTIKUM\FINDIH\MarsReboot
 | `com.marsreboot.habitat.HabitatDesktopSmokeTest` | PASS, 29 assertion | Stage virtual `960×600`, fokus editor `TextArea`, `Esc` keluar modal, pertahanan draf, dan resize `1440×900`, `900×600`, `640×480` lulus di LWJGL3/OpenGL nyata. |
 | Inspeksi visual screenshot (`exploring.png`, `inspection.png`, `terminal.png`, `terminal-1440x900.png`, `terminal-900x600.png`, `terminal-640x480.png`) | PASS | Font Hi-DPI (`ui_sans`, `ui_sans_bold`, `ui_mono` `30px` mipmapped) dan border NinePatch 3× supersampled terbaca tajam tanpa clipping; sprite `2×` regolith multivarian, kawah, batu, walkway, Hab Airlock, Panel Surya, Terminal, Bio-Dome + kanopi transparan + 4×4 kebun + rover, Pompa Utama, dan astronaut 4 arah selaras dengan collider dan pencahayaan radial aditif. |
 | Wrapper Gradle (`.\gradlew.bat`) & pengujian input/drag manual OS | BELUM DIJALANKAN | Pengujian drag jendela/scroll mouse serta penekanan tombol fisik jangka panjang perlu verifikasi interaktif manual; Wrapper perlu diuji di lingkungan dengan distribusi Gradle tersedia. |
+
+## 7. Domain robot dan kandidat puzzle 1 — 13 November 2026
+
+Target: root MarsReboot, branch main dengan perubahan lokal sesi ini; Windows 11 amd64. Wrapper Gradle 9.8.0, Launcher JVM Oracle 25.0.4.1; source/target tetap 21 dan konfigurasi daemon existing meminta Java 21. Tidak mengubah versi libGDX 1.14.2/LWJGL 3.4.3/app 1.0.0 atau dependency. Distribusi/dependency tersedia dari cache lokal; offline pada mesin ini tidak menjamin clone baru dapat membangun tanpa jaringan.
+
+| Pemeriksaan aktual | Hasil | Cakupan/batas |
+| --- | --- | --- |
+| Kompilasi dua file robot dengan `javac --release 21 -encoding UTF-8 -Xlint:all`, lalu main RobotSimulationTest | PASS, 81 assertion | Domain Java murni; test awal gagal sebelum implementasi dan guard batas. Bukan runtime interpreter. |
+| `.\gradlew.bat --offline :core:robotTest :core:controlTest :lwjgl3:compileJava --console=plain` | PASS, exit 0 | 81 assertion robot, 40 assertion kontrol existing, source desktop berhasil dikompilasi melalui Wrapper aktual. |
+| `.\gradlew.bat --offline :lwjgl3:jar --console=plain` | PASS, exit 0 | `lwjgl3/build/libs/MarsReboot-1.0.0.jar` terbentuk; ZIP memuat `com/marsreboot/robot/RobotSimulation.class`. Belum diluncurkan sebagai paket distribusi. |
+| Perbandingan SHA-256 terhadap baseline awal sesi | PASS | 72 file existing Java/aset/build selain core/build.gradle identik; dua source/test robot baru dan task robotTest ditambahkan. |
+
+SHA-256 JAR saat diperiksa: `fab3d446900dd5ea6ce4c7dee40c16ac585a86ef13af82fb9f714daca87f5ad9`. Artefak ada di build lokal (dapat diabaikan Git), bukan rilis yang dipublikasikan.
+
+Test robot mencakup referensi p1-a (3 aksi/2 panen/1 gerak), target kosong/parsial, empat arah/tepi/penghalang, panen young/empty, sensor, reset dan independensi instance, salinan fixture/snapshot, argumen salah, tepat/melewati batas aksi/API, hasil terminal/idempotensi serta error setelah target tercapai. Ini subset DOM-01/02/03/05/06/07/08; tidak membuktikan pelanggaran puzzle 3, siram, latihan konsep, multi-skenario, skor atau produk lengkap. `finish()` hanya akhir normal skenario domain.
+
+Tidak menjalankan ulang window/OpenGL/desktopSmokeTest, Python/Stop/coordinator, backend, komputer kedua atau playtest. Terminal dan renderer existing belum memakai domain baru, sehingga belum ada perubahan gameplay puzzle yang tampak saat Run game. M-10/M-16 tetap parsial; konfirmasi bahasa/runtime/database/distribusi dan aturan kandidat masih terbuka. Tidak ada commit/push/deployment.
+
+## 8. Integrasi puzzle 1 dan paket Windows — 13 November 2026
+
+Root MarsReboot, branch main dengan perubahan lokal; tidak ada commit/push/deployment. Windows 11 amd64. Wrapper 9.8.0; task JavaExec aktual memakai Eclipse Adoptium 21 di cache Gradle, Launcher JVM Oracle 25.0.4.1. CPython 3.15.2 embeddable x64 diambil dari URL resmi dan dikunci manifest SHA-256 `d012f3aa29cf07436dae8aea1fec0fd195c2612a0b059b1f915ae0afb9ad1f62`. Tidak mengubah versi Java target/libGDX/LWJGL atau memasang dependency/global Python.
+
+| Command / pemeriksaan aktual | Hasil |
+| --- | --- |
+| `:core:robotTest :core:controlTest` melalui Wrapper offline | PASS: 81 robot + 40 kontrol assertion |
+| `:core:runtimeTest` | PASS: 33 assertion controller/protokol, termasuk hasil lama dan replay |
+| `:core:pythonIntegrationTest` | PASS: 33 assertion pada Python bundel nyata; terakhir setelah perbaikan resolusi lokasi IntelliJ/JAR |
+| `:lwjgl3:desktopSmokeTest` | PASS: 29 assertion desktop existing |
+| `:lwjgl3:puzzleDesktopTest` | PASS: 14 assertion pointer events, Python, source capture, Stop/Reset, error, Esc/reopen dan resize |
+| `:lwjgl3:bundleWindows` | PASS: ZIP + JAR + runtime/lisensi/manifest/petunjuk dihasilkan |
+| JAR dari ZIP, folder ekstraksi berisi spasi, PATH hanya `C:\Windows\System32` | PASS ulang: 33 Python + 14 desktop assertion memakai Python dalam paket dan Java 21 absolut; PYTHONHOME/PYTHONPATH tidak dipakai |
+
+Semua task dijalankan melalui `.\gradlew.bat --offline ... --console=plain` (distribusi/dependency telah ada di cache). Sebelum implementasi, test referensi gagal kompilasi karena kelas runtime belum ada, lalu lulus. Pengujian desktop baru sempat gagal akibat callback resize reentrant pada harness, diperbaiki dengan memajukan fase sebelum native resize; pengujian ulang lulus. Ini tidak disamarkan sebagai bug gameplay.
+
+Integrasi Python mencakup reference 3 aksi, target parsial/kosong, sensor/nilai balik, invalid argument, syntax/error baris, error setelah target, tepat/melebihi batas aksi/request/source/output UTF-8, output flood, frame palsu/berlebih, exit tanpa finished/nonzero sesudah finished, stderr flood, missing runtime, startup/compute timeout, Stop CPU loop, Run ulang serta lokasi runtime tanpa property/PATH.
+
+Paket: `lwjgl3/build/distributions/MarsReboot-1.0.0-windows-x64.zip`, SHA-256 `addfa8c8f25e1a08ee85dc9bff4251e8c1cd72164c95af24136501097e67696d`. Report mesin dan lokasi ekstraksi: `lwjgl3/build/reports/puzzle/package-smoke.json`. Screenshot desktop dan paket di `lwjgl3/build/reports/puzzle/` dan subfolder `packaged/`: p1-success, p1-error, p1-1440x900, p1-900x600, p1-640x480. Screenshot diperiksa: robot/indikator tanaman, output error/sukses dan kontrol tidak clipping; teks 640x480 tetap kecil dengan FitViewport existing, belum klaim penerimaan keterbacaan manusia.
+
+Batas: uji PATH pada mesin ini bukan komputer fisik kedua; test pointer Scene2D bukan penahanan keyboard/mouse OS manusia. Backend, skor/save lintas restart, multi-skenario, siram/puzzle 2–9, persetujuan aslab dan playtest tetap terbuka. Hanya progres p1 selama sesi, bukan seluruh habitat. Kontrak implementasi di [PYTHON_RUNTIME](docs/mars/PYTHON_RUNTIME.md).
+
+## 9. Penyempurnaan UI, keterbacaan `18` unit UI, dan alur Puzzle 1 — 14 November 2026
+
+Komando verifikasi offline dijalankan dari root `MarsReboot`:
+
+```text
+.\gradlew.bat --offline :core:controlTest :core:robotTest :core:runtimeTest :core:pythonIntegrationTest :lwjgl3:desktopSmokeTest :lwjgl3:puzzleDesktopTest --console=plain
+```
+
+Hasil teramati: seluruh tugas keluar `0`:
+- `:core:controlTest`: `PASS: 40 habitat control assertions (no OpenGL).`
+- `:core:robotTest`: `PASS: 81 robot simulation assertions (no libGDX/Python).`
+- `:core:runtimeTest`: `PASS: 33 controller/protocol assertions.`
+- `:core:pythonIntegrationTest`: `PASS: 33 bundled Python integration assertions; executable=...\MarsReboot\build\python\windows-x64`
+- `:lwjgl3:desktopSmokeTest`: `PASS: 29 real desktop/Scene2D assertions; OS held keys not simulated.`
+- `:lwjgl3:puzzleDesktopTest`: `PASS: 41 Python puzzle desktop assertions; pointer events, real CPython and OpenGL.`
+
+Pemeriksaan visual PNG pada `lwjgl3/build/reports/habitat/` (`inspection.png`, `terminal.png`) serta `lwjgl3/build/reports/puzzle/` (`p1-success.png`, `p1-error.png`, `p1-1440x900.png`, `p1-900x600.png`, `p1-640x480.png`, `p1-mission-before.png`, `p1-mission-after.png`, `p1-settings-preview.png`, `p1-long-code-output.png`, `p1-help-dragged.png`) memverifikasi: teks ~`18` unit UI (`~12px` di `640×480`) tanpa pemotongan horizontal, terminal kiri `<= 560×520` menjaga Bio-Dome terlihat di kanan, gutter baris terlihat & output scroll berbatas tidak menggeser kontrol `Run`/`Stop`/`Reset`, Peta Misi P1 berbasis `RunCoordinator.View` (`TERSEDIA` → `SELESAI`, bertahan meski gagal ulang) & P2–9 jujur `BELUM TERSEDIA`, `Preview Visual` dipindahkan ke `[O] Setelan`, dan petak panen 2×1 memisahkan `roverTexture`, tanaman matang/kosong, `(0,0)`/`(1,0)`, serta penanda lokal `PANEN P1 SELESAI (SESI)` secara jelas.
+
+Batas terbuka: paket `:lwjgl3:bundleWindows` belum dibangun ulang setelah perubahan UI 14 Nov; drag mouse/penahanan keyboard OS manusia, komputer fisik kedua, save lintas restart, backend Spring Boot, serta puzzle 2–9 belum diuji.
+
+## 10. Desain ulang Dunia 1680×1040, Follow Camera, Interaksi Rover Langsung & Terminal Resizable — 15 November 2026
+
+Komando verifikasi offline dijalankan dari root `MarsReboot` setelah seluruh edit kode (`HabitatWorld`, `FollowCamera`, `HabitatInput`, `HabitatRenderer`, `HabitatScreen`, `HabitatUi`, suite uji, serta baker aset):
+
+```text
+.\gradlew.bat --offline :core:controlTest :core:robotTest :core:runtimeTest :core:pythonIntegrationTest :lwjgl3:desktopSmokeTest :lwjgl3:puzzleDesktopTest --console=plain
+```
+
+Hasil teramati: seluruh tugas keluar `0`:
+- `:core:controlTest`: `PASS: 46 habitat control assertions (no OpenGL).`
+- `:core:robotTest`: `PASS: 81 robot simulation assertions (no libGDX/Python).`
+- `:core:runtimeTest`: `PASS: 33 controller/protocol assertions.`
+- `:core:pythonIntegrationTest`: `PASS: 33 bundled Python integration assertions; executable=C:\Users\abdie\OneDrive\Desktop\Folder_Abdiel\PRAKTIKUM\FINDIH\MarsReboot\build\python\windows-x64`
+- `:lwjgl3:desktopSmokeTest`: `PASS: 30 real desktop/Scene2D assertions; OS held keys not simulated.`
+- `:lwjgl3:puzzleDesktopTest`: `PASS: 45 Python puzzle desktop assertions; pointer events, real CPython and OpenGL.`
+
+Pemeriksaan visual PNG di `lwjgl3/build/reports/habitat/` dan `lwjgl3/build/reports/puzzle/` (`p1-biodome-explore.png`, `p1-inspection.png`, `p1-mission-after.png`, `p1-settings-preview.png`, `p1-help-dragged.png`, `p1-long-code-output.png`, `p1-success.png`, `p1-error.png`, `p1-640x480.png`, `p1-1440x900.png`) memastikan:
+- Dunia `1680×1040` tidak tampil penuh sekaligus (`FollowCamera` `ExtendViewport(720,450)` + *smart terminal framing* membingkai Bio-Dome bersih di kanan).
+- HUD kapsul mengambang (`ExtendViewport(960,600)`) dan panel/terminal rounded 3× supersampled bebas sudut kotak tajam serta bebas tumpang tindih dengan objek penting.
+- Klik langsung pointer pada sprite Rover di dalam dunia membuka editor Python; corner-drag pointer resize memperbesar/memperkecil `terminal` tanpa menggeser kontrol `Run`/`Stop`/`Reset`.
+- Popover `[?] API` (`336×294`), output scroll berbatas, tombol `Stop` berkontras tinggi, badge `SELESAI`, penanda `PANEN BIO-DOME SELESAI`, `+1 PANEN`, sinar pemindai rover, dan efek halo status tampil utuh pada `1280×720`, `1440×900`, `900×600`; pada `640×480` kontrol tidak terpotong namun huruf font tetap halus/kecil karena downscale resolusi rendah.
+
+Batas terbuka: paket `:lwjgl3:bundleWindows` belum dibangun ulang pasca-ubah visual 15 Nov; penahanan keyboard/mouse fisik OS manusia pada jendela interaktif, komputer fisik kedua, save lintas restart, backend Spring Boot, serta puzzle 2–9 tetap belum dijalankan.

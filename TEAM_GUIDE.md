@@ -7,8 +7,8 @@ Panduan tim, 13 November 2026. Buka **root clone MarsReboot**: folder yang memua
 Pemain menjadi astronaut yang menyelidiki kerusakan habitat Mars. Dari panel/inspeksi, pemain memahami masalah, lalu menulis program di terminal untuk robot. Robot memanen, menyiram dan mencari jalan; keberhasilan program memulihkan habitat. Target **9 puzzle dalam 3 misi**, dikerjakan mulai **puzzle 1–4**.
 
 - **Sudah tersedia berdasarkan bukti terdahulu:** habitat, gerak/collision astronaut, interaksi, panel, terminal multiline sementara, visual outpost dan layar preview. Periksa source/handoff terbaru sebelum mengklaim status lebih jauh.
-- **Belum tersedia sebagai gameplay nyata:** simulasi/evaluator robot, runtime Python, alur Run/Stop puzzle, autentikasi/skor backend serta progres puzzle lengkap. Tampilan akun/hasil/Before–After dapat berupa preview, bukan integrasi.
-- **Keputusan terbuka:** konfirmasi Python ke aslab, runtime, kontrak API/skor, backend/database/sesi, paket final, dan rincian konten. Rancangan bertanda Usulan bukan keputusan final pengguna.
+- **Integrasi terbaru:** Per 13 November 2026, kandidat puzzle 1 panen terhubung ke terminal Python nyata, robot/replay/hasil, Run/Stop/Reset dan progres sesi. Paket Windows x64 menyertakan CPython 3.15.2; Java 21+ masih diperlukan. Backend, puzzle 2–9, save lintas restart dan komputer kedua belum terverifikasi. Kontrak dan command di [kontrak runtime](docs/mars/PYTHON_RUNTIME.md); backend dan layar preview tetap dibedakan dari fitur nyata.
+- **Keputusan terbuka:** konfirmasi Python ke aslab, penerimaan fixture/UX, API/skor backend/database/sesi serta paket final komputer kedua. CPython bundel Windows x64 kini dipilih untuk eksperimen p1; bukan persetujuan seluruh Usulan.
 
 Sumber: [PROJECT](PROJECT.md), [PRD](PRD.md), [RULES](RULES.md), dan [bukti aktual](VERIFICATION.md). Jangan menambah combat, crafting, survival timer, multiplayer, atau engine baru dari ide AI sendiri.
 
@@ -16,7 +16,7 @@ Sumber: [PROJECT](PROJECT.md), [PRD](PRD.md), [RULES](RULES.md), dan [bukti aktu
 
 | Lokasi | Tanggung jawab |
 | --- | --- |
-| core/src/main/java/com/marsreboot/ | Game Java; habitat/ berisi state, input, renderer, UI dan lifecycle existing. |
+| core/src/main/java/com/marsreboot/ | Game Java; habitat/ berisi dunia/input/render/UI, robot/ berisi kandidat domain robot dan evaluator p1-a tanpa libGDX/Python. |
 | lwjgl3/ | Launcher dan bagian desktop serta smoke test existing. |
 | assets/ | Skin dan aset game; pertahankan asal/lisensi/manifest. |
 | gradle/, gradlew, gradlew.bat | Wrapper/toolchain existing; ikut repo, jangan memakai versi Gradle global sembarang. |
@@ -36,13 +36,13 @@ Backend belum dibuat/disatukan build; jangan menganggap ada folder backend aktif
 5. Jalankan dari root clone:
 
 ```powershell
-.\gradlew.bat :core:controlTest
+.\gradlew.bat :core:robotTest :core:controlTest
 .\gradlew.bat :lwjgl3:run
 # Opsional setelah desktop tersedia:
 .\gradlew.bat :lwjgl3:desktopSmokeTest
 ```
 
-Untuk build: `.\gradlew.bat :lwjgl3:jar` atau `.\gradlew.bat build`. Di IntelliJ gunakan task lwjgl3/application/run atau launcher Lwjgl3Launcher dengan working directory assets. Jangan Run kelas game core langsung. Semua command di atas adalah petunjuk dari task existing; cek [VERIFICATION](VERIFICATION.md): Wrapper pernah terhambat unduhan, jadi hasil mesin masing-masing harus dicatat, bukan dianggap otomatis PASS.
+Untuk build: `.\gradlew.bat :lwjgl3:jar` atau `.\gradlew.bat build`. Di IntelliJ gunakan task lwjgl3/application/run atau launcher Lwjgl3Launcher dengan working directory assets. Jangan Run kelas game core langsung. Pada 13 Nov, robotTest/controlTest, compileJava desktop dan JAR melalui Wrapper lulus dengan cache mesin ini; belum menjalankan full build/desktopSmokeTest melalui Wrapper. Hasil mesin masing-masing harus dicatat sendiri di [VERIFICATION](VERIFICATION.md).
 
 6. Coba berjalan, panel/terminal, Esc, fokus editor dan resize. Laporkan masalah sebelum mengerjakan fitur besar. Source dan UI existing tidak perlu digenerate ulang.
 7. Buka sesi baru Codex/Antigravity pada root clone. Baca [SKILLS](SKILLS.md) dan minta AI membaca satu skill relevan. Bedakan file tersedia, discovery aplikasi, dependency tool, dan uji menjalankan tugas. Tidak perlu memasang Node/npm untuk game desktop; itu diperlukan hanya jika mengerjakan prototype atau tool skill yang relevan.

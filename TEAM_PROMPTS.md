@@ -123,3 +123,7 @@ satu kasus gagal. Tidak ada approval/hasil test rekaan atau commit/push.
 ```
 
 Panduan manusia, urutan milestone dan Git ada di [TEAM_GUIDE](TEAM_GUIDE.md). Skill bersama membantu metode kerja; konsistensi berasal dari kontrak, ownership, review dan bukti yang sama, bukan sekadar nama model yang sama.
+
+## Handoff integrasi terbaru — 13 November 2026
+
+Per 13 November 2026, kandidat puzzle 1 panen terhubung ke terminal Python nyata, robot/replay/hasil, Run/Stop/Reset dan progres sesi. Paket Windows x64 menyertakan CPython 3.15.2; Java 21+ masih diperlukan. Backend, puzzle 2–9, save lintas restart dan komputer kedua belum terverifikasi. Sebelum menjalankan prompt peran di atas, baca [kontrak runtime](docs/mars/PYTHON_RUNTIME.md) dan handoff akhir TASKS. Jangan membangun runtime kedua atau mengganti terminal nyata dengan mock. Pemilik UI membaca View immutable; pemilik runtime menjaga pembatalan, batas dan source; backend tidak menerima source/output pemain. Command uji dan bukti paket terbaru di README/VERIFICATION.

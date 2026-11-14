@@ -19,6 +19,34 @@ tasks.register('controlTest', JavaExec) {
 }
 check.dependsOn controlTest
 
+// Pure Java candidate puzzle-1 behavior; no OpenGL or Python interpreter required.
+tasks.register('robotTest', JavaExec) {
+  group = 'verification'
+  description = 'Checks robot actions, immutable snapshots, limits, reset and puzzle-1 evaluation.'
+  dependsOn testClasses
+  classpath = sourceSets.test.runtimeClasspath
+  mainClass = 'com.marsreboot.robot.RobotSimulationTest'
+}
+check.dependsOn robotTest
+
+
 jar {
   duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 }
+
+// Real bundled-runtime integration is opt-in; controller checks remain headless.
+tasks.register('pythonIntegrationTest', JavaExec) {
+  group = 'verification'
+  dependsOn testClasses, ':lwjgl3:preparePython'
+  classpath = sourceSets.test.runtimeClasspath + files(rootProject.file('assets'))
+  mainClass = 'com.marsreboot.runtime.PythonIntegrationTest'
+  systemProperty 'mars.pythonDir', rootProject.layout.buildDirectory.dir('python/windows-x64').get().asFile.absolutePath
+}
+
+tasks.register('runtimeTest', JavaExec) {
+  group = 'verification'
+  dependsOn testClasses
+  classpath = sourceSets.test.runtimeClasspath
+  mainClass = 'com.marsreboot.runtime.RuntimeTest'
+}
+check.dependsOn runtimeTest
