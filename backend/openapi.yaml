@@ -1,0 +1,136 @@
+openapi: 3.1.0
+info:
+  title: API Backend Mars Reboot
+  version: 0.1.0
+  description: API untuk data akun dan rekor yang ditampilkan pada Peta Misi. Nilai akun dan rekor yang saat ini tertulis di UI masih preview; backend tidak membuat data contoh otomatis.
+servers:
+  - url: http://127.0.0.1:8081
+paths:
+  /api/csrf:
+    get:
+      summary: Mendapatkan token CSRF sesi
+      responses:
+        '200':
+          description: Nama header dan token untuk permintaan perubahan data
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [headerName, token]
+                properties:
+                  headerName: { type: string }
+                  token: { type: string }
+  /api/auth/register:
+    post:
+      summary: Mendaftarkan akun
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/Credentials' }
+      responses:
+        '200': { description: Akun berhasil dibuat }
+        '400': { description: Data tidak valid }
+        '409': { description: Nama pengguna sudah dipakai }
+  /api/auth/login:
+    post:
+      summary: Masuk dan membuat sesi
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/Credentials' }
+      responses:
+        '200':
+          description: Berhasil masuk; server menetapkan cookie sesi
+          headers:
+            Set-Cookie: { schema: { type: string } }
+        '401': { description: Nama pengguna atau kata sandi salah }
+  /api/auth/me:
+    get:
+      summary: Melihat akun yang sedang masuk
+      security: [{ sessionCookie: [] }]
+      responses:
+        '200': { description: Data akun saat ini }
+        '401': { description: Belum masuk }
+  /api/auth/logout:
+    post:
+      summary: Mengakhiri sesi
+      security: [{ sessionCookie: [] }]
+      responses:
+        '200': { description: Sesi diakhiri }
+  /api/scores:
+    post:
+      summary: Mengirim skor untuk akun saat ini
+      security: [{ sessionCookie: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ScoreRequest' }
+      responses:
+        '200': { description: Skor disimpan atau kiriman duplikat dikembalikan }
+        '409': { description: ID kiriman sudah dipakai untuk skor berbeda }
+  /api/scores/me:
+    get:
+      summary: Mengambil rekor skor milik akun untuk ditampilkan pada Peta Misi
+      security: [{ sessionCookie: [] }]
+      responses:
+        '200':
+          description: Daftar skor terbaru milik akun saat ini
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/ScoreView' }
+  /api/scores/me/best:
+    get:
+      summary: Melihat skor pribadi terbaik untuk versi puzzle tertentu
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { in: query, name: puzzleId, required: true, schema: { type: string } }
+        - { in: query, name: rulesVersion, required: true, schema: { type: string } }
+        - { in: query, name: fixtureVersion, required: true, schema: { type: string } }
+      responses:
+        '200': { description: Daftar kosong atau berisi satu skor terbaik }
+components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: JSESSIONID
+  schemas:
+    Credentials:
+      type: object
+      additionalProperties: false
+      required: [username, password]
+      properties:
+        username: { type: string, minLength: 1, maxLength: 80 }
+        password: { type: string, minLength: 8, maxLength: 72 }
+    ScoreRequest:
+      type: object
+      additionalProperties: false
+      required: [submissionId, puzzleId, rulesVersion, fixtureVersion, score, metrics]
+      properties:
+        submissionId: { type: string, format: uuid }
+        puzzleId: { type: string, maxLength: 64 }
+        rulesVersion: { type: string, maxLength: 32 }
+        fixtureVersion: { type: string, maxLength: 32 }
+        score: { type: integer, minimum: 0 }
+        metrics:
+          type: object
+          maxProperties: 12
+          required: [actionCount, waterUsed]
+          additionalProperties: { type: integer, minimum: 0 }
+          description: Gunakan actionCount dan waterUsed agar UI dapat menampilkan jumlah aksi dan air.
+    ScoreView:
+      type: object
+      required: [submissionId, puzzleId, rulesVersion, fixtureVersion, score, metrics, submittedAt]
+      properties:
+        submissionId: { type: string, format: uuid }
+        puzzleId: { type: string }
+        rulesVersion: { type: string }
+        fixtureVersion: { type: string }
+        score: { type: integer }
+        metrics: { type: object, additionalProperties: { type: integer } }
+        submittedAt: { type: string, format: date-time }
