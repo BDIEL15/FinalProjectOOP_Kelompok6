@@ -116,3 +116,25 @@ Format catatan: tanggal, target/build, ID test, command/langkah, hasil PASS/FAIL
 `:core:runtimeTest` (ikut check) menguji controller/replay, byte/protokol, pembatalan, hasil lama dan blok cleanup. `:core:pythonIntegrationTest` memakai CPython bundel nyata, opt-in tanpa OpenGL. `:lwjgl3:puzzleDesktopTest` memakai pointer events Scene2D, source snapshot, Stop/Reset/error, Esc/reopen dan resize bersama interpreter nyata. Task desktop existing tetap tersedia. Ini subset LIFE/PROTO/RUN/UI p1, bukan bukti backend, seluruh save, komputer kedua atau playtest.
 
 Uji ZIP memakai JAR dari paket dan Python di folder ekstraksi berisi spasi, PATH hanya Windows System32 dan tanpa PYTHONHOME/PYTHONPATH. Jalur pengujian serta batas di [kontrak runtime](docs/mars/PYTHON_RUNTIME.md), bukti aktual di VERIFICATION. Jangan menganggap menjalankan test dari classpath development sebagai bukti paket ZIP.
+
+## 8. Dukungan P1/P2
+
+`:core:puzzleProgressTest` adalah test opt-in memakai Python bundel nyata: referensi P2 4 panen/7 aksi, parsial, error sesudah target, batas 12, unlock P1/replay, larangan pindah saat Run, isolasi/reset/progres, serta penolakan frame P1 pada skenario P2. `:lwjgl3:puzzleDesktopTest` kini juga mengklik pemilih P2, menjalankan referensi, memeriksa hasil dinamis serta kembali P1/P2 dengan draf/pencapaian tetap. EDU-01 belum dipenuhi; keberhasilan dunia bukan verifikasi penggunaan for. Uji paket menggunakan classpath JAR ZIP dan Python di folder ekstraksi, bukan kelas main development.
+
+## 9. Pemeriksaan P3
+
+PuzzleProgressTest kini memeriksa referensi P3 (2 panen/5 aksi/9 request), sensor tidak mencatat pelanggaran, young tetap YOUNG, program panen semua petak gagal walaupun target habis, kesesuaian outcome domain/runtime, error sesudah referensi, unlock P2→P3, tanpa progres pada pelanggaran, Reset/Run ulang, dan completion P1/P2 tetap ada. PuzzleDesktopSmokeTest mengklik pemilih P3, membuktikan hasil naif ditolak dan pesan muda khusus, menjalankan referensi nyata, serta memeriksa draf/completion saat pindah P2/P3. Paket ZIP diuji terpisah dari kelas main development; komputer kedua tetap menunggu uji manusia.
+
+## 10. Editor Python
+
+`:core:editorTest` ikut check dan memeriksa teks/kursor/seleksi pada autoindent for/if, inherited indentation, continuation, colon dalam string/komentar, tab stop, dedent, pasangan kurung/kutip, skip closer, paired Backspace, wrapping dan multiline selection. Aturan ini bukan validator Python.
+
+PuzzleDesktopSmokeTest memakai helper PythonEditorDesktopChecks melalui InputMultiplexer/Stage nyata: pasangan/Undo, Enter/Tab/Shift+Tab, fokus tetap, wrapping/seleksi, blok 100 baris serta kode loop/if yang diketik tanpa spasi manual lalu benar-benar dieksekusi sebagai solusi P2. Modifier Ctrl/Shift disimulasikan melalui proxy pembacaan Input pada harness; ini bukan bukti penekanan keyboard fisik OS. Pengujian UI P1–P3 existing tetap dijalankan. Distribusi ZIP diperiksa dengan JAR paket sebagai kelas aplikasi dan Python paket tanpa PATH Python sistem.
+
+## 11. Penyiraman dan multi-skenario
+
+Regresi setelah perubahan Command/Strategy juga harus menjalankan core:patternTest (ikut core:check): kesetaraan command dengan receiver domain pada aksi valid/gagal/error/limit; pemilihan evaluasi panen/strict/irigasi, evaluasi read-only, finish idempoten dan tidak mempromosikan error/limit, serta overload legacy. verifyDemo menjalankan suite ini dan integrasi Python; verifyDesktopDemo menambah regresi UI/replay existing. Jika JAR berubah, uji ulang ZIP dengan kelas aplikasi dari JAR paket, folder spasi dan PATH tanpa Python sistem; jangan memakai hash/bukti paket lama.
+
+waterSimulationTest (ikut core check): sensor, petak dry/lembap, pemborosan air, air habis, biaya gagal, immutable snapshot/fixture, Reset, referensi, batas aksi/request, target invalid dan panen tidak memenuhi goal irigasi. waterPuzzleTest (opt-in, CPython nyata): dua skenario dari source sama, namespace/air/fixture baru, hardcode lolos A gagal B, fail-fast, error/Stop/timeout skenario kedua, batas output gabungan dan penolakan frame lintas skenario.
+
+Coordinator diuji pada replay: pertama saja tidak memberi progres, Stop di antaranya, Reset ke fixture awal, kegagalan kedua tanpa completion, dan metrik total setelah sukses. Desktop test memakai pemilih P4, hardcode gagal, warna/label dry/lembap, air reset, replay kedua, agregasi 10 aksi/4 air serta draf/progres P3/P4. Paket final diuji dari folder spasi dengan JAR/Python ZIP dan PATH tanpa Python sistem. Ini bukan bukti komputer fisik kedua atau playtest manusia.

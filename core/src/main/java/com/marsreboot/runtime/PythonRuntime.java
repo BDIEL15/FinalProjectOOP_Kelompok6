@@ -2,6 +2,10 @@ package com.marsreboot.runtime;
 
 import com.badlogic.gdx.utils.JsonValue;
 import com.marsreboot.robot.RobotSimulation;
+import com.marsreboot.robot.MoveCommand;
+import com.marsreboot.robot.HarvestCommand;
+import com.marsreboot.robot.WaterCommand;
+import com.marsreboot.robot.RobotCommand;
 import com.marsreboot.robot.RobotSimulation.Snapshot;
 import com.marsreboot.runtime.RunCoordinator.*;
 import java.io.*;
@@ -37,7 +41,32 @@ public final class PythonRuntime implements Bridge {
     }
 
     @Override public Execution execute(String source, long generation, AtomicBoolean cancelled, Runnable readyCallback) {
-        RobotSimulation simulation = new RobotSimulation(RobotSimulation.Fixture.puzzleOne());
+        return execute(PuzzleDefinition.ONE,source,generation,cancelled,readyCallback);
+    }
+    @Override public Bridge forPuzzle(PuzzleDefinition puzzle) { return (s,g,c,r) -> execute(puzzle,s,g,c,r); }
+    public Execution execute(PuzzleDefinition puzzle, String source, long generation, AtomicBoolean cancelled, Runnable readyCallback) {
+        if (puzzle.scenarioCount() == 1) return executeScenario(puzzle,0,source,generation,cancelled,readyCallback);
+        List<Scenario> scenarios = new ArrayList<>();
+        Output output = new Output();
+        Execution last = null;
+        int totalActions = 0, totalWater = 0;
+        for (int index = 0; index < puzzle.scenarioCount(); index++) {
+            last = executeScenario(puzzle,index,source,generation,cancelled,readyCallback);
+            // Keep one bounded output log for the run, not one full log per scenario.
+            scenarios.add(new Scenario(puzzle.scenarioId(index),new Execution(last.status(),last.snapshot(),last.trace(),"",last.message(),last.reusable())));
+            output.append("[" + puzzle.scenarioId(index) + "]\n" + last.output());
+            totalActions += last.snapshot().actionCount(); totalWater += last.snapshot().waterUsed();
+            if (last.status() != Status.SUCCESS || cancelled.get() || !last.reusable()) break;
+        }
+        Status status = cancelled.get() ? Status.STOPPED : last.status();
+        String message = status == Status.SUCCESS
+            ? "Kedua skenario lulus: total " + totalActions + " aksi, " + totalWater + " unit air."
+            : scenarios.getLast().id() + ": " + last.message();
+        return new Execution(status,last.snapshot(),List.of(),output.text(),message,last.reusable(),scenarios);
+    }
+    private Execution executeScenario(PuzzleDefinition puzzle,int scenarioIndex,String source,long generation,AtomicBoolean cancelled,Runnable readyCallback) {
+        RobotSimulation simulation = new RobotSimulation(puzzle.fixture(scenarioIndex));
+
         List<Snapshot> trace = new ArrayList<>();
         Output output = new Output();
         Process process = null;
@@ -52,6 +81,7 @@ public final class PythonRuntime implements Bridge {
         String message = "Runtime belum siap.";
         boolean normal = false;
         try {
+            if (cancelled.get()) return new Execution(Status.STOPPED,simulation.snapshot(),List.of(),"","Percobaan dihentikan.");
             if (source.getBytes(StandardCharsets.UTF_8).length > 16 * 1024) throw new IOException("Source melebihi 16 KiB.");
             if (!Files.isRegularFile(executable)) throw new IOException("Python bundel tidak ditemukan. Jalankan task preparePython.");
             scratch = Files.createTempDirectory("mars-p1-");
@@ -85,7 +115,7 @@ public final class PythonRuntime implements Bridge {
                     terminate(child);
                 }
             }, 0, 20, TimeUnit.MILLISECONDS);
-            RuntimeProtocol protocol = new RuntimeProtocol(generation);
+            RuntimeProtocol protocol = new RuntimeProtocol(generation,puzzle.scenarioId(scenarioIndex));
             JsonValue start = object(); start.addChild("source",new JsonValue(source));
             write(process, protocol.encode("start",start), 128 * 1024);
             boolean ready = false, ended = false;
@@ -109,21 +139,28 @@ public final class PythonRuntime implements Bridge {
                         String name = string(payload,"name");
                         int arity = name.equals("move") ? 1 : 0;
                         if (args.size != arity) throw new IOException("Jumlah argumen API tidak sah.");
-                        JsonValue result;
+                        JsonValue result = null;
+                        RobotCommand command = null;
                         switch (name) {
                             case "move" -> {
                                 if (!args.get(0).isString()) throw new IOException("Arah harus string.");
-                                result = new JsonValue(simulation.move(args.get(0).asString()));
+                                command = new MoveCommand(args.get(0).asString());
                             }
-                            case "harvest" -> result = new JsonValue(simulation.harvest());
+                            case "harvest" -> command = new HarvestCommand();
                             case "can_harvest" -> result = new JsonValue(simulation.canHarvest());
+                            case "water", "needs_water" -> {
+                                if (!puzzle.watering()) throw new IOException("API air hanya tersedia pada P4.");
+                                if (name.equals("water")) command = new WaterCommand();
+                                else result = new JsonValue(simulation.needsWater());
+                            }
                             case "get_pos" -> {
                                 var position = simulation.getPos(); result = new JsonValue(JsonValue.ValueType.array);
                                 result.addChild(new JsonValue((long)position.x())); result.addChild(new JsonValue((long)position.y()));
                             }
                             default -> throw new IOException("API tidak tersedia: " + name);
                         }
-                        if (name.equals("move") || name.equals("harvest")) {
+                        if (command != null) {
+                            result = new JsonValue(command.execute(simulation));
                             if (trace.size() >= 256) { status = Status.LIMIT_EXCEEDED; throw new IOException("Trace penuh."); }
                             trace.add(simulation.snapshot());
                         }
@@ -145,7 +182,7 @@ public final class PythonRuntime implements Bridge {
             }
             if (!process.waitFor(1500,TimeUnit.MILLISECONDS)) throw new IOException("Proses tidak selesai setelah EOF.");
             if (normal && process.exitValue() == 0 && !cancelled.get() && !timedOut.get()) {
-                Snapshot finalState = simulation.finish();
+                Snapshot finalState = simulation.finish(puzzle.evaluationStrategy());
                 status = finalState.outcome() == RobotSimulation.Outcome.SUCCESS ? Status.SUCCESS : Status.INCOMPLETE;
                 message = finalState.message();
             } else if (normal && process.exitValue() != 0) {

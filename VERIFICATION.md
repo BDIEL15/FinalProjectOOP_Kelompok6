@@ -170,3 +170,147 @@ Pemeriksaan visual PNG di `lwjgl3/build/reports/habitat/` dan `lwjgl3/build/repo
 - Popover `[?] API` (`336×294`), output scroll berbatas, tombol `Stop` berkontras tinggi, badge `SELESAI`, penanda `PANEN BIO-DOME SELESAI`, `+1 PANEN`, sinar pemindai rover, dan efek halo status tampil utuh pada `1280×720`, `1440×900`, `900×600`; pada `640×480` kontrol tidak terpotong namun huruf font tetap halus/kecil karena downscale resolusi rendah.
 
 Batas terbuka: paket `:lwjgl3:bundleWindows` belum dibangun ulang pasca-ubah visual 15 Nov; penahanan keyboard/mouse fisik OS manusia pada jendela interaktif, komputer fisik kedua, save lintas restart, backend Spring Boot, serta puzzle 2–9 tetap belum dijalankan.
+
+## 11. Refocus 2× Crisp Pixel Art di Atas Peta `1680×1040`, FollowCamera & Klik Rover — 15 November 2026
+
+Komando verifikasi offline dijalankan dari root `MarsReboot` pasca pembaruan aset pixel art (`assets/habitat/*.png`, `hydro_crops.png`, `assets/assets.txt`, `asset-manifest.json` v4) dan refactor `HabitatRenderer` (`TextureFilter.Nearest`):
+
+```text
+.\gradlew.bat --offline :core:controlTest :core:robotTest :core:runtimeTest :core:pythonIntegrationTest :lwjgl3:desktopSmokeTest :lwjgl3:puzzleDesktopTest --console=plain
+```
+
+Hasil teramati (`task-700`, `exit 0`):
+- `:core:controlTest`: `PASS: 46 habitat control assertions (no OpenGL).`
+- `:core:robotTest`: `PASS: 81 robot simulation assertions (no libGDX/Python).`
+- `:core:runtimeTest`: `PASS: 33 controller/protocol assertions.`
+- `:core:pythonIntegrationTest`: `PASS: 33 bundled Python integration assertions; executable=C:\Users\abdie\OneDrive\Desktop\Folder_Abdiel\PRAKTIKUM\FINDIH\MarsReboot\build\python\windows-x64`
+- `:lwjgl3:desktopSmokeTest`: `PASS: 30 real desktop/Scene2D assertions; OS held keys not simulated.`
+- `:lwjgl3:puzzleDesktopTest`: `PASS: 45 Python puzzle desktop assertions; pointer events, real CPython and OpenGL.`
+
+Pemeriksaan visual PNG terkini (`outpost-biodome.png`, `terminal.png`, `p1-biodome-explore.png`, `p1-success.png`, `p1-error.png`, `p1-help-dragged.png`, `p1-settings-preview.png`, `p1-1440x900.png`) memastikan:
+- Dunia `1680×1040` tampil tajam sebagai **2× Crisp Pixel Art** (`TextureFilter.Nearest`) dengan regolith Mars bertekstur, pipa industri berflensa, konservatori Bio-Dome oktagonal + kanopi lengkung kaca piksel, sprite tanaman `RIPE`/`YOUNG`/`EMPTY` beroutline gelap tegas, dan Mars Rover hadap Timur dengan braket L-corner saat disorot/dekat.
+- `FollowCamera` (`720×450`), klik langsung sprite Rover untuk membuka editor Python, penggeseran & corner-drag resize terminal, popover `[?] API`, `[Log]` auto-collapse, animasi halus Rover, dan status `RunCoordinator.View` (`SELESAI`, `ERROR`, `+1 PANEN`) tetap bekerja identik tanpa clipping.
+
+Batas terbuka: `:lwjgl3:bundleWindows` belum dibangun ulang dengan perubahan pixel-refocus 15 Nov; playtest interaktif manusia pada OS, komputer fisik kedua, save lintas restart, backend Spring Boot, serta puzzle 2–9 tetap belum dijalankan.
+
+## 12. Pemilihan P1/P2 dan paket terbaru — 19 November 2026
+
+Windows x64, Wrapper 9.8.0/Java target 21, CPython bundel 3.15.2; versi/dependency tetap. Pemeriksaan aktual melalui Wrapper offline:
+
+| Task / pemeriksaan | Hasil aktual |
+| --- | --- |
+| :core:puzzleProgressTest | PASS referensi P2 (4 panen, 7 aksi) + 12 kasus progres/negatif, interpreter nyata |
+| :core:robotTest / :core:controlTest | PASS 81 robot / 46 kontrol assertion |
+| :core:runtimeTest / :core:pythonIntegrationTest | PASS 33 controller/protokol / 33 integrasi Python existing |
+| :lwjgl3:desktopSmokeTest | PASS 30 desktop assertion |
+| :lwjgl3:puzzleDesktopTest | PASS 57 pemeriksaan P1/P2 pada OpenGL, pointer events dan CPython nyata |
+| :lwjgl3:bundleWindows | PASS, ZIP terbaru dibangun ulang setelah koreksi UI/socket P2 |
+| Test progres dan desktop dengan JAR/CPython dari ZIP, folder spasi, PATH hanya Windows System32 | PASS progres P2 dan 57 desktop checks; tidak bergantung Python sistem |
+
+Kasus tambahan mencakup target parsial, error setelah target P2 tercapai, melebihi batas 12 aksi, P2 terkunci sebelum P1, larangan pindah saat Run, replay membuka P2, isolasi/reset/progres per puzzle, frame P1 ditolak pada P2, pemilih terminal nyata serta pemulihan draf setelah kembali P1/P2. Test baru mula-mula gagal kompilasi pada Gradle karena tipe konten belum ada, lalu lulus implementasi. Snapshot p2-success.png memperlihatkan empat petak dan teks 4 dipanen/7 aksi; koreksi socket sempit serta ringkasan hardcode P1 diuji kembali.
+
+ZIP SHA-256: `01269c57afbc5ebaeef5c543525913b8b70a51418ebff1f703e567949a8704c3`. Laporan mesin/ekstraksi ada di lwjgl3/build/reports/puzzle/p2-package-smoke.json. Screenshot development di lwjgl3/build/reports/puzzle/p2-success.png. Build artefact/cache tetap diabaikan Git. Desain/aset lokal Antigravity tidak direvert.
+
+Batas: EDU-01/verifikator penggunaan loop masih belum dipilih; solusi unrolled dapat lulus tujuan dunia. Tidak ada klaim penilaian latihan for otomatis, penerimaan manusia, komputer fisik kedua, backend/save atau puzzle 3–9. Tidak ada commit/push/deployment.
+
+## 13. P3 sensor/young dan paket Windows — 19 November 2026
+
+Pemeriksaan aktual melalui Wrapper offline pada Windows x64, Java target 21 dan CPython bundel 3.15.2. Versi/dependency tetap. Test awal gagal kompilasi karena PuzzleDefinition.THREE belum tersedia; sesudah implementasi:
+
+| Pemeriksaan | Hasil aktual |
+| --- | --- |
+| :core:puzzleProgressTest | PASS reference P1/P2/P3 + 23 pemeriksaan progres/sensor/negatif, interpreter nyata |
+| :core:robotTest / :core:runtimeTest | PASS 81 domain / 33 controller-protokol |
+| :core:controlTest / :core:pythonIntegrationTest | PASS 46 kontrol / 33 integrasi Python existing |
+| :lwjgl3:desktopSmokeTest | PASS 30 desktop checks |
+| :lwjgl3:puzzleDesktopTest | PASS 71 desktop checks P1/P2/P3; terakhir sesudah koreksi judul pelanggaran muda |
+| :lwjgl3:bundleWindows | PASS, ZIP baru |
+| JAR/Python dari ZIP pada folder spasi, PATH hanya C:\Windows\System32 | PASS test progres + 71 desktop checks tanpa ketergantungan Python sistem |
+
+Referensi P3 menghasilkan 2 panen/5 aksi/9 request; young tetap YOUNG. Source panen semua petak mendapat INCOMPLETE, invalidHarvestCount=2, remainingTargets kosong dan tanpa progres; domain/runtime sepakat. Error sesudah referensi tetap ERROR. P3 tidak bisa dipilih sebelum P2 lulus; setelah kegagalan bisa Reset/Run ulang, completion dan draf puzzle lama tetap. UI menampilkan pesan young secara khusus, dan target 2 berbeda dari jumlah kolom 4. Screenshot development di lwjgl3/build/reports/puzzle/p3-success.png dan p3-young-violation.png diperiksa.
+
+ZIP SHA-256: `c34345619a0f92ca4cec56b8b65d9838dd075fdaa3ae76ceaed129f17df14e61`. Laporan lokasi ekstraksi/environment: lwjgl3/build/reports/puzzle/p3-package-smoke.json. Tidak ada klaim uji komputer fisik kedua, playtest manusia, backend/save, persetujuan aslab atau P4–P9. Konsep source sensor/loop belum diverifikasi otomatis. Tidak ada commit/push/deployment.
+
+## 14. Editor Python: indentasi dan pasangan otomatis — 19 November 2026
+
+Windows x64, Java target 21 dan libGDX existing; tidak menambah dependency. Pemeriksaan aktual:
+
+| Pemeriksaan | Hasil |
+| --- | --- |
+| :core:editorTest (ikut check) | PASS 25 transformasi teks/kursor/seleksi |
+| :lwjgl3:puzzleDesktopTest | PASS 90 pemeriksaan desktop, termasuk 19 editor/program yang diketik dan seluruh P1–P3 existing |
+| :lwjgl3:desktopSmokeTest / :core:controlTest | PASS 30 desktop existing / 46 kontrol |
+| :lwjgl3:bundleWindows | PASS ZIP terbaru |
+| JAR aplikasi dari ZIP + CPython paket, folder spasi, PATH hanya Windows System32 | PASS ulang 25 editor + 90 desktop checks |
+
+Task dijalankan melalui Wrapper offline. Test awal gagal pada simbol transformasi yang belum dibuat, lalu lulus implementasi. API source libGDX 1.14.2 dibaca dari sources.jar cache proyek untuk subclass/listener/Undo. Perbedaan semantik selection kosong dan posisi kursor ditemukan saat uji widget dan diperbaiki. Update caret/scroll memakai jalur native TextArea; perubahan teks diteruskan melalui listener native agar Undo tidak dihapus oleh setText.
+
+Bukti meliputi colon for/if dan trailing comment, colon dalam string/komentar, indent baris biasa/continuation, tab stop, ShiftTab, seleksi baris termasuk batas newline, quote/bracket wrap/skip/delete, tab lama dari paste yang dipertahankan, fokus, Undo, blok 100 baris, serta source loop/if yang diketik tanpa spasi manual dan dieksekusi sebagai referensi P2. Ctrl/Shift pada harness memakai proxy pembacaan modifier Input; bukan pengujian keyboard fisik OS/IME. Tidak ada klaim dukungan formatter/LSP/completion semantik penuh.
+
+ZIP SHA-256: `e93df3e4734d1ba7715685dbb2ccbd90947c4a525f3ea8eace93df5d3978bcab`. Laporan ekstraksi/environment: lwjgl3/build/reports/puzzle/editor-package-smoke.json. Komputer kedua dan playtest manusia belum dilakukan; Python/runtime/gameplay/back-end tidak diubah oleh patch editor. Tidak ada commit/push/deployment.
+
+## 15. Irigasi P4 dan dua skenario — 19 November 2026
+
+Windows x64, Gradle Wrapper 9.8.0, target Java 21, CPython bundel 3.15.2. Versi/dependency/aset visual tidak diubah. Target lengkap tetap 9 puzzle/3 misi, tahap awal 1–4.
+
+| Task / pemeriksaan aktual | Hasil |
+| --- | --- |
+| :core:check | PASS: 46 kontrol, 25 editor, 81 robot, 33 controller/protokol, 21 domain air; suite main JavaExec dijalankan |
+| :core:pythonIntegrationTest | PASS 33 integrasi Python existing |
+| :core:waterPuzzleTest | PASS 33 multi-skenario/runtime/progres P4, interpreter nyata |
+| :lwjgl3:desktopSmokeTest | PASS 30 desktop checks |
+| :lwjgl3:puzzleDesktopTest | PASS 109 desktop checks P1–P4 + editor; terakhir setelah koreksi frame akhir A dan FX pergantian |
+| :lwjgl3:bundleWindows | PASS, ZIP dengan irigasi dua skenario |
+| JAR/CPython dari ZIP, folder spasi, PATH hanya C:\Windows\System32 | PASS ulang 33 P4, 25 editor dan 109 desktop checks |
+| Repack PETUNJUK.txt terakhir | PASS, 43 file non-petunjuk hash-identik dengan paket yang teruji |
+
+Semua task melalui Wrapper offline dengan cache existing. Test baru mula-mula gagal kompilasi pada FOUR yang belum tersedia. Core:check sempat gagal di core:test karena suite repo bukan JUnit; failOnNoDiscoveredTests=false di core mengizinkan ketiadaan kasus JUnit, bukan menonaktifkan Test/check atau mengabaikan kegagalan suite main. Semua lima suite JavaExec wajib di check tetap berjalan. Property diperiksa pada [dokumentasi Gradle Test](https://docs.gradle.org/current/dsl/org.gradle.api.tasks.testing.Test.html#org.gradle.api.tasks.testing.Test:failOnNoDiscoveredTests); konfigurasi terbukti pada Wrapper proyek, bukan klaim upgrade Gradle.
+
+Bukti P4: masing-masing scenario 5 aksi/2 air/9 API call; total 10 aksi/4 air. P4-a dry x=0,2; p4-b x=1,3. Hardcode A gagal B, program boros gagal pertama (fail-fast), namespace baru setiap proses, error setelah target, Stop/timeout di proses kedua, frame A ditolak B, dan output per Run dibatasi tanpa salinan log subhasil. Air habis tetap memakai aksi, tidak negatif; panen tidak menyelesaikan target siram. Replay tidak memberi progres dari skenario pertama dan frame akhirnya terlihat sebelum memulai B; Stop di antara replay, Reset, lalu Run ulang bersih diuji.
+
+Screenshot OpenGL p4-dry-start.png, p4-hardcode-failure.png dan p4-success.png di lwjgl3/build/reports/puzzle/ diperiksa: empat petak dengan label KERING/LEMBAP, sisa air, nomor skenario, hasil 2/2 serta total. Desain Antigravity/editor existing dipertahankan.
+
+ZIP akhir: lwjgl3/build/distributions/MarsReboot-1.0.0-windows-x64.zip, SHA-256 `fd45d6f647ab48671d323d8b3efd9b494a08de880ee341b9acbd6429ce3b1463`. Report: lwjgl3/build/reports/puzzle/p4-package-smoke.json. Sesudah uji aplikasi, PETUNJUK.txt saja diperbarui; hash semua 43 file lainnya (termasuk JAR dan runtime) identik dengan ekstraksi teruji. Repack ini tidak menjalankan ulang seluruh aplikasi karena biner tidak berubah.
+
+Batas: belum komputer fisik kedua/playtest manusia, backend/autentikasi/skor, save lintas restart, persetujuan aslab, atau P5–P9. Memenuhi tujuan dunia tidak membuktikan source memakai sensor/loop; tidak ada verifikator semantik baru. Full root build/CI/backend tidak diklaim. Tidak ada commit/push/deployment.
+
+## 16. Gate demo tim, root build dan audit OOP — 19 November 2026
+
+Pada source gameplay P1–P4 yang sama, root `build` awalnya gagal di `:lwjgl3:test`: sumber test berisi main JavaExec, bukan metode JUnit yang dapat ditemukan Gradle. Konfigurasi `failOnNoDiscoveredTests=false` diterapkan pada lwjgl3, konsisten dengan core. Task test tidak dinonaktifkan dan kegagalan assertion/exit JavaExec tidak diabaikan. Build biasa tetap mengompilasi test desktop; menjalankannya perlu gate desktop eksplisit.
+
+Ditambahkan task root verifyDemo (suite Java domain/editor/lifecycle, integrasi Python nyata P1–P4, check/JAR desktop) dan verifyDesktopDemo (gate tersebut ditambah dua suite desktop). Tidak ada dependency/versi runtime atau source gameplay yang diubah dalam sesi gate ini.
+
+Command aktual dari root pada Windows x64 dengan cache tersedia:
+
+```powershell
+.\gradlew.bat --offline build verifyDesktopDemo :lwjgl3:bundleWindows --console=plain
+```
+
+Hasil **exit 0**: root build dan kedua gate selesai; kontrol 46, editor 25, robot 81, controller/protokol 33, domain air 21; referensi P1/P2/P3 + 23 pemeriksaan progres/sensor/negatif; integrasi CPython 33; integrasi P4 33; desktop/Scene2D 30 dan desktop puzzle/editor 109. Semua suite di atas benar-benar mencetak PASS pada run ini. Suite desktop memakai OpenGL/CPython nyata, bukan browser. Penekanan tombol OS manual dan playtest manusia tetap belum dibuktikan.
+
+bundleWindows selesai; SHA-256 ZIP tetap `fd45d6f647ab48671d323d8b3efd9b494a08de880ee341b9acbd6429ce3b1463`, identik dengan artefak §15 yang telah diuji dari folder spasi tanpa Python sistem pada PATH. Uji ekstraksi paket tidak diulang karena biner/artefaknya identik. ZIP/TAR generik task application build bukan paket Python; pemain memakai artefak `*-windows-x64.zip` dari bundleWindows.
+
+[Audit OOP](docs/mars/OOP_AUDIT.md) memetakan source dan test yang ada terhadap empat pilar dan enam kandidat. Bukti pewarisan framework tidak disamakan dengan hierarki misi; switch/enum/pipeline private tidak dinyatakan sebagai enam pattern GoF. M-23 tetap terbuka untuk implementasi, kesesuaian materi dan demo. Belum ada bukti CI remote, backend, komputer kedua atau persetujuan aslab. Tidak ada commit/push/deployment.
+
+Pemeriksaan dokumen: 44 target tautan relatif pada README, ARCHITECTURE, TASKS, VERIFICATION dan OOP_AUDIT ditemukan; git diff --check untuk file sesi ini lulus. Pemeriksaan tautan menguji keberadaan file, bukan anchor heading atau tautan internet.
+
+## 17. Implementasi Command dan Strategy — 19 November 2026
+
+Runtime Python kini membuat MoveCommand/HarvestCommand/WaterCommand sesudah validasi frame/argumen, lalu memanggil RobotCommand.execute(receiver). Sensor tetap query tanpa trace aksi. Domain tetap memiliki aturan biaya, mutasi dan error. PuzzleDefinition memilih EvaluationStrategy untuk panen (P1/P2), panen matang dengan pemeriksaan young (P3) dan irigasi (P4). RobotSimulation.finish(strategy) hanya menerapkan SUCCESS/INCOMPLETE dari snapshot immutable saat state ACTIVE; overload finish() dan finish(boolean) tetap kompatibel. Tidak ada perubahan protokol, fixture, versi, desain atau backend.
+
+Test awal command gagal kompilasi karena kelas belum ada, kemudian lulus 4 pemeriksaan. Slice strategi juga gagal karena kelas belum ada, lalu lulus 6 pemeriksaan bersama robotTest 81 dan waterSimulationTest 21. Suite diperluas menjadi **64 pemeriksaan** untuk kesetaraan command/direct domain (termasuk young/kosong/terhalang/arah invalid/null/air habis/limit), strategi read-only, strict vs dasar pada snapshot sama, pesan irigasi, overload lama, idempotensi serta error/limit yang tidak dievaluasi ulang.
+
+Command aktual, Windows x64, JDK target 21 dan CPython bundel 3.15.2:
+
+```powershell
+.\gradlew.bat --offline verifyDemo --console=plain
+.\gradlew.bat --offline verifyDesktopDemo :lwjgl3:bundleWindows --console=plain
+```
+
+Keduanya **exit 0**. Run terakhir sesudah integrasi melalui interface: kontrol 46, editor 25, command/strategy 64, robot 81, controller/protokol 33, domain air 21; referensi P1/P2/P3 + 23 progres/sensor/negatif; integrasi CPython 33; P4 33; desktop Scene2D 30 dan desktop puzzle/editor 109. Ini menjalankan CPython/OpenGL nyata; bukan playtest manusia atau penekanan tombol fisik OS.
+
+ZIP baru diuji ulang setelah JAR berubah. Ekstraksi ke `lwjgl3/build/Command Strategy Package With Spaces 92213fc6a6bd42c880a304286996bef3`; PATH hanya `C:\Windows\System32`, PYTHONHOME/PYTHONPATH dikosongkan. Kelas aplikasi hanya berasal dari fat JAR paket; test harness dari direktori test terkompilasi. Java 21 dipanggil lewat path absolut, mars.pythonDir menunjuk runtime/python paket. **PASS**: 64 command/strategy, 33 integrasi Python (termasuk resolusi runtime sebelah JAR tanpa property), referensi P1–P3 + 23 progres, 33 P4, 109 desktop puzzle/editor. Semua proses test exit 0. Report: `lwjgl3/build/reports/puzzle/pattern-package-smoke.json`; script reproduksi lokal di `build/verify-pattern-package.ps1` (keduanya artefak diabaikan Git).
+
+Artefak: `lwjgl3/build/distributions/MarsReboot-1.0.0-windows-x64.zip`, SHA-256 `4dc4c09107d99c049c29750cdbbedcc38e6274fc1753cc1912579c6b6ade3531`. Hash lama §15–16 tetap bukti historis, bukan identitas paket terbaru.
+
+Audit OOP diperbarui dengan relasi kelas dan test dua pattern. Empat kandidat lain serta penerimaan aslab masih terbuka; M-23 tidak dicentang selesai. Komputer kedua, playtest manusia, backend dan P5–P9 belum dibuktikan. Tidak ada commit/push/deployment.

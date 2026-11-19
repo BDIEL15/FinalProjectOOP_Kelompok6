@@ -24,23 +24,25 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Smooth, organic 2D top-down 3/4 renderer for the expanded 1680x1040 Mars Outpost:
- * - Curved Bio-Dome conservatory complex with botanical pods and irrigation rings
- * - Anti-aliased rounded capsules, soft radial 2D lights, and EVA dust trail
- * - Smooth presentation-layer rover glide, wheel heading rotation, scanner harvest beam, and spore particles
+ * Crisp 2x Pixel Art (TextureFilter.Nearest) renderer for the expanded 1680x1040 Mars Outpost
+ * (MewnBase x Pathway aesthetic) combined with smooth presentation-layer animations:
+ * - Crisp Martian regolith, craters, rocks, catwalks, Hab Airlock, Solar Wing, Conduit Spine & Pump Station
+ * - Octagonal crisp pixel-art Bio-Dome conservatory + geodesic pixel canopy + hydroponic crop sprites
+ * - Smooth rover glide/heading interpolation, pixel scanner beam, square pixel particles & additive 2D glow
  *   strictly reading deterministic snapshots from RunCoordinator.View
  */
 public final class HabitatRenderer implements Disposable {
     private static final Color COL_CANYON_OUTER = Color.valueOf("2E1109");
     private static final Color COL_CANYON_RIM = Color.valueOf("9C472B");
-    private static final Color COL_PIPE_DARK = Color.valueOf("182230");
-    private static final Color COL_PIPE_OFF = Color.valueOf("475569");
+    private static final Color COL_PIPE_DARK = Color.valueOf("111A24");
+    private static final Color COL_PIPE_HI = Color.valueOf("475569");
+    private static final Color COL_PIPE_OFF = Color.valueOf("334155");
     private static final Color COL_CYAN = Color.valueOf("22D3EE");
     private static final Color COL_AMBER = Color.valueOf("F59E0B");
     private static final Color COL_EMERALD = Color.valueOf("34D399");
     private static final Color COL_CORAL = Color.valueOf("F87171");
-    private static final Color COL_PILL_BG = new Color(0.05f, 0.08f, 0.14f, 0.88f);
-    private static final Color COL_PILL_ACTIVE = new Color(0.05f, 0.19f, 0.28f, 0.94f);
+    private static final Color COL_BADGE_BG = new Color(0.05f, 0.08f, 0.14f, 0.90f);
+    private static final Color COL_BADGE_ACTIVE = new Color(0.05f, 0.19f, 0.28f, 0.94f);
     private static final Color COL_TEXT_MAIN = Color.valueOf("F8FAFC");
     private static final Color COL_TEXT_MUTED = Color.valueOf("94A3B8");
 
@@ -79,6 +81,7 @@ public final class HabitatRenderer implements Disposable {
     private final Texture roverTexture;
     private final TextureRegion roverRegion;
     private final TextureRegion[][] astronautFrames;
+    private final TextureRegion[] cropFrames; // 0:RIPE, 1:YOUNG, 2:EMPTY
     private final Texture lightGlowTexture;
 
     private final List<WorldParticle> particles = new ArrayList<>();
@@ -92,6 +95,7 @@ public final class HabitatRenderer implements Disposable {
 
     // Smooth Rover presentation state
     private long trackedGeneration = -1;
+    private String trackedScenario = "";
     private float visualRoverCellX;
     private float visualRoverCellY;
     private float visualRoverAngleDeg = 0f;
@@ -105,33 +109,36 @@ public final class HabitatRenderer implements Disposable {
 
     public HabitatRenderer() {
         for (int i = 0; i < 4; i++) {
-            marsSoilVariants[i] = loadSmooth("habitat/mars_soil_" + i + ".png", 128, 128, Color.valueOf("6B2E1E"));
+            marsSoilVariants[i] = loadPixel("habitat/mars_soil_" + i + ".png", 64, 64, Color.valueOf("6B2E1E"));
         }
-        floorTile = loadSmooth("habitat/floor_tile.png", 128, 128, Color.valueOf("662D1D"));
-        craterSm = loadSmooth("habitat/mars_crater_sm.png", 96, 64, Color.valueOf("4A1E13"));
-        craterLg = loadSmooth("habitat/mars_crater_lg.png", 144, 96, Color.valueOf("4A1E13"));
-        rockA = loadSmooth("habitat/mars_rock_a.png", 64, 56, Color.valueOf("8C4029"));
-        rockB = loadSmooth("habitat/mars_rock_b.png", 56, 48, Color.valueOf("8C4029"));
-        cargoCrate = loadSmooth("habitat/cargo_crate.png", 48, 48, Color.valueOf("334155"));
-        walkwayH = loadSmooth("habitat/walkway_h.png", 64, 40, Color.valueOf("273549"));
-        walkwayV = loadSmooth("habitat/walkway_v.png", 40, 64, Color.valueOf("273549"));
+        floorTile = loadPixel("habitat/floor_tile.png", 64, 64, Color.valueOf("662D1D"));
+        craterSm = loadPixel("habitat/mars_crater_sm.png", 64, 40, Color.valueOf("4A1E13"));
+        craterLg = loadPixel("habitat/mars_crater_lg.png", 96, 56, Color.valueOf("4A1E13"));
+        rockA = loadPixel("habitat/mars_rock_a.png", 44, 36, Color.valueOf("8C4029"));
+        rockB = loadPixel("habitat/mars_rock_b.png", 36, 28, Color.valueOf("8C4029"));
+        cargoCrate = loadPixel("habitat/cargo_crate.png", 32, 32, Color.valueOf("334155"));
+        walkwayH = loadPixel("habitat/walkway_h.png", 64, 40, Color.valueOf("273549"));
+        walkwayV = loadPixel("habitat/walkway_v.png", 44, 64, Color.valueOf("273549"));
 
-        habAirlockTexture = loadSmooth("habitat/hab_airlock.png", 240, 190, Color.valueOf("CBD5E1"));
-        solarDustyTexture = loadSmooth("habitat/solar_array_dusty.png", 220, 110, Color.valueOf("78350F"));
-        solarCleanTexture = loadSmooth("habitat/solar_array_clean.png", 220, 110, Color.valueOf("1D4ED8"));
-        partitionOffTexture = loadSmooth("habitat/partition_wall.png", 64, 240, Color.valueOf("3B495E"));
-        partitionOnTexture = loadSmooth("habitat/partition_wall_restored.png", 64, 240, COL_CYAN);
-        panelTexture = loadSmooth("habitat/water_panel.png", 110, 60, COL_CYAN);
-        pumpStationTexture = loadSmooth("habitat/pump_station.png", 160, 140, Color.valueOf("334155"));
-        bioDomeDeckOffTexture = loadSmooth("habitat/biodome_deck.png", 480, 320, Color.valueOf("1E293B"));
-        bioDomeDeckOnTexture = loadSmooth("habitat/biodome_deck_restored.png", 480, 320, Color.valueOf("1E293B"));
-        bioDomeCanopyTexture = loadSmooth("habitat/biodome_canopy.png", 480, 320, new Color(0.2f, 0.75f, 0.97f, 0.25f));
+        habAirlockTexture = loadPixel("habitat/hab_airlock.png", 288, 224, Color.valueOf("CBD5E1"));
+        solarDustyTexture = loadPixel("habitat/solar_array_dusty.png", 176, 88, Color.valueOf("78350F"));
+        solarCleanTexture = loadPixel("habitat/solar_array_clean.png", 176, 88, Color.valueOf("1D4ED8"));
+        partitionOffTexture = loadPixel("habitat/partition_wall.png", 64, 400, Color.valueOf("3B495E"));
+        partitionOnTexture = loadPixel("habitat/partition_wall_restored.png", 64, 400, COL_CYAN);
+        panelTexture = loadPixel("habitat/water_panel.png", 200, 80, COL_CYAN);
+        pumpStationTexture = loadPixel("habitat/pump_station.png", 192, 176, Color.valueOf("334155"));
+        bioDomeDeckOffTexture = loadPixel("habitat/biodome_deck.png", 600, 390, Color.valueOf("1E293B"));
+        bioDomeDeckOnTexture = loadPixel("habitat/biodome_deck_restored.png", 600, 390, Color.valueOf("1E293B"));
+        bioDomeCanopyTexture = loadPixel("habitat/biodome_canopy.png", 600, 390, new Color(0.2f, 0.75f, 0.97f, 0.25f));
 
-        roverTexture = loadSmooth("habitat/mars_rover.png", 128, 128, COL_AMBER);
+        roverTexture = loadPixel("habitat/mars_rover.png", 72, 64, COL_AMBER);
         roverRegion = new TextureRegion(roverTexture);
 
-        Texture astroSheet = loadSmooth("habitat/astronaut_eva_sheet.png", 256, 256, COL_TEXT_MAIN);
-        astronautFrames = TextureRegion.split(astroSheet, 64, 64);
+        Texture astroSheet = loadPixel("habitat/astronaut_eva_sheet.png", 192, 224, COL_TEXT_MAIN);
+        astronautFrames = TextureRegion.split(astroSheet, 48, 56);
+
+        Texture cropSheet = loadPixel("habitat/hydro_crops.png", 192, 64, COL_EMERALD);
+        cropFrames = TextureRegion.split(cropSheet, 64, 64)[0];
 
         lightGlowTexture = loadSmooth("habitat/light_glow.png", 128, 128, Color.WHITE);
 
@@ -176,141 +183,151 @@ public final class HabitatRenderer implements Disposable {
         updateRoverPresentation(puzzle, dt, reducedMotion, camera);
         updateParticles(dt);
 
-        // 1. Expanded Martian Regolith + Courtyard Terrain across 1680x1040
+        // 1. Crisp 2x Pixel Martian Regolith + Courtyard Terrain across 1680x1040 (64x64 tiles)
         batch.setColor(Color.WHITE);
         batch.setBlendFunctionSeparate(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA, GL20.GL_ONE, GL20.GL_ONE);
         batch.setProjectionMatrix(viewport.getCamera().combined);
         batch.begin();
-        for (int gy = 0; gy < (int) HabitatWorld.HEIGHT; gy += 128) {
-            for (int gx = 0; gx < (int) HabitatWorld.WIDTH; gx += 128) {
-                int variant = Math.floorMod((gx / 128) * 73856093 ^ (gy / 128) * 19349663, 4);
-                batch.draw(marsSoilVariants[variant], gx, gy, 128, 128);
+        for (int gy = 0; gy < (int) HabitatWorld.HEIGHT; gy += 64) {
+            for (int gx = 0; gx < (int) HabitatWorld.WIDTH; gx += 64) {
+                int variant = Math.floorMod((gx / 64) * 73856093 ^ (gy / 64) * 19349663, 4);
+                batch.draw(marsSoilVariants[variant], gx, gy, 64, 64);
             }
         }
         int floorRight = (int) HabitatWorld.FLOOR.right();
         int floorTop = (int) HabitatWorld.FLOOR.top();
-        for (int gy = (int) HabitatWorld.FLOOR.y(); gy < floorTop; gy += 128) {
-            int drawH = Math.min(128, floorTop - gy);
-            for (int gx = (int) HabitatWorld.FLOOR.x(); gx < floorRight; gx += 128) {
-                int drawW = Math.min(128, floorRight - gx);
+        for (int gy = (int) HabitatWorld.FLOOR.y(); gy < floorTop; gy += 64) {
+            int drawH = Math.min(64, floorTop - gy);
+            for (int gx = (int) HabitatWorld.FLOOR.x(); gx < floorRight; gx += 64) {
+                int drawW = Math.min(64, floorRight - gx);
                 batch.draw(floorTile, gx, gy, drawW, drawH);
             }
         }
 
-        // Organic craters around the perimeter and open dunes
-        batch.draw(craterLg, 92, 110, 148, 92);
-        batch.draw(craterSm, 460, 130, 96, 62);
-        batch.draw(craterLg, 790, 116, 152, 94);
-        batch.draw(craterSm, 440, 845, 102, 64);
-        batch.draw(craterLg, 1320, 118, 150, 92);
-        batch.draw(craterSm, 1420, 560, 96, 60);
+        // Crisp 2x Pixel Craters around perimeter & courtyard dunes
+        batch.draw(craterLg, 92, 110, 96, 56);
+        batch.draw(craterSm, 460, 130, 64, 40);
+        batch.draw(craterLg, 790, 116, 96, 56);
+        batch.draw(craterSm, 440, 845, 64, 40);
+        batch.draw(craterLg, 1320, 118, 96, 56);
+        batch.draw(craterSm, 1420, 560, 64, 40);
         batch.end();
 
-        // 2. Soft Canyon Bounds, Rover Track Breadcrumbs, & Curved Coolant Conduits
+        // 2. Stepped Pixel Canyon Rim, Rover Tire Marks & Industrial Coolant Conduits
         enableSafeAlphaBlend();
         shapes.setProjectionMatrix(viewport.getCamera().combined);
         shapes.begin(ShapeRenderer.ShapeType.Filled);
 
-        // Smooth rounded canyon perimeter collar (hollow rim around walkable FLOOR)
-        float bx1 = HabitatWorld.FLOOR.x() - 4f;
-        float by1 = HabitatWorld.FLOOR.y() - 4f;
-        float bx2 = HabitatWorld.FLOOR.right() + 4f;
-        float by2 = HabitatWorld.FLOOR.top() + 4f;
-        drawCapsulePipe(bx1, by1, bx2, by1, 4f, COL_CANYON_RIM, false);
-        drawCapsulePipe(bx1, by2, bx2, by2, 4f, COL_CANYON_RIM, false);
-        drawCapsulePipe(bx1, by1, bx1, by2, 4f, COL_CANYON_RIM, false);
-        drawCapsulePipe(bx2, by1, bx2, by2, 4f, COL_CANYON_RIM, false);
+        float fx = HabitatWorld.FLOOR.x();
+        float fy = HabitatWorld.FLOOR.y();
+        float fw = HabitatWorld.FLOOR.width();
+        float fh = HabitatWorld.FLOOR.height();
+        shapes.setColor(COL_CANYON_OUTER);
+        shapes.rect(fx - 8f, fy - 8f, fw + 16f, 8f);
+        shapes.rect(fx - 8f, fy + fh, fw + 16f, 8f);
+        shapes.rect(fx - 8f, fy, 8f, fh);
+        shapes.rect(fx + fw, fy, 8f, fh);
+        shapes.setColor(COL_CANYON_RIM);
+        shapes.rect(fx - 4f, fy - 4f, fw + 8f, 4f);
+        shapes.rect(fx - 4f, fy + fh, fw + 8f, 4f);
+        shapes.rect(fx - 4f, fy, 4f, fh);
+        shapes.rect(fx + fw, fy, 4f, fh);
 
-        // Subtle rover guidance tracks curving from Airlock Courtyard -> Bio-Dome Conservatory
-        Color trackCol = new Color(0.24f, 0.10f, 0.06f, 0.45f);
-        for (int i = 0; i < 16; i++) {
-            float tx = 290f + i * 38f;
-            float ty = 320f - (float) Math.sin(i * 0.25f) * 34f;
-            fillRoundedRect(tx, ty + 4f, 18f, 4.5f, 2.2f, trackCol);
-            fillRoundedRect(tx, ty - 8f, 18f, 4.5f, 2.2f, trackCol);
+        // Pixel rover tire tracks curving from Courtyard toward Bio-Dome steps
+        Color trackCol = new Color(0.24f, 0.10f, 0.06f, 0.50f);
+        shapes.setColor(trackCol);
+        for (int i = 0; i < 20; i++) {
+            float tx = Math.round(290f + i * 30f);
+            float ty = Math.round(320f - (float) Math.sin(i * 0.25f) * 30f);
+            shapes.rect(tx, ty + 4f, 12f, 4f);
+            shapes.rect(tx + 4f, ty - 6f, 12f, 4f);
         }
 
-        // Curved coolant & nutrient pipeline network across outpost zones
+        // Stepped industrial conduits (pixel-aligned pipes with joints)
         boolean bioDomeLit = restored || puzzle.completed();
         Color mainPipeCol = restored ? COL_CYAN : COL_PIPE_OFF;
         Color bioPipeCol = bioDomeLit ? COL_EMERALD : Color.valueOf("64748B");
 
-        drawCapsulePipe(250f, 550f, 558f, 550f, 6f, mainPipeCol, restored);
-        drawCapsulePipe(558f, 550f, 558f, 680f, 6f, mainPipeCol, restored);
-        drawCapsulePipe(260f, 800f, 558f, 800f, 5f, mainPipeCol, restored);
-        drawCapsulePipe(558f, 800f, 558f, 720f, 5f, mainPipeCol, restored);
-        drawCapsulePipe(558f, 706f, 672f, 706f, 6f, mainPipeCol, restored);
-        drawCapsulePipe(672f, 706f, 672f, 490f, 6f, mainPipeCol, restored);
-        drawCapsulePipe(672f, 460f, 870f, 460f, 7f, bioPipeCol, bioDomeLit);
-        drawCapsulePipe(1380f, 460f, 1460f, 460f, 6f, mainPipeCol, restored);
-        drawCapsulePipe(1460f, 460f, 1460f, 780f, 6f, mainPipeCol, restored);
+        drawPixelPipeH(250, 550, 558, 12, mainPipeCol, restored);
+        drawPixelPipeV(558, 550, 680, 12, mainPipeCol, restored);
+        drawPixelPipeH(260, 800, 558, 10, mainPipeCol, restored);
+        drawPixelPipeV(558, 720, 800, 10, mainPipeCol, restored);
+        drawPixelPipeH(558, 706, 672, 12, mainPipeCol, restored);
+        drawPixelPipeV(672, 460, 706, 12, mainPipeCol, restored);
+        drawPixelPipeH(672, 460, 864, 14, bioPipeCol, bioDomeLit);
+        drawPixelPipeH(1394, 460, 1460, 12, mainPipeCol, restored);
+        drawPixelPipeV(1460, 460, 780, 12, mainPipeCol, restored);
 
-        // Animated flow pulses along active conduits
+        // Pipe corner flange collars
+        drawPipeFlange(558, 550);
+        drawPipeFlange(558, 800);
+        drawPipeFlange(558, 706);
+        drawPipeFlange(672, 706);
+        drawPipeFlange(672, 460);
+        drawPipeFlange(1460, 460);
+
+        // Animated square energy flow blocks along active conduit
         if ((restored || bioDomeLit) && !reducedMotion) {
-            float flow = (animTime * 95f) % 190f;
-            shapes.setColor(0.84f, 0.99f, 1f, 0.9f);
-            shapes.circle(675f + flow, 460f, 4f, 12);
+            float flow = ((int) (animTime * 90f)) % 184;
+            shapes.setColor(0.84f, 0.99f, 1f, 0.95f);
+            shapes.rect(Math.round(676f + flow), 457f, 8f, 6f);
         }
 
-        // Subtle animated navigation beacons from Airlock Plaza to Bio-Dome Entrance
+        // Pixel navigation guide squares toward Bio-Dome entrance
         for (int b = 0; b < 5; b++) {
             float bx = 370f + b * 124f;
             float by = 290f + (b > 2 ? (b - 2) * 48f : 0f);
-            float beaconPulse = reducedMotion ? 0.6f : (0.35f + 0.45f * Math.max(0f, (float) Math.sin(animTime * 3.5f - b * 0.7f)));
+            float beaconPulse = reducedMotion ? 0.65f : (0.35f + 0.55f * Math.max(0f, (float) Math.sin(animTime * 3.5f - b * 0.7f)));
+            shapes.setColor(COL_PIPE_DARK);
+            shapes.rect(bx - 5f, by - 5f, 10f, 10f);
             shapes.setColor(COL_CYAN.r, COL_CYAN.g, COL_CYAN.b, beaconPulse);
-            shapes.circle(bx, by, 4.5f, 14);
+            shapes.rect(bx - 3f, by - 3f, 6f, 6f);
         }
         shapes.end();
 
-        // 3. Textured Grated Walkways, Boulders, Outpost Structures & Expanded Bio-Dome Conservatory
+        // 3. Pixel Grated Walkways, Rocks, Crates, Outpost Structures & Bio-Dome
         batch.begin();
         batch.setColor(Color.WHITE);
 
-        // Grated outpost walkways framing natural exploration path
-        drawTiledWalkwayV(batch, 198, 355, 42, 130);
-        drawTiledWalkwayH(batch, 250, 700, 260, 38);
-        drawTiledWalkwayH(batch, 710, 442, 178, 38);
-        drawTiledWalkwayV(batch, 1120, 620, 42, 140);
+        drawTiledWalkwayV(batch, 198, 355, 44, 130);
+        drawTiledWalkwayH(batch, 250, 700, 260, 40);
+        drawTiledWalkwayH(batch, 710, 442, 160, 40);
+        drawTiledWalkwayV(batch, 1120, 620, 44, 140);
 
-        // Smooth rounded Martian boulders & supply pods
-        batch.draw(rockA, 380, 240, 48, 42);
-        batch.draw(rockB, 560, 250, 42, 36);
-        batch.draw(rockA, 780, 740, 52, 44);
-        batch.draw(rockB, 1440, 290, 44, 38);
-        batch.draw(rockA, 920, 810, 48, 40);
-        batch.draw(cargoCrate, 315, 485, 36, 36);
-        batch.draw(cargoCrate, 354, 495, 32, 32);
+        batch.draw(rockA, 380, 240, 44, 36);
+        batch.draw(rockB, 560, 250, 36, 28);
+        batch.draw(rockA, 780, 740, 44, 36);
+        batch.draw(rockB, 1440, 290, 36, 28);
+        batch.draw(rockA, 920, 810, 44, 36);
+        batch.draw(cargoCrate, 315, 485, 32, 32);
+        batch.draw(cargoCrate, 350, 492, 32, 32);
 
-        // West Outpost Buildings: Hab Airlock Dome & North-West Solar Wing
         batch.draw(habAirlockTexture, HabitatWorld.HAB_AIRLOCK.x(), HabitatWorld.HAB_AIRLOCK.y(),
             HabitatWorld.HAB_AIRLOCK.width(), HabitatWorld.HAB_AIRLOCK.height());
         batch.draw(restored ? solarCleanTexture : solarDustyTexture,
             HabitatWorld.SOLAR_WING.x(), HabitatWorld.SOLAR_WING.y(),
             HabitatWorld.SOLAR_WING.width(), HabitatWorld.SOLAR_WING.height());
 
-        // Central Conduit Spine
         batch.draw(restored ? partitionOnTexture : partitionOffTexture,
             HabitatWorld.PARTITION.x(), HabitatWorld.PARTITION.y(),
             HabitatWorld.PARTITION.width(), HabitatWorld.PARTITION.height());
 
-        // Telemetry & Water Panel Relay
         batch.draw(panelTexture,
             HabitatWorld.Facility.PANEL.bounds.x(), HabitatWorld.Facility.PANEL.bounds.y(),
             HabitatWorld.Facility.PANEL.bounds.width(), HabitatWorld.Facility.PANEL.bounds.height());
 
-        // North-East Booster Pump Dome
         batch.draw(pumpStationTexture,
             HabitatWorld.PUMP_STATION.x(), HabitatWorld.PUMP_STATION.y(),
             HabitatWorld.PUMP_STATION.width(), HabitatWorld.PUMP_STATION.height());
 
-        // Expansive Circular-Oval Bio-Dome Conservatory enclosing GARDEN(960, 360, 360, 200)
+        // Crisp 2x Pixel Octagonal Bio-Dome Deck
         float domeX = HabitatWorld.GARDEN.x() - 120f;
         float domeY = HabitatWorld.GARDEN.y() - 95f;
         float domeW = HabitatWorld.GARDEN.width() + 240f; // 600
         float domeH = HabitatWorld.GARDEN.height() + 190f; // 390
         batch.draw(bioDomeLit ? bioDomeDeckOnTexture : bioDomeDeckOffTexture, domeX, domeY, domeW, domeH);
 
-        // Soft Dust Trail + Astronaut EVA Sprite (drawn on top of walkways, beside dome walls)
+        // Pixel Dust Trail + Astronaut EVA Sprite (48x56 frames)
         batch.end();
         drawParticles();
         batch.begin();
@@ -321,13 +338,13 @@ public final class HabitatRenderer implements Disposable {
         float drawAY = world.y() - 4f;
         batch.draw(astroRegion, drawAX, drawAY, HabitatWorld.PLAYER_WIDTH + 12f, HabitatWorld.PLAYER_HEIGHT + 12f);
 
-        // Translucent peripheral skylight dome arcs around Bio-Dome
-        batch.setColor(1f, 1f, 1f, 0.55f);
+        // Geodesic Glass Rim Overlay
+        batch.setColor(1f, 1f, 1f, 0.72f);
         batch.draw(bioDomeCanopyTexture, domeX, domeY, domeW, domeH);
         batch.setColor(Color.WHITE);
         batch.end();
 
-        // 4. Smooth Additive Radial Lighting
+        // 4. Pathway-style Soft Additive 2D Point Glows
         batch.setBlendFunctionSeparate(GL20.GL_SRC_ALPHA, GL20.GL_ONE, GL20.GL_ZERO, GL20.GL_ONE);
         batch.begin();
         drawRadialGlow(batch, HabitatWorld.HAB_AIRLOCK.centerX(), HabitatWorld.HAB_AIRLOCK.centerY(),
@@ -348,49 +365,48 @@ public final class HabitatRenderer implements Disposable {
         batch.setColor(Color.WHITE);
         batch.setBlendFunctionSeparate(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA, GL20.GL_ONE, GL20.GL_ONE);
 
-        // 5. Rounded Interaction Rings (no harsh corners!)
+        // 5. Pixel L-Corner Interaction Brackets & Ambient Martian Pixel Dust Motes
         enableSafeAlphaBlend();
         shapes.begin(ShapeRenderer.ShapeType.Filled);
         if (nearby == HabitatWorld.Facility.PANEL || panelHovered) {
-            drawRoundedInteractionHalo(HabitatWorld.Facility.PANEL.bounds, COL_CYAN, 16f, 0.85f);
+            drawPixelCornerBrackets(HabitatWorld.Facility.PANEL.bounds, COL_CYAN, 8f, 16f, 3f, 0.92f);
         }
         if (nearby == HabitatWorld.Facility.ROVER) {
-            drawRoundedInteractionHalo(HabitatWorld.GARDEN, COL_CYAN, 16f, 0.45f * pulse);
+            drawPixelCornerBrackets(HabitatWorld.GARDEN, COL_CYAN, 8f, 22f, 3f, 0.72f * pulse);
         }
 
-        // Subtle Martian ambient dust motes around camera focus
         if (!reducedMotion) {
-            shapes.setColor(0.98f, 0.78f, 0.62f, 0.24f);
+            shapes.setColor(0.98f, 0.78f, 0.62f, 0.28f);
             for (int i = 0; i < 16; i++) {
-                float dx = ((180f * i + animTime * (18f + (i % 5) * 4f)) % (HabitatWorld.WIDTH - 120f)) + 60f;
-                float dy = ((110f * i + 95f) % (HabitatWorld.HEIGHT - 120f)) + 60f;
-                shapes.circle(dx, dy, 1.8f, 8);
+                float dx = Math.round(((180f * i + animTime * (18f + (i % 5) * 4f)) % (HabitatWorld.WIDTH - 120f)) + 60f);
+                float dy = Math.round(((110f * i + 95f) % (HabitatWorld.HEIGHT - 120f)) + 60f);
+                shapes.rect(dx, dy, 3f, 3f);
             }
         }
         shapes.end();
 
-        // 6. Active Bio-Dome Hydroponic Pods + Smooth Rover Replay & Clickable Highlight
+        // 6. Crisp Pixel Hydroponic Beds + Smooth Rover Presentation & Scanner FX
         drawBioDomePuzzle(puzzle, roverHovered, nearby == HabitatWorld.Facility.ROVER, world.mode(), pulse);
 
-        // 7. Minimal Contextual Rounded World Pills (no cluttered text walls over map)
-        drawWorldPill("AIRLOCK HAB", HabitatWorld.HAB_AIRLOCK.centerX(), HabitatWorld.HAB_AIRLOCK.y() - 16f,
+        // 7. Sleek Contextual World Tags
+        drawWorldBadge("AIRLOCK HAB", HabitatWorld.HAB_AIRLOCK.centerX(), HabitatWorld.HAB_AIRLOCK.y() - 16f,
             restored ? COL_EMERALD : COL_AMBER, COL_TEXT_MAIN, false);
 
         if (nearby == HabitatWorld.Facility.PANEL || panelHovered) {
-            drawWorldPill("[E] / Klik Panel Telemetri",
+            drawWorldBadge("[E] / Klik Panel Telemetri",
                 HabitatWorld.Facility.PANEL.bounds.centerX(),
                 HabitatWorld.Facility.PANEL.bounds.top() + 18f,
                 COL_CYAN, COL_CYAN, true);
         }
 
         if (puzzle.completed()) {
-            drawWorldPill("PANEN BIO-DOME SELESAI", HabitatWorld.GARDEN.centerX(), HabitatWorld.GARDEN.top() + 36f,
+            drawWorldBadge(puzzle.puzzle().watering() ? "IRIGASI BIO-DOME SELESAI" : "PANEN BIO-DOME SELESAI", HabitatWorld.GARDEN.centerX(), HabitatWorld.GARDEN.top() + 34f,
                 COL_EMERALD, COL_EMERALD, true);
         } else if (world.mode() == HabitatWorld.Mode.EXPLORING) {
             String bioTag = (roverHovered || nearby == HabitatWorld.Facility.ROVER)
                 ? "Klik Rover / [E] Buka Editor"
-                : "BIO-DOME P1 (" + puzzle.snapshot().remainingTargets().size() + "/2 target)";
-            drawWorldPill(bioTag, HabitatWorld.GARDEN.centerX(), HabitatWorld.GARDEN.top() + 36f,
+                : "BIO-DOME P" + puzzle.puzzle().number() + " (" + puzzle.snapshot().remainingTargets().size() + "/" + puzzle.puzzle().targetCount() + " target)";
+            drawWorldBadge(bioTag, HabitatWorld.GARDEN.centerX(), HabitatWorld.GARDEN.top() + 34f,
                 (roverHovered || nearby == HabitatWorld.Facility.ROVER) ? COL_CYAN : COL_AMBER,
                 (roverHovered || nearby == HabitatWorld.Facility.ROVER) ? COL_CYAN : COL_TEXT_MAIN,
                 roverHovered || nearby == HabitatWorld.Facility.ROVER);
@@ -399,7 +415,7 @@ public final class HabitatRenderer implements Disposable {
         if (harvestTagTimer > 0f) {
             float alpha = Math.min(1f, harvestTagTimer * 2.2f);
             float liftY = (0.75f - harvestTagTimer) * 28f;
-            drawWorldPill("+1 PANEN", harvestTagX, harvestTagY + liftY,
+            drawWorldBadge("+1 PANEN", harvestTagX, harvestTagY + liftY,
                 new Color(COL_EMERALD.r, COL_EMERALD.g, COL_EMERALD.b, alpha),
                 new Color(COL_TEXT_MAIN.r, COL_TEXT_MAIN.g, COL_TEXT_MAIN.b, alpha), true);
         }
@@ -415,7 +431,7 @@ public final class HabitatRenderer implements Disposable {
         HabitatWorld.Mode mode,
         float pulse
     ) {
-        int cols = 2;
+        int cols = view.puzzle().columns();
         boolean completed = view.completed();
         boolean running = view.status() == RunCoordinator.Status.PREPARING
             || view.status() == RunCoordinator.Status.RUNNING
@@ -424,17 +440,22 @@ public final class HabitatRenderer implements Disposable {
         enableSafeAlphaBlend();
         shapes.begin(ShapeRenderer.ShapeType.Filled);
 
-        // Soft glowing hydroponic pad tray inside Bio-Dome
+        // Stepped crisp steel hydroponic bay frame inside Bio-Dome
         Color frameColor = completed ? COL_EMERALD : (running ? COL_CYAN : Color.valueOf("334155"));
-        fillRoundedRect(HabitatWorld.GARDEN.x(), HabitatWorld.GARDEN.y(),
-            HabitatWorld.GARDEN.width(), HabitatWorld.GARDEN.height(), 28f, frameColor);
-        fillRoundedRect(HabitatWorld.GARDEN.x() + 2.5f, HabitatWorld.GARDEN.y() + 2.5f,
-            HabitatWorld.GARDEN.width() - 5f, HabitatWorld.GARDEN.height() - 5f, 26f, Color.valueOf("0E1722"));
+        float gx = HabitatWorld.GARDEN.x(), gy = HabitatWorld.GARDEN.y();
+        float gw = HabitatWorld.GARDEN.width(), gh = HabitatWorld.GARDEN.height();
+        drawBevelRect(gx, gy, gw, gh, 6f, frameColor);
+        drawBevelRect(gx + 3f, gy + 3f, gw - 6f, gh - 6f, 5f, Color.valueOf("0B131E"));
 
-        // Track trajectory trace connecting cell (0,0) and cell (1,0)
+        // Stepped rail track connecting cell (0,0) and cell (1,0)
         HabitatWorld.Box c0 = HabitatWorld.hydroCellBox(0, 0, cols);
         HabitatWorld.Box c1 = HabitatWorld.hydroCellBox(1, 0, cols);
-        fillCapsule(c0.centerX(), c0.centerY(), c1.centerX(), c1.centerY(), 6f, Color.valueOf("1E293B"));
+        shapes.setColor(Color.valueOf("1E293B"));
+        shapes.rect(c0.centerX(), c0.centerY() - 5f, c1.centerX() - c0.centerX(), 10f);
+        shapes.setColor(Color.valueOf("334155"));
+        for (float rx = c0.centerX() + 12f; rx < c1.centerX() - 8f; rx += 14f) {
+            shapes.rect(rx, c0.centerY() - 7f, 4f, 14f);
+        }
 
         for (int cell = 0; cell < cols; cell++) {
             HabitatWorld.Box box = HabitatWorld.hydroCellBox(cell, 0, cols);
@@ -442,60 +463,46 @@ public final class HabitatRenderer implements Disposable {
             RobotSimulation.Crop crop = view.snapshot().crops()
                 .getOrDefault(new RobotSimulation.Position(cell, 0), RobotSimulation.Crop.EMPTY);
 
-            // Organic rounded hydroponic pod (zero blocky sharp boxes)
-            Color podRim = hasRoverHere ? COL_CYAN
+            // Pixel-bevel planter tray frame + rich furrowed soil
+            boolean dry = view.puzzle().watering() && view.snapshot().dryCells().contains(new RobotSimulation.Position(cell,0));
+            Color podRim = view.puzzle().watering() ? (dry ? COL_AMBER : COL_CYAN) : hasRoverHere ? COL_CYAN
                 : (crop == RobotSimulation.Crop.EMPTY ? COL_EMERALD : Color.valueOf("475569"));
-            fillRoundedRect(box.x(), box.y(), box.width(), box.height(), 18f, podRim);
-            fillRoundedRect(box.x() + 2.2f, box.y() + 2.2f, box.width() - 4.4f, box.height() - 4.4f, 16f,
-                Color.valueOf("1F1410"));
+            drawBevelRect(box.x(), box.y(), box.width(), box.height(), 4f, podRim);
+            drawBevelRect(box.x() + 2f, box.y() + 2f, box.width() - 4f, box.height() - 4f, 3f, view.puzzle().watering() ? Color.valueOf(dry ? "4D2C17" : "153F4A") : Color.valueOf("21130E"));
 
-            // Smooth curved irrigated soil furrow arcs
-            shapes.setColor(crop == RobotSimulation.Crop.EMPTY ? Color.valueOf("170F0C") : Color.valueOf("301D16"));
+            // Stepped furrow stripes across hydroponic bed
+            shapes.setColor(crop == RobotSimulation.Crop.EMPTY ? Color.valueOf("160C09") : Color.valueOf("341D14"));
             for (int r = 0; r < 3; r++) {
-                fillCapsule(box.x() + 14f, box.y() + 22f + r * 28f, box.right() - 14f, box.y() + 22f + r * 28f,
-                    5f, shapes.getColor());
+                shapes.rect(box.x() + 10f, box.y() + 16f + r * 26f, box.width() - 20f, 8f);
             }
 
-            // Left circular Rover docking pad inside pod
+            // Left crisp Rover docking bay plate inside plot
             float padX = box.x() + 34f;
             float padY = box.y() + 50f;
-            shapes.setColor(hasRoverHere ? new Color(COL_CYAN.r, COL_CYAN.g, COL_CYAN.b, 0.24f) : new Color(0.12f, 0.18f, 0.27f, 0.72f));
-            shapes.circle(padX, padY, 22f, 20);
-
-            // Right circular botanical planter socket
-            float plantX = box.x() + 90f;
-            float plantY = box.y() + 54f;
-            shapes.setColor(Color.valueOf("162232"));
-            shapes.circle(plantX, plantY, 24f, 24);
-            shapes.setColor(crop == RobotSimulation.Crop.EMPTY ? Color.valueOf("1E130F") : Color.valueOf("2A1A14"));
-            shapes.circle(plantX, plantY, 20f, 24);
-
-            // Smooth Botanical Crops (curved leaves & glowing golden produce)
-            float breathe = HabitatUi.isReducedMotion() ? 1f : (1f + 0.04f * (float) Math.sin(animTime * 2.5f + cell));
-            float popScale = harvestPopTimer[cell] > 0f ? (1f + harvestPopTimer[cell] * 0.45f) : 1f;
-            if (crop == RobotSimulation.Crop.RIPE) {
-                drawRipeBotanicalPlant(plantX, plantY, breathe * popScale);
-            } else if (crop == RobotSimulation.Crop.YOUNG) {
-                drawYoungSprout(plantX, plantY, breathe);
-            } else {
-                // Cleanly harvested dark moist crater + subtle green ring
-                shapes.setColor(Color.valueOf("472B1F"));
-                shapes.circle(plantX, plantY, 10f, 16);
-                shapes.setColor(COL_EMERALD.r, COL_EMERALD.g, COL_EMERALD.b, 0.55f);
-                drawRing(plantX, plantY, 18f, 2f);
+            drawBevelRect(padX - 20f, padY - 18f, 40f, 36f, 4f,
+                hasRoverHere ? new Color(COL_CYAN.r, COL_CYAN.g, COL_CYAN.b, 0.30f) : Color.valueOf("182434"));
+            if (hasRoverHere) {
+                drawPixelCornerBrackets(new HabitatWorld.Box(padX - 22f, padY - 20f, 44f, 40f), COL_CYAN, 0f, 7f, 2f, 0.9f);
             }
 
-            // Expanding harvest ring pop
+            // Right planter socket rim (pixel square bevel)
+            float plantX = cols <= 2 ? box.x() + 90f : box.centerX();
+            float plantY = cols <= 2 ? box.y() + 52f : box.y() + 80f;
+            drawBevelRect(plantX - 22f, plantY - 22f, 44f, 44f, 5f, Color.valueOf("152232"));
+            drawBevelRect(plantX - 18f, plantY - 18f, 36f, 36f, 4f,
+                crop == RobotSimulation.Crop.EMPTY ? Color.valueOf("1A100C") : Color.valueOf("261610"));
+
+            // Pixel harvest expansion square pulse
             if (harvestPopTimer[cell] > 0f) {
                 float p = 1f - harvestPopTimer[cell] / 0.45f;
                 float ringAlpha = 1f - p;
-                shapes.setColor(COL_EMERALD.r, COL_EMERALD.g, COL_EMERALD.b, ringAlpha);
-                drawRing(plantX, plantY, 18f + p * 26f, 2.6f);
+                float rad = 18f + p * 22f;
+                drawSquareOutline(plantX - rad, plantY - rad, rad * 2f, rad * 2f, 3f,
+                    new Color(COL_EMERALD.r, COL_EMERALD.g, COL_EMERALD.b, ringAlpha));
             }
 
-            // Rounded coordinate capsule strictly below each bed
-            fillRoundedRect(box.centerX() - 28f, HabitatWorld.GARDEN.y() + 12f, 56f, 22f, 11f,
-                Color.valueOf("0A111B"));
+            // Coordinate plate below bed
+            drawBevelRect(box.centerX() - 26f, gy + 10f, 52f, 20f, 3f, Color.valueOf("08101A"));
         }
 
         // Smooth Rover position in world coordinates
@@ -503,44 +510,58 @@ public final class HabitatRenderer implements Disposable {
         float roverCx = roverBox.centerX();
         float roverCy = roverBox.centerY();
 
-        // Status sonar pulse (on error / limit / complete)
         if (statusPulseTimer > 0f) {
             float prog = 1f - statusPulseTimer / 0.65f;
-            shapes.setColor(statusPulseColor.r, statusPulseColor.g, statusPulseColor.b, (1f - prog) * 0.85f);
-            drawRing(roverCx, roverCy, 24f + prog * 34f, 3f);
+            float rad = 24f + prog * 30f;
+            drawSquareOutline(roverCx - rad, roverCy - rad, rad * 2f, rad * 2f, 3f,
+                new Color(statusPulseColor.r, statusPulseColor.g, statusPulseColor.b, (1f - prog) * 0.9f));
         }
 
-        // Hover / nearby clickable halo around rover
         if ((roverHovered || roverNearby) && mode == HabitatWorld.Mode.EXPLORING) {
-            float haloR = 32f + 2f * pulse;
-            shapes.setColor(COL_CYAN.r, COL_CYAN.g, COL_CYAN.b, roverHovered ? 0.24f : 0.14f);
-            shapes.circle(roverCx, roverCy, haloR, 28);
-            shapes.setColor(COL_CYAN.r, COL_CYAN.g, COL_CYAN.b, roverHovered ? 0.95f : 0.72f);
-            drawRing(roverCx, roverCy, haloR, 2.2f);
+            float pad = 28f + 2f * pulse;
+            HabitatWorld.Box hoverBox = new HabitatWorld.Box(roverCx - pad, roverCy - pad, pad * 2f, pad * 2f);
+            shapes.setColor(COL_CYAN.r, COL_CYAN.g, COL_CYAN.b, roverHovered ? 0.20f : 0.10f);
+            shapes.rect(hoverBox.x(), hoverBox.y(), hoverBox.width(), hoverBox.height());
+            drawPixelCornerBrackets(hoverBox, COL_CYAN, 0f, 10f, 2.5f, roverHovered ? 0.95f : 0.72f);
         }
 
-        // Harvest Scanner / Pincer Laser Beam during harvest() replay
+        // Pixel scanner harvest laser beam during replay
         if (scanBeamTimer > 0f) {
             float beamAlpha = Math.min(1f, scanBeamTimer / 0.22f);
-            Color beamOuter = new Color(COL_EMERALD.r, COL_EMERALD.g, COL_EMERALD.b, beamAlpha * 0.45f);
-            Color beamCore = new Color(0.85f, 1f, 0.96f, beamAlpha * 0.92f);
-            fillCapsule(beamFromX, beamFromY, beamToX, beamToY, 6f, beamOuter);
-            fillCapsule(beamFromX, beamFromY, beamToX, beamToY, 2.2f, beamCore);
-            shapes.setColor(COL_EMERALD.r, COL_EMERALD.g, COL_EMERALD.b, beamAlpha * 0.8f);
-            shapes.circle(beamToX, beamToY, 9f + (1f - beamAlpha) * 10f, 18);
+            shapes.setColor(COL_EMERALD.r, COL_EMERALD.g, COL_EMERALD.b, beamAlpha * 0.48f);
+            shapes.rectLine(beamFromX, beamFromY, beamToX, beamToY, 8f);
+            shapes.setColor(0.85f, 1f, 0.96f, beamAlpha * 0.95f);
+            shapes.rectLine(beamFromX, beamFromY, beamToX, beamToY, 3f);
+            float spark = 8f + (1f - beamAlpha) * 8f;
+            shapes.setColor(COL_EMERALD.r, COL_EMERALD.g, COL_EMERALD.b, beamAlpha * 0.85f);
+            shapes.rect(beamToX - spark * 0.5f, beamToY - spark * 0.5f, spark, spark);
         }
 
         shapes.end();
 
-        // Draw rotated smooth Mars Rover sprite + coordinate text
+        // Draw crisp 2x pixel crops + rotated East-facing pixel Mars Rover + coordinate labels
         batch.begin();
         batch.setColor(Color.WHITE);
-        float rSize = 54f;
+        for (int cell = 0; cell < cols; cell++) {
+            HabitatWorld.Box box = HabitatWorld.hydroCellBox(cell, 0, cols);
+            RobotSimulation.Crop crop = view.snapshot().crops()
+                .getOrDefault(new RobotSimulation.Position(cell, 0), RobotSimulation.Crop.EMPTY);
+            float plantX = cols <= 2 ? box.x() + 90f : box.centerX();
+            float plantY = cols <= 2 ? box.y() + 52f : box.y() + 80f;
+            float breathe = HabitatUi.isReducedMotion() ? 1f : (1f + 0.03f * (float) Math.sin(animTime * 2.5f + cell));
+            float popScale = harvestPopTimer[cell] > 0f ? (1f + harvestPopTimer[cell] * 0.40f) : 1f;
+            float size = 48f * (crop == RobotSimulation.Crop.EMPTY ? 1f : breathe * popScale);
+            TextureRegion cropSprite = crop == RobotSimulation.Crop.RIPE ? cropFrames[0]
+                : (crop == RobotSimulation.Crop.YOUNG ? cropFrames[1] : cropFrames[2]);
+            batch.draw(cropSprite, plantX - size * 0.5f, plantY - size * 0.5f, size, size);
+        }
+
+        float rW = 52f, rH = 46f;
         batch.draw(
             roverRegion,
-            roverCx - rSize * 0.5f, roverCy - rSize * 0.5f,
-            rSize * 0.5f, rSize * 0.5f,
-            rSize, rSize,
+            roverCx - rW * 0.5f, roverCy - rH * 0.5f,
+            rW * 0.5f, rH * 0.5f,
+            rW, rH,
             1f, 1f,
             visualRoverAngleDeg
         );
@@ -551,40 +572,16 @@ public final class HabitatRenderer implements Disposable {
             String coord = "(" + cell + ",0)";
             layout.setText(font, coord);
             font.setColor(hasRoverHere ? COL_CYAN : COL_TEXT_MAIN);
-            font.draw(batch, coord, box.centerX() - layout.width * 0.5f, HabitatWorld.GARDEN.y() + 28f);
+            font.draw(batch, coord, box.centerX() - layout.width * 0.5f, gy + 26f);
+            if (view.puzzle().watering()) {
+                boolean dry = view.snapshot().dryCells().contains(new RobotSimulation.Position(cell,0));
+                String moisture = dry ? "KERING" : "LEMBAP";
+                layout.setText(font,moisture); font.setColor(dry ? COL_AMBER : COL_CYAN);
+                font.draw(batch,moisture,box.centerX()-layout.width*0.5f,box.top()+18f);
+            }
         }
         font.setColor(Color.WHITE);
         batch.end();
-    }
-
-    private void drawRipeBotanicalPlant(float cx, float cy, float scale) {
-        shapes.setColor(Color.valueOf("065F46"));
-        shapes.circle(cx, cy, 16f * scale, 20);
-        shapes.setColor(Color.valueOf("10B981"));
-        for (int l = 0; l < 5; l++) {
-            double ang = l * (Math.PI * 2.0 / 5.0) + 0.3;
-            shapes.circle(
-                cx + (float) Math.cos(ang) * 9f * scale,
-                cy + (float) Math.sin(ang) * 9f * scale,
-                8.5f * scale, 16
-            );
-        }
-        shapes.setColor(COL_EMERALD);
-        shapes.circle(cx, cy, 8f * scale, 16);
-        shapes.setColor(COL_AMBER);
-        shapes.circle(cx - 5f * scale, cy + 4f * scale, 4.5f * scale, 14);
-        shapes.circle(cx + 6f * scale, cy - 3f * scale, 4.2f * scale, 14);
-        shapes.setColor(Color.valueOf("FDE68A"));
-        shapes.circle(cx - 6f * scale, cy + 5f * scale, 1.8f * scale, 10);
-        shapes.circle(cx + 5f * scale, cy - 2f * scale, 1.6f * scale, 10);
-    }
-
-    private void drawYoungSprout(float cx, float cy, float scale) {
-        shapes.setColor(Color.valueOf("10B981"));
-        shapes.circle(cx, cy, 5f * scale, 14);
-        shapes.setColor(COL_EMERALD);
-        shapes.circle(cx - 6f * scale, cy + 3f * scale, 4.5f * scale, 12);
-        shapes.circle(cx + 6f * scale, cy + 3f * scale, 4.5f * scale, 12);
     }
 
     private void updateAstronautAnimation(HabitatWorld world, float dt, boolean reducedMotion) {
@@ -599,7 +596,6 @@ public final class HabitatRenderer implements Disposable {
             } else {
                 astroDir = fy > 0f ? 1 : 0;
             }
-            // Spawn gentle EVA dust puffs beneath boots while walking
             if (!reducedMotion) {
                 dustSpawnTimer -= dt;
                 if (dustSpawnTimer <= 0f) {
@@ -610,8 +606,8 @@ public final class HabitatRenderer implements Disposable {
                         -world.vx() * 0.14f + MathUtils.random(-8f, 8f),
                         MathUtils.random(4f, 14f),
                         0.38f,
-                        3.8f,
-                        new Color(0.84f, 0.55f, 0.38f, 0.45f)
+                        5f,
+                        new Color(0.84f, 0.55f, 0.38f, 0.52f)
                     );
                 }
             }
@@ -631,10 +627,13 @@ public final class HabitatRenderer implements Disposable {
         float targetX = snap.robot().x();
         float targetY = snap.robot().y();
 
-        if (trackedGeneration != view.generation() || view.status() == RunCoordinator.Status.READY) {
-            boolean freshRun = trackedGeneration != view.generation();
+        if (trackedGeneration != view.generation() || !trackedScenario.equals(view.scenarioId()) || view.status() == RunCoordinator.Status.READY) {
+            boolean freshRun = trackedGeneration != view.generation() || !trackedScenario.equals(view.scenarioId());
             trackedGeneration = view.generation();
+            trackedScenario = view.scenarioId();
             if (freshRun) {
+                harvestTagTimer = 0f;
+                java.util.Arrays.fill(harvestPopTimer, 0f);
                 visualRoverCellX = targetX;
                 visualRoverCellY = targetY;
                 visualRoverAngleDeg = 0f;
@@ -645,7 +644,6 @@ public final class HabitatRenderer implements Disposable {
             }
         }
 
-        // Smooth glide toward current snapshot rover coordinates
         float dx = targetX - visualRoverCellX;
         float dy = targetY - visualRoverCellY;
         if (reducedMotion || dt <= 0f) {
@@ -659,12 +657,10 @@ public final class HabitatRenderer implements Disposable {
                 float desiredAngle = MathUtils.atan2(dy, dx) * MathUtils.radiansToDegrees;
                 visualRoverAngleDeg = lerpAngleDeg(visualRoverAngleDeg, desiredAngle, 1f - (float) Math.exp(-14f * dt));
             } else {
-                // Gently orient toward east-facing plant pod when parked
                 visualRoverAngleDeg = lerpAngleDeg(visualRoverAngleDeg, 0f, 1f - (float) Math.exp(-6f * dt));
             }
         }
 
-        // Detect crop transitions (RIPE -> EMPTY) to fire smooth scanner laser + particle burst
         for (Map.Entry<RobotSimulation.Position, RobotSimulation.Crop> entry : snap.crops().entrySet()) {
             RobotSimulation.Position pos = entry.getKey();
             RobotSimulation.Crop cur = entry.getValue();
@@ -673,11 +669,11 @@ public final class HabitatRenderer implements Disposable {
                 int idx = Math.max(0, Math.min(harvestPopTimer.length - 1, pos.x()));
                 harvestPopTimer[idx] = 0.45f;
                 HabitatWorld.Box pod = HabitatWorld.hydroCellBox(pos.x(), pos.y(), 2);
-                HabitatWorld.Box rover = HabitatWorld.roverBayBox(visualRoverCellX, visualRoverCellY, 2);
+                HabitatWorld.Box rover = HabitatWorld.roverBayBox(visualRoverCellX, visualRoverCellY, view.puzzle().columns());
                 beamFromX = rover.centerX() + 14f;
                 beamFromY = rover.centerY();
-                beamToX = pod.x() + 90f;
-                beamToY = pod.y() + 54f;
+                beamToX = view.puzzle().columns() <= 2 ? pod.x() + 90f : pod.centerX();
+                beamToY = view.puzzle().columns() <= 2 ? pod.y() + 52f : pod.y() + 80f;
                 scanBeamTimer = 0.36f;
                 harvestTagTimer = 0.75f;
                 harvestTagX = beamToX;
@@ -692,7 +688,7 @@ public final class HabitatRenderer implements Disposable {
                         spawnParticle(
                             beamToX, beamToY,
                             MathUtils.cos(ang) * spd, MathUtils.sin(ang) * spd + 12f,
-                            0.52f, 3.6f,
+                            0.52f, 5f,
                             p % 3 == 0 ? COL_AMBER : COL_EMERALD
                         );
                     }
@@ -702,7 +698,6 @@ public final class HabitatRenderer implements Disposable {
         prevCrops.clear();
         prevCrops.putAll(snap.crops());
 
-        // Trigger status sonar pulse on runtime transitions
         if (view.status() != prevStatus) {
             prevStatus = view.status();
             if (view.status() == RunCoordinator.Status.SUCCESS) {
@@ -765,8 +760,9 @@ public final class HabitatRenderer implements Disposable {
         shapes.begin(ShapeRenderer.ShapeType.Filled);
         for (WorldParticle p : particles) {
             float alpha = Math.max(0f, 1f - p.age / p.life) * p.color.a;
+            float sz = Math.max(2f, Math.round(p.size * (1f - 0.3f * (p.age / p.life))));
             shapes.setColor(p.color.r, p.color.g, p.color.b, alpha);
-            shapes.circle(p.x, p.y, p.size * (1f - 0.3f * (p.age / p.life)), 12);
+            shapes.rect(Math.round(p.x - sz * 0.5f), Math.round(p.y - sz * 0.5f), sz, sz);
         }
         shapes.end();
     }
@@ -787,49 +783,64 @@ public final class HabitatRenderer implements Disposable {
         }
     }
 
-    private void drawCapsulePipe(float x1, float y1, float x2, float y2, float radius, Color pipeCol, boolean glowing) {
-        fillCapsule(x1, y1, x2, y2, radius + 3f, COL_PIPE_DARK);
-        fillCapsule(x1, y1, x2, y2, radius, pipeCol);
-        if (glowing) {
-            fillCapsule(x1, y1, x2, y2, radius * 0.45f, new Color(0.84f, 0.99f, 1f, 0.85f));
-        }
+    private void drawPixelPipeH(float x1, float y, float x2, float thick, Color pipeCol, boolean glowing) {
+        float minX = Math.min(x1, x2), w = Math.abs(x2 - x1);
+        shapes.setColor(COL_PIPE_DARK);
+        shapes.rect(minX - 2f, y - thick * 0.5f - 2f, w + 4f, thick + 4f);
+        shapes.setColor(pipeCol);
+        shapes.rect(minX, y - thick * 0.5f, w, thick);
+        shapes.setColor(glowing ? new Color(0.84f, 0.99f, 1f, 0.85f) : COL_PIPE_HI);
+        shapes.rect(minX, y + thick * 0.5f - 3f, w, 2f);
     }
 
-    private void fillCapsule(float x1, float y1, float x2, float y2, float radius, Color col) {
+    private void drawPixelPipeV(float x, float y1, float y2, float thick, Color pipeCol, boolean glowing) {
+        float minY = Math.min(y1, y2), h = Math.abs(y2 - y1);
+        shapes.setColor(COL_PIPE_DARK);
+        shapes.rect(x - thick * 0.5f - 2f, minY - 2f, thick + 4f, h + 4f);
+        shapes.setColor(pipeCol);
+        shapes.rect(x - thick * 0.5f, minY, thick, h);
+        shapes.setColor(glowing ? new Color(0.84f, 0.99f, 1f, 0.85f) : COL_PIPE_HI);
+        shapes.rect(x - thick * 0.5f + 1f, minY, 2f, h);
+    }
+
+    private void drawPipeFlange(float x, float y) {
+        shapes.setColor(COL_PIPE_DARK);
+        shapes.rect(x - 10f, y - 10f, 20f, 20f);
+        shapes.setColor(Color.valueOf("475569"));
+        shapes.rect(x - 8f, y - 8f, 16f, 16f);
+        shapes.setColor(Color.valueOf("94A3B8"));
+        shapes.rect(x - 4f, y - 4f, 8f, 8f);
+    }
+
+    private void drawBevelRect(float x, float y, float w, float h, float cut, Color col) {
+        float c = Math.min(cut, Math.min(w, h) * 0.4f);
         shapes.setColor(col);
-        shapes.rectLine(x1, y1, x2, y2, radius * 2f);
-        shapes.circle(x1, y1, radius, 14);
-        shapes.circle(x2, y2, radius, 14);
+        shapes.rect(x + c, y, Math.max(0f, w - c * 2f), h);
+        shapes.rect(x, y + c, Math.max(0f, w), Math.max(0f, h - c * 2f));
     }
 
-    private void fillRoundedRect(float x, float y, float w, float h, float r, Color col) {
-        float rad = Math.min(r, Math.min(w, h) * 0.5f);
+    private void drawSquareOutline(float x, float y, float w, float h, float t, Color col) {
         shapes.setColor(col);
-        shapes.rect(x + rad, y, Math.max(0f, w - rad * 2f), h);
-        shapes.rect(x, y + rad, rad, Math.max(0f, h - rad * 2f));
-        shapes.rect(x + w - rad, y + rad, rad, Math.max(0f, h - rad * 2f));
-        shapes.arc(x + rad, y + rad, rad, 180f, 90f, 12);
-        shapes.arc(x + w - rad, y + rad, rad, 270f, 90f, 12);
-        shapes.arc(x + w - rad, y + h - rad, rad, 0f, 90f, 12);
-        shapes.arc(x + rad, y + h - rad, rad, 90f, 90f, 12);
+        shapes.rect(x, y, w, t);
+        shapes.rect(x, y + h - t, w, t);
+        shapes.rect(x, y, t, h);
+        shapes.rect(x + w - t, y, t, h);
     }
 
-    private void drawRing(float cx, float cy, float radius, float thickness) {
-        int segs = 28;
-        for (int i = 0; i < segs; i++) {
-            float a1 = i * (MathUtils.PI2 / segs);
-            float a2 = (i + 1) * (MathUtils.PI2 / segs);
-            shapes.rectLine(
-                cx + MathUtils.cos(a1) * radius, cy + MathUtils.sin(a1) * radius,
-                cx + MathUtils.cos(a2) * radius, cy + MathUtils.sin(a2) * radius,
-                thickness
-            );
-        }
-    }
-
-    private void drawRoundedInteractionHalo(HabitatWorld.Box bounds, Color accent, float pad, float alpha) {
-        shapes.setColor(accent.r, accent.g, accent.b, alpha * 0.14f);
-        fillRoundedRect(bounds.x() - pad, bounds.y() - pad, bounds.width() + pad * 2f, bounds.height() + pad * 2f, 24f, shapes.getColor());
+    private void drawPixelCornerBrackets(HabitatWorld.Box bounds, Color accent, float pad, float leg, float thick, float alpha) {
+        float x = bounds.x() - pad;
+        float y = bounds.y() - pad;
+        float r = bounds.right() + pad;
+        float top = bounds.top() + pad;
+        shapes.setColor(accent.r, accent.g, accent.b, alpha);
+        shapes.rect(x, y, leg, thick);
+        shapes.rect(x, y, thick, leg);
+        shapes.rect(r - leg, y, leg, thick);
+        shapes.rect(r - thick, y, thick, leg);
+        shapes.rect(x, top - thick, leg, thick);
+        shapes.rect(x, top - leg, thick, leg);
+        shapes.rect(r - leg, top - thick, leg, thick);
+        shapes.rect(r - thick, top - leg, thick, leg);
     }
 
     private void drawRadialGlow(SpriteBatch batch, float cx, float cy, float w, float h, Color col, float alpha) {
@@ -838,21 +849,20 @@ public final class HabitatRenderer implements Disposable {
         batch.setColor(Color.WHITE);
     }
 
-    private void drawWorldPill(String text, float centerX, float centerY, Color borderCol, Color textCol, boolean active) {
+    private void drawWorldBadge(String text, float centerX, float centerY, Color borderCol, Color textCol, boolean active) {
         layout.setText(font, text);
-        float padX = 12f;
+        float padX = 11f;
         float padY = 6f;
         float bw = layout.width + padX * 2f;
         float bh = layout.height + padY * 2f;
         float bx = Math.round(centerX - bw * 0.5f);
         float by = Math.round(centerY - bh * 0.5f);
-        float rad = bh * 0.5f;
 
         enableSafeAlphaBlend();
         shapes.begin(ShapeRenderer.ShapeType.Filled);
-        fillRoundedRect(bx - 1.5f, by - 1.5f, bw + 3f, bh + 3f, rad + 1.5f,
-            new Color(borderCol.r, borderCol.g, borderCol.b, active ? 0.94f : 0.62f));
-        fillRoundedRect(bx, by, bw, bh, rad, active ? COL_PILL_ACTIVE : COL_PILL_BG);
+        drawBevelRect(bx - 2f, by - 2f, bw + 4f, bh + 4f, 4f,
+            new Color(borderCol.r, borderCol.g, borderCol.b, active ? 0.94f : 0.65f));
+        drawBevelRect(bx, by, bw, bh, 3f, active ? COL_BADGE_ACTIVE : COL_BADGE_BG);
         shapes.end();
 
         batch.begin();
@@ -868,6 +878,23 @@ public final class HabitatRenderer implements Disposable {
             handle = Gdx.files.local("assets/" + path);
         }
         return handle;
+    }
+
+    private Texture loadPixel(String path, int fallbackW, int fallbackH, Color fallbackColor) {
+        FileHandle handle = resolveAsset(path);
+        Texture texture;
+        if (handle.exists()) {
+            texture = new Texture(handle, false);
+        } else {
+            Pixmap pixmap = new Pixmap(fallbackW, fallbackH, Pixmap.Format.RGBA8888);
+            pixmap.setColor(fallbackColor);
+            pixmap.fill();
+            texture = new Texture(pixmap);
+            pixmap.dispose();
+        }
+        texture.setFilter(TextureFilter.Nearest, TextureFilter.Nearest);
+        ownedTextures.add(texture);
+        return texture;
     }
 
     private Texture loadSmooth(String path, int fallbackW, int fallbackH, Color fallbackColor) {

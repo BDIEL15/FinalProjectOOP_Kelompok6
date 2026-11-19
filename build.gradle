@@ -68,3 +68,18 @@ subprojects {
 }
 
 eclipse.project.name = 'MarsReboot' + '-parent'
+
+// Windows x64 demo gate: domain checks plus the actual private Python runtime.
+// Desktop/OpenGL checks stay opt-in so headless machines can run this gate.
+tasks.register('verifyDemo') {
+  group = 'verification'
+  description = 'Checks P1-P4 domain, editor, lifecycle and bundled Python, then builds the game JAR (Windows x64).'
+  dependsOn ':core:check', ':lwjgl3:check', ':lwjgl3:jar',
+    ':core:pythonIntegrationTest', ':core:puzzleProgressTest', ':core:waterPuzzleTest'
+}
+
+tasks.register('verifyDesktopDemo') {
+  group = 'verification'
+  description = 'Runs verifyDemo and the real desktop/OpenGL smoke checks (opens test windows).'
+  dependsOn 'verifyDemo', ':lwjgl3:desktopSmokeTest', ':lwjgl3:puzzleDesktopTest'
+}

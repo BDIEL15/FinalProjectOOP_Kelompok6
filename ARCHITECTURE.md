@@ -172,9 +172,13 @@ Entitas kandidat: User(id, username unik, passwordHash), ScoreSubmission(id, use
 
 Keenam kandidat mengikuti PROJECT §8; cocokkan dengan materi kelas/aslab. Adapter runtime tambahan tidak otomatis menggantikan pattern yang diajukan. Singleton/ECS/Object Pool tidak wajib. Bukti implementasi berupa lokasi kelas, diagram relasi, test, dan perilaku demo; tabel rancangan tidak memenuhi tenggat implementasi SOP.
 
+Audit source lokal 19 November 2026 tersedia di [OOP_AUDIT](docs/mars/OOP_AUDIT.md). Command dan Strategy telah terhubung ke runtime serta diuji lokal; empat kandidat lain belum terpenuhi. Tabel di atas tetap rancangan keseluruhan, bukan daftar implementasi selesai. Runtime mengeksekusi RobotCommand sesudah validasi; sensor tetap query. PuzzleDefinition memilih EvaluationStrategy; RobotSimulation.finish(strategy) mengevaluasi snapshot dan melakukan commit domain hanya saat ACTIVE. Runtime memanggilnya sesudah proses berakhir normal/sukses, tanpa mengubah protokol atau lifecycle replay.
+
 ## 9. Build, resource, dan distribusi
 
 Kandidat satu build Gradle multi-modul dengan wrapper, dependency pin, dan test JUnit. Pilih kombinasi JDK/libGDX/Spring Boot yang kompatibel saat bootstrap melalui dokumentasi versi resmi. Jangan menganggap JDK yang tersedia berarti seluruh build sudah siap. CI baru dinyatakan aktif setelah konfigurasi serta run aktual ada.
+
+Implementasi lokal saat ini memakai suite main JavaExec, bukan JUnit. Task verifyDemo menggabungkan core:check, check/JAR desktop dan integrasi CPython nyata P1–P4 pada Windows x64; verifyDesktopDemo menambah dua suite OpenGL. build tetap memeriksa suite Java tanpa menjalankan Python/desktop. Ketiganya teruji pada mesin pengembangan (VERIFICATION §16); CI dan komputer kedua belum dibuktikan.
 
 Desktop memiliki aset bersama yang dimuat dan dilepas oleh pemilik lifecycle; Screen yang ditutup tidak meninggalkan input/listener/proses aktif. Backend endpoint dikonfigurasi dari luar kode; tidak ada credential layanan di paket klien. Paket .jar atau jpackage serta bundling Python dipilih setelah uji komputer kedua. Panduan distribusi harus menyebut cara menyalakan backend, mengubah endpoint, izin file, serta pemulihan error runtime yang hilang.
 
@@ -204,3 +208,25 @@ Sumber diperiksa 12 November 2026 untuk kelayakan rancangan; tidak menetapkan ve
 Package `com.marsreboot.runtime`: `PythonRuntime` membuat proses/fixture per Run, `RuntimeProtocol` memvalidasi envelope/byte/urutan sebelum aksi, `RunCoordinator` mengelola satu worker/result, pembatalan dan replay. Trace maksimal 256 snapshot dan output dibatasi; tidak ada antrean event tanpa batas. Worker tidak memutasi widget; UI menyajikan View immutable di render thread. `HabitatScreen` memiliki lifecycle coordinator; `HabitatUi` mengirim Run/Stop/Reset dan membaca View, `HabitatRenderer` menggambar rover/tanaman dari snapshot. Pengaturan preview visual terpisah dari progres p1.
 
 Python runner ada di assets/python/runner.py, memakai standard library dan tidak memiliki aturan dunia. Run/test/package memilih executable bundel secara eksplisit; manifest ada di runtime/python-runtime.json. Kontrak wire, proses, state, timeout/cleanup, perbedaan outcome domain/aplikasi, serta batas paket dijabarkan dalam [kontrak runtime](docs/mars/PYTHON_RUNTIME.md). Tidak ada dependency JSON/interpreter Java baru. Struktur domain/backend yang belum dibuat tetap usulan, tidak otomatis ditambahkan oleh integrasi ini.
+
+## 13. Pemilihan P1/P2 — 19 November 2026
+
+`PuzzleDefinition` pada package runtime memuat metadata/fixture/starter/reference dua kandidat. `RunCoordinator.View` kini memuat puzzle aktif; coordinator menyimpan completion EnumSet per puzzle dan menyediakan selectPuzzle/isCompleted. Select hanya saat idle dan P2 memerlukan completion P1. UI menyimpan draft EnumMap per puzzle, tanpa persistensi baru.
+
+Bridge tetap mendukung signature P1 existing, dengan forPuzzle untuk pemilihan konten. PythonRuntime menyediakan execute(PuzzleDefinition,...) yang membuat simulasi dari fixture terpilih. RuntimeProtocol menerima scenarioId terpilih (p1-a/p2-a) dan menolak frame lintas skenario. Runner Python tidak menduplikasi aturan atau berganti implementasi. Renderer dan hit test memakai jumlah kolom dari View; layout kamera/aset/terminal Antigravity dipertahankan. Tidak ada perubahan dependency atau engine.
+
+## 14. Kebijakan panen P3
+
+PuzzleDefinition.THREE memisahkan columns (4) dari targetCount (2), menghasilkan fixture ripe/young dan instruksi/reference sensor. RunCoordinator menolak P3 sebelum completion P2, serta menjaga draf/progres melalui UI/coordinator existing. Runtime memakai scenarioId p3-a.
+
+RobotSimulation.finish(boolean rejectYoungHarvest) mengevaluasi pelanggaran hanya pada akhir normal; finish() existing mendelegasikan false agar perilaku P1/P2 tidak berubah. PythonRuntime memilih kebijakan dari definisi puzzle; tidak menduplikasi aturan pada renderer/Python. View dan UI menghitung target dari metadata, bukan menganggap jumlah petak sama dengan jumlah ripe. Tidak ada dependency/transport baru.
+
+## 15. Domain air dan replay multi-skenario P4
+
+Fixture menambah waterTargets/waterSupply, dengan constructor harvest existing tetap tersedia. Fixture mendukung tepat satu jenis tujuan (harvest atau watering), mengopi target dan memvalidasi bounds/supply. Snapshot menambah dryCells immutable, waterRemaining dan waterUsed; constructor existing tetap tersedia. Domain water/needsWater serta finish menentukan hasil otoritatif, bukan renderer atau script.
+
+PuzzleDefinition.FOUR memuat dua fixture/scenarioId p4-a/p4-b. PythonRuntime.execute menjalankan source sama pada proses baru per skenario, berhenti pada kegagalan pertama, dan menghasilkan Execution.scenarios (id + hasil/trace immutable). Signature execute P1 existing tetap berlaku. Output disatukan pada satu buffer berbatas; subhasil tidak menyimpan log duplikat. Satu skenario maksimum 12 action trace, sehingga total dua skenario tetap di bawah cap 256.
+
+RunCoordinator.View menambah skenario yang sedang ditampilkan, jumlah skenario/passed dan total aksi/air. Coordinator memainkan tiap trace secara berurutan, mengembalikan fixture/air/rover saat pergantian, dan baru commit completion jika semua skenario lulus serta replay terakhir selesai. Run/Stop/Reset tetap membatalkan identitas sebelum cleanup; Run baru selalu mulai skenario pertama. Normal completion saja memanggil finish; hasil Python bukan keputusan sukses. Snapshot antarskenario tidak dicampur dan renderer membuang FX panen lama saat identitas skenario berubah.
+
+Test domain air ikut check sebagai JavaExec; test framework Gradle core mengizinkan nol JUnit karena proyek memakai suite main terpisah, tanpa mematikan check atau mengabaikan kegagalan suite yang dijalankan. Tidak menambah dependency/versi/toolchain.

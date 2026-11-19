@@ -54,3 +54,17 @@ Proses terpisah dan mode isolated bukan sandbox keamanan. Script pembelajaran te
 ```
 
 `runtimeTest` ikut `check`; test interpreter/desktop opt-in dan memakai runtime bundel. Bukti aktual, jumlah assertion, hash paket serta batas komputer kedua ada di [VERIFICATION](../../VERIFICATION.md). Untuk uji paket: ekstrak ke folder berisi spasi, gunakan JAR paket sebagai classpath aplikasi, jalankan kedua test integrasi dengan executable Java absolut dan PATH hanya `%SystemRoot%\System32`. Pemeriksaan ini membuktikan tidak bergantung Python sistem, bukan bukti komputer fisik kedua.
+
+## Pembaruan P1/P2 — 19 November 2026
+
+Kontrak di atas tetap berlaku dengan scenarioId aktif `p1-a` atau `p2-a`, bukan selalu p1-a. Source/fixture/namespace selalu baru pada Run. Metadata P2: empat target, empat kolom, batas 12 aksi, request/byte/watchdog tetap. Java memutuskan hasil; tidak ada verifikator for otomatis. Coordinator memiliki selectPuzzle(PuzzleDefinition) dan isCompleted, View memiliki puzzle aktif. Pemilihan saat pekerjaan/replay/cleanup aktif ditolak. UI menjaga draf per puzzle selama sesi; completion P1 membuka P2. Tidak ada save, backend atau API baru. Test tambahan: :core:puzzleProgressTest.
+
+## Pembaruan P3
+
+Scenario p3-a memakai empat kolom, dua target ripe dan dua young, actionLimit 12. P3 dibuka setelah P2 selesai, tanpa perubahan frame/API. Java mengevaluasi invalidHarvestCount di akhir normal: mencoba panen young membuat INCOMPLETE, tidak memberi progres walau dua ripe habis. Sensor false tidak dihitung sebagai percobaan panen. P1/P2 tetap sama; tidak ada klaim bahwa penggunaan sensor/loop diverifikasi dari source. Referensi P3 menggunakan 5 aksi dan 9 API call.
+
+## Pembaruan irigasi P4 dan multi-skenario
+
+water() -> bool dan needs_water() -> bool ditambahkan pada runner; host hanya mengizinkannya pada P4. Wire/version tetap, request memakai nama fungsi dan args array kosong. p4-a/p4-b memiliki sequence per arah/per proses baru; identitas skenario harus cocok. Batas startup/komputasi/API/action berlaku per skenario; output tampilan/penyimpanan log tetap satu buffer 64 baris/8 KiB per Run (ditambah satu notice), trace P4 maksimum 24 aksi.
+
+Execution.scenarios menyimpan daftar id dan subhasil/trace, tanpa duplikasi log. View.scenarioId/Number/Count menunjukkan skenario yang ditampilkan pada replay; scenariosPassed/totalActions/totalWaterUsed bertambah setelah tiap replay. Tidak menunjukkan progres komputasi live dari proses kedua sebelum result/replay tersedia. Kedua proses menjalankan source snapshot yang sama; hanya replay/hasil semua skenario yang sah dapat menyelesaikan P4. Pembatalan/cleanup/penolakan hasil lama serta namespace/fresh process existing tetap berlaku. Domain snapshot menambah dryCells/waterRemaining/waterUsed; UI tidak menyalin aturan. Referensi P4: per skenario 5 aksi/2 air, total 10/4.

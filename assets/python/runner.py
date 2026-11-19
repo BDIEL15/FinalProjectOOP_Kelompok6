@@ -89,6 +89,14 @@ def can_harvest():
     return call("can_harvest", [])
 
 
+def water():
+    return call("water", [])
+
+
+def needs_water():
+    return call("needs_water", [])
+
+
 def get_pos():
     return tuple(call("get_pos", []))
 
@@ -97,7 +105,7 @@ sys.stdout = sys.stderr = Output()
 send("ready", {})
 try:
     namespace = dict(__builtins__=builtins, __name__="__main__", move=move, harvest=harvest,
-                     can_harvest=can_harvest, get_pos=get_pos)
+                     can_harvest=can_harvest, get_pos=get_pos, water=water, needs_water=needs_water)
     exec(compile(packet["payload"]["source"], "solusi_p1.py", "exec"), namespace)
 except BaseException as error:
     line = getattr(error, "lineno", None)

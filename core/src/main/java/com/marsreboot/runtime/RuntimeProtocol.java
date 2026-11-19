@@ -9,14 +9,16 @@ import java.nio.charset.*;
 /** Small strict envelope around libGDX's existing JSON parser; no new JSON dependency. */
 final class RuntimeProtocol {
     private final long generation;
+    private final String scenarioId;
     private long incoming, outgoing;
-    RuntimeProtocol(long generation) { this.generation = generation; }
+    RuntimeProtocol(long generation) { this(generation, "p1-a"); }
+    RuntimeProtocol(long generation, String scenarioId) { this.generation = generation; this.scenarioId = scenarioId; }
     String encode(String type, JsonValue payload) {
         JsonValue frame = object();
         frame.addChild("protocolVersion", new JsonValue(1L));
         frame.addChild("generation", new JsonValue(generation));
         frame.addChild("runId", new JsonValue("run-" + generation));
-        frame.addChild("scenarioId", new JsonValue("p1-a"));
+        frame.addChild("scenarioId", new JsonValue(scenarioId));
         frame.addChild("sequence", new JsonValue(++outgoing));
         frame.addChild("type", new JsonValue(type)); frame.addChild("payload", payload);
         return frame.toJson(OutputType.json);
@@ -25,7 +27,7 @@ final class RuntimeProtocol {
         JsonValue frame = new JsonReader().parse(line);
         if (!frame.isObject() || integer(frame,"protocolVersion") != 1
             || integer(frame,"generation") != generation || !string(frame,"runId").equals("run-" + generation)
-            || !string(frame,"scenarioId").equals("p1-a") || integer(frame,"sequence") != incoming + 1
+            || !string(frame,"scenarioId").equals(scenarioId) || integer(frame,"sequence") != incoming + 1
             || !required(frame,"payload").isObject()) throw new IllegalArgumentException("Identitas/urutan frame tidak sah.");
         string(frame,"type"); incoming++; return frame;
     }

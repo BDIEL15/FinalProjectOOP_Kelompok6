@@ -151,7 +151,7 @@ public final class HabitatInput extends InputAdapter {
             rx = pos.x();
             ry = pos.y();
         }
-        return HabitatWorld.isRoverHit(worldX, worldY, rx, ry, 2);
+        return HabitatWorld.isRoverHit(worldX, worldY, rx, ry, viewSupplier == null ? 2 : viewSupplier.get().puzzle().columns());
     }
 
     public void update(float delta) {

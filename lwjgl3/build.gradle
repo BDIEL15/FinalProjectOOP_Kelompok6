@@ -22,6 +22,10 @@ sourceSets.main.resources.srcDirs += [ rootProject.file('assets').path ]
 application.mainClass = 'com.marsreboot.lwjgl3.Lwjgl3Launcher'
 application.applicationName = appName
 
+// Desktop behavior suites are opt-in JavaExec mains, not JUnit methods.
+// A normal build still compiles these suites; verifyDesktopDemo executes them.
+tasks.named('test') { failOnNoDiscoveredTests = false }
+
 tasks.register('desktopSmokeTest', JavaExec) {
   group = 'verification'
   description = 'Opens a real desktop window and checks habitat/Scene2D wiring and resize.'

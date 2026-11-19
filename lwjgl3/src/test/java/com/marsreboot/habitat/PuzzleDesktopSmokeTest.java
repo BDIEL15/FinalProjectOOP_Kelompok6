@@ -26,6 +26,7 @@ public final class PuzzleDesktopSmokeTest extends ApplicationAdapter {
     private TextArea editor;
     private Window terminal;
     private int phase, assertions;
+    private boolean checkedP4Intermediate;
     private long phaseStart;
     private static Throwable failure;
     private static final String REFERENCE = "harvest()\nmove('east')\nharvest()\nprint(get_pos())";
@@ -100,6 +101,7 @@ public final class PuzzleDesktopSmokeTest extends ApplicationAdapter {
                     check(terminal.isResizable(), "terminal supports interactive resize");
                     check(terminal.getWidth() <= 460f && terminal.getHeight() <= 430f, "compact default terminal keeps world open");
 
+                    assertions += PythonEditorDesktopChecks.run(editor, input);
                     editor.setText(REFERENCE);
                     click("runPuzzle");
                     editor.setText("# draf baru saat Run\n1/0");
@@ -251,7 +253,80 @@ public final class PuzzleDesktopSmokeTest extends ApplicationAdapter {
                     click("returnHabitatPuzzle");
                     screen.render(0);
                     check(world.mode() == HabitatWorld.Mode.EXPLORING, "Kembali returns cleanly to exploring");
-                    System.out.println("PASS: " + assertions + " Python puzzle desktop assertions; pointer events, real CPython and OpenGL.");
+                    press(Keys.E); screen.render(0); next();
+                }
+                case 10 -> {
+                    click("selectPuzzle2"); screen.render(0);
+                    check(screen.puzzleView().puzzle().number() == 2, "P2 selection unlocked after P1");
+                    check(screen.puzzleView().snapshot().remainingTargets().size() == 4, "P2 displays four targets");
+                    PythonEditorDesktopChecks.typeLoopReference(editor, input); assertions++;
+                    click("runPuzzle"); next();
+                }
+                case 11 -> {
+                    if (screen.puzzleView().status() != Status.SUCCESS) break;
+                    check(screen.puzzleView().snapshot().harvestCount() == 4, "P2 four harvests visible");
+                    check(screen.puzzleView().snapshot().actionCount() == 7, "P2 seven actions");
+                    check(field(ui,"successSummaryLabel",Label.class).getText().toString().contains("4 dipanen"), "P2 success summary is dynamic");
+                    capture("p2-success");
+                    String p2Draft = editor.getText();
+                    click("selectPuzzle1"); screen.render(0);
+                    check(screen.puzzleView().puzzle().number() == 1 && screen.puzzleView().completed(), "P1 completion preserved");
+                    check(editor.getText().contains("time.sleep"), "P1 draft restored");
+                    click("selectPuzzle2"); screen.render(0);
+                    check(editor.getText().equals(p2Draft) && screen.puzzleView().completed(), "P2 draft and completion restored");
+                    click("selectPuzzle3"); screen.render(0);
+                    check(screen.puzzleView().puzzle().number()==3,"P3 unlock and selector");
+                    check(screen.puzzleView().snapshot().remainingTargets().size()==2,"P3 only two ripe targets");
+                    editor.setText(com.marsreboot.runtime.PuzzleDefinition.TWO.reference());click("runPuzzle");next();
+                }
+                case 12 -> {
+                    if(screen.puzzleView().status()!=Status.INCOMPLETE)break;
+                    check(!screen.puzzleView().completed() && screen.puzzleView().snapshot().invalidHarvestCount()==2,"young attempt fails without progress");
+                    check(field(ui,"consoleTitleLabel",Label.class).getText().toString().contains("muda"),"young violation has specific result title");
+                    capture("p3-young-violation");
+                    editor.setText(com.marsreboot.runtime.PuzzleDefinition.THREE.reference());click("runPuzzle");next();
+                }
+                case 13 -> {
+                    if(screen.puzzleView().status()!=Status.SUCCESS)break;
+                    check(screen.puzzleView().snapshot().actionCount()==5,"sensor solution costs five actions");
+                    check(screen.puzzleView().snapshot().harvestCount()==2,"P3 ripe harvest count");
+                    check(field(ui,"successSummaryLabel",Label.class).getText().toString().contains("2 dipanen"),"P3 two target summary");
+                    capture("p3-success");
+                    String p3Draft=editor.getText();click("selectPuzzle2");screen.render(0);
+                    check(screen.puzzleView().completed(),"P2 completion survives P3");
+                    click("selectPuzzle3");screen.render(0);
+                    check(screen.puzzleView().completed() && editor.getText().equals(p3Draft),"P3 draft/completion survive switching");
+                    click("selectPuzzle4");screen.render(0);
+                    check(screen.puzzleView().puzzle().number()==4 && screen.puzzleView().scenarioCount()==2,"P4 unlocked, two cases");
+                    check(screen.puzzleView().snapshot().waterRemaining()==2,"P4 starts with two water");
+                    capture("p4-dry-start");
+                    editor.setText("water()\nmove('east')\nmove('east')\nwater()\nmove('east')");
+                    click("runPuzzle");next();
+                }
+                case 14 -> {
+                    if(screen.puzzleView().status()!=Status.INCOMPLETE)break;
+                    check(!screen.puzzleView().completed() && screen.puzzleView().scenariosPassed()==1,"hardcode does not pass P4");
+                    check(screen.puzzleView().scenarioId().equals("p4-b"),"second case failure displayed");
+                    capture("p4-hardcode-failure");click("resetPuzzle");screen.render(0);
+                    check(screen.puzzleView().scenarioNumber()==1 && screen.puzzleView().snapshot().waterRemaining()==2,"P4 reset fixture/water");
+                    editor.setText(com.marsreboot.runtime.PuzzleDefinition.FOUR.reference());click("runPuzzle");next();
+                }
+                case 15 -> {
+                    if(screen.puzzleView().status()==Status.REPLAYING && screen.puzzleView().scenarioNumber()==2 && !checkedP4Intermediate) {
+                        check(!screen.puzzleView().completed() && screen.puzzleView().scenariosPassed()==1,"first scenario replay never grants completion");
+                        checkedP4Intermediate=true;
+                    }
+                    if(screen.puzzleView().status()!=Status.SUCCESS)break;
+                    check(checkedP4Intermediate,"second scenario replay observed");
+                    check(screen.puzzleView().completed() && screen.puzzleView().scenariosPassed()==2,"P4 all scenarios pass");
+                    check(screen.puzzleView().totalActions()==10 && screen.puzzleView().totalWaterUsed()==4,"P4 totals shown");
+                    check(screen.puzzleView().snapshot().dryCells().isEmpty(),"all required cells moist");
+                    check(field(ui,"successSummaryLabel",Label.class).getText().toString().contains("10 aksi"),"P4 success summary");
+                    capture("p4-success");click("selectPuzzle3");screen.render(0);
+                    check(screen.puzzleView().completed() && editor.getText().contains("can_harvest"),"P3 draft/progress preserved after P4");
+                    click("selectPuzzle4");screen.render(0);
+                    check(screen.puzzleView().completed() && editor.getText().contains("needs_water"),"P4 draft/progress preserved");
+                    System.out.println("PASS: " + assertions + " Python puzzle desktop assertions; P1-P4, editor, real CPython and OpenGL.");
                     Gdx.app.exit();
                 }
             }

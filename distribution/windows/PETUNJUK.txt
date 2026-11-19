@@ -1,21 +1,37 @@
-mars_reboot.py — paket uji puzzle 1, Windows x64
+mars_reboot.py — paket uji puzzle 1–4, Windows x64
 
-Ekstrak seluruh ZIP ke folder biasa, lalu buka run.bat. Java 21 atau lebih
-baru diperlukan. Python 3.15.2 sudah disertakan; tidak perlu instal Python/pip.
-Jangan memindahkan JAR saja tanpa folder runtime.
+Ekstrak SELURUH ZIP lalu buka run.bat. Java 21+ diperlukan.
+Python 3.15.2 sudah disertakan; jangan pindahkan JAR tanpa folder runtime.
 
-WASD/panah: berjalan. E: inspeksi/buka terminal. Esc: tutup panel.
-Terminal M1-P1: panen dua tanaman matang, maksimal enam aksi.
-API: move("east"), harvest(), can_harvest(), get_pos().
-Run menjalankan salinan kode saat tombol ditekan; Stop menghentikan program;
-Reset mengembalikan petak tanpa menghapus draf. Draf/pencapaian belum disimpan
-lintas restart. Esc tidak menghentikan program. Preview visual bukan progres.
+WASD/panah: berjalan. E atau klik Rover: buka editor. Esc: tutup panel.
+Run memakai salinan kode saat ditekan. Stop menghentikan proses/replay.
+Reset memulihkan fixture, air dan metrik tanpa menghapus draf/pencapaian sesi.
+Esc menutup editor tanpa menghentikan Run. Draf/progres belum disimpan
+lintas restart. Preview visual bukan progres gameplay.
 
-Contoh solusi:
-harvest()
-move("east")
-harvest()
+P1 Panen: dua tanaman, maksimal 6 aksi.
+P2 Loop: empat tanaman, maksimal 12 aksi; terbuka setelah P1.
+P3 Sensor: panen matang x=0,2; jangan mencoba panen muda x=1,3.
+P4 Irigasi: terbuka setelah P3; dua skenario, satu kode yang sama.
+Skenario A kering x=0,2; B kering x=1,3. Tiap skenario mendapat 2 air,
+maksimal 12 aksi. Menyiram petak lembap tetap membuang air. Air habis
+menghasilkan false tetapi aksi tetap dihitung. Keduanya harus lulus.
 
-Backend, login/skor nyata, dan puzzle 2–9 belum terintegrasi.
-Runtime ini untuk kode pembelajaran sendiri, bukan sandbox script bermusuhan.
-Lisensi Python berada di runtime/python/LICENSE.txt.
+API: move("east"/"west"/"north"/"south"), harvest(), can_harvest(), get_pos().
+Khusus P4: water(), needs_water(). Sensor tidak memakai aksi.
+Pemilih P1–P4 ada pada terminal; draf setiap puzzle disimpan selama sesi.
+[?] API memuat petunjuk/contoh. Konsep loop belum dinilai dari source.
+
+Contoh P4 (5 aksi/2 air tiap skenario, total 10 aksi/4 air):
+for x in range(4):
+    if needs_water():
+        water()
+    if x < 3:
+        move("east")
+
+Editor: Enter setelah ':' menambah indent, Tab = spasi sampai kelipatan 4,
+Shift+Tab = kurangi indent, pasangan kurung/kutip otomatis, Ctrl+Z = Undo.
+
+Backend, login/skor nyata, save lintas restart dan puzzle 5–9 belum tersedia.
+Runtime untuk kode pembelajaran sendiri, bukan sandbox script bermusuhan.
+Lisensi Python: runtime/python/LICENSE.txt. Komputer kedua/playtest masih perlu.

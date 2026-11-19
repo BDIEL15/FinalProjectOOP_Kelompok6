@@ -187,4 +187,36 @@ Menindaklanjuti masukan pengguna atas desain visual awal yang masih terasa sempi
 - **UI kapsul lembut & terminal sederhana resizable (`HabitatUi`):** Stage UI memakai `ExtendViewport(960, 600)` dengan HUD top-bar/bottom-hint berbentuk pill mengambang transparan (`24px` / 3× supersampled anti-aliased SDF rounded drawables). Terminal default terbuka lebih ringkas di kiri (`430×470`, dapat digeser dan di-**resize** bebas dari tepi/sudut dengan border hit `14px` dan grip diagonal, batas minimal `350×280`), menyembunyikan referensi API ke popover `[?] API` (`336×294`) serta otomatis melipat boks `[Log]` ketika kosong saat mode standar. Tombol `Stop` memakai warna teks krem kontras tinggi di atas kapsul amber.
 - **Animasi halus berbasis presentasi (`HabitatWorld`, `HabitatRenderer`):** Gerak astronaut memakai percepatan/perlambatan deterministik sub-step (`1/120s`, `ACCEL_RATE = 18f`, `DECEL_RATE = 15f`) + jejak debu langkah EVA (`StepParticle`). Saat replay Python berjalan, `HabitatRenderer` melakukan interpolasi posisi dan rotasi haluan Rover ke snapshot `RunCoordinator.View`, menyalakan sinar pemindai panen (*harvest beam*), animasi ring spora panen (`+1 PANEN`), dan denyut halo emerald/amber/koral pada perubahan state—tanpa menyentuh aturan simulasi Java, fixture, biaya aksi, maupun protokol runtime Python.
 
-Status: diimplementasikan & diverifikasi di build desktop LWJGL3/OpenGL per 15 November 2026 (`VERIFICATION.md` §10); penyesuaian gaya visual/palette final serta playtest manual pengguna tetap terbuka.
+Status: diimplementasikan & diverifikasi di build desktop LWJGL3/OpenGL per 15 November 2026 (`VERIFICATION.md` §10); snapshot eksperimen vektor disimpan di branch `backup/vector-redesign`.
+
+## 12. Refocus Dunia ke 2× Crisp Pixel Art di Atas Sistem Outpost Baru — 15 November 2026
+
+Sesuai permintaan pengguna untuk mengembalikan gaya visual dunia ke **Crisp Pixel Art** (*MewnBase × Pathway × `00_art_direction_mars_outpost.jpg`*) sambil mempertahankan peta `1680×1040`, `FollowCamera`, gerak EVA halus, klik langsung Rover, UI kapsul non-kotak, serta terminal ringkas *resizable*:
+
+- **Aset Dunia 2× Crisp Pixel Art (`assets/habitat/` & `asset-manifest.json` v4):**
+  - Seluruh sprite tekstur utama (*regolith* `mars_soil_0..3.png`, `floor_tile.png`, `hab_airlock.png` `288×224`, `solar_array_*`, `pump_station.png`, `water_panel.png`, `walkway_*`, `mars_crater_*`, `mars_rock_*`, `cargo_crate.png`, `partition_wall*`, dan sprite sheet 4 arah `astronaut_eva_sheet.png` `192×224` frame `48×56`) memakai aset 2× crisp pixel art dari baseline `b97eb55` dengan **`TextureFilter.Nearest`**.
+  - Aset Bio-Dome dan Rover baru (`PixelAssetBaker`) dibake pada grid piksel murni + *nearest-neighbor* 2× upscale: `biodome_deck.png` / `biodome_deck_restored.png` (`600×390`, konservatori oktagonal berundak + tangki nutrien kiri + flora sudut + tangga penghubung airlock), `biodome_canopy.png` (`600×390`, rangka lengkung kaca geodesik 1px berundak), `mars_rover.png` (`72×64`, rover kuning-amber hadap Timur `+X` dengan roda berulir & scanner cyan), serta `hydro_crops.png` (`192×64`, strip 3 frame `64×64`: `RIPE`, `YOUNG`, `EMPTY`).
+- **Renderer Dunia Pixel Art (`HabitatRenderer`):** Memuat seluruh aset dunia via `loadPixel(...)` (`TextureFilter.Nearest`) sementara `light_glow.png` tetap `Linear` untuk pencahayaan radial lembut ala *Pathway*. Pipa saluran industri berflensa sudut, braket sudut L piksel saat hover/dekat, bed hidroponik bermargin logam oktagonal/bevel, partikel debu EVA & spora panen persegi piksel, sinar pemindai panen piksel ganda, serta *world badge* ber-bevel tajam menampilkan status replay `RunCoordinator.View` tanpa merusak kehalusan interpolasi kamera & rover.
+- **UI & Fitur Tetap Dipertahankan:** `HabitatUi` mempertahankan HUD kapsul mengambang `ExtendViewport(960, 600)`, terminal ringkas *resizable* (`min 350×280`), `[?] API` popover, auto-collapse `[Log]`, serta `FollowCamera` `ExtendViewport(720, 450)`.
+
+Status: diverifikasi pada build desktop LWJGL3/CPython (`VERIFICATION.md` §11); penyesuaian gaya sudut UI lanjutan (bezel pixel vs kapsul saat ini) serta playtest manual tetap terbuka.
+
+## Integrasi UI puzzle 2 — 19 November 2026
+
+Desain pixel art/follow camera/terminal resizable 15 November dipertahankan. Tambahan: pemilih P1 Panen/P2 Loop pada terminal, P2 terkunci sampai completion P1, tujuan/batas/nomor puzzle/hasil dinamis dan petunjuk for pada [?] API. Empat petak P2 dirender dalam Bio-Dome; socket tanaman disusun ulang di dalam petak sempit, hit test mengikuti geometri yang sama. Perpindahan mengembalikan draf puzzle terkait; peta misi mempertahankan status P1 dan menampilkan ketersediaan/selesainya P2. Tidak membuka puzzle lain atau menerapkan pemulihan seluruh habitat.
+
+## UI sensor P3 — 19 November 2026
+
+Pemilih P3 Sensor terbuka setelah P2, draf/reference tersendiri, peta misi menampilkan status P3 dan konten P4–P9 tetap belum tersedia. Tujuan dua target pada empat petak; sprite YOUNG existing menampilkan tanaman muda yang tetap ada setelah sukses. Pesan tidak lulus menyebut pelanggaran muda secara spesifik, tanpa menyebut target belum habis ketika panen 2/2 sudah tercapai. Semua desain pixel art/follow camera/interaksi/terminal resizable dipertahankan.
+
+## Bantuan editor Python — 19 November 2026
+
+TextArea editor diganti subclass PythonCodeArea dengan tampilan/style/ukuran yang sama. Enter mengulang indentasi baris dan menambah empat spasi setelah colon blok atau pembuka kurung lanjutan. Enter di tengah pasangan kosong memisahkan isi dan penutup. Tab memakai spasi ke tab stop empat kolom; Tab/Shift+Tab pada seleksi bekerja per baris, tidak memindahkan fokus. Auto-pair (), [], {}, kutip serta wrap selection, skip closer, dan paired Backspace diterapkan dengan konteks string/komentar sederhana. Tab/Shift+Tab bukan formatter seluruh source; tidak ada LSP atau pelengkapan keyword/nama fungsi.
+
+PythonEditing adalah transformasi teks tanpa libGDX; PythonCodeArea mengirim perubahan kecil melalui listener native sehingga Undo tidak dihapus oleh setText. Indentasi banyak baris mengedit whitespace saja, bukan mengetik ulang blok. Clipboard/navigation existing tetap native. Source dengan indent tab yang sudah ditempel mempertahankan indent lama ketika Enter, sedangkan Tab baru memasukkan spasi. Perubahan ini tidak mengubah runtime, puzzle, protokol, aset atau shortcut game.
+
+## UI irigasi P4 — 19 November 2026
+
+Pemilih P4 Irigasi terbuka setelah P3. Draf/pencapaian sesi tetap terpisah. Tujuan/hasil berubah menjadi penyiraman: petak KERING/LEMBAP memakai warna berbeda dan label teks; HUD menampilkan sisa air/nomor skenario/aksi per skenario. Hasil akhir menyebut 2/2 skenario dan total aksi/air, bukan metrik panen. Kegagalan menyebut p4-a/p4-b. Replay menampilkan skenario berurutan dengan fixture/air awal masing-masing; tidak ada pemberian pencapaian baru hanya karena skenario pertama lulus.
+
+Panel [?] API kini dapat digulir dan menjelaskan needs_water/water khusus P4. Font, kamera, aset pixel art, editor autoindent dan layout terminal existing dipertahankan. Efek panen sebelumnya dihapus ketika berganti skenario; tidak membuat aset baru atau mengaktifkan seluruh habitat melalui preview.

@@ -18,12 +18,19 @@ public final class RobotSimulation {
     /** Defensive copies keep resets and separate simulations independent. */
     public record Fixture(int width, int height, Position start,
                           Map<Position, Crop> crops, Set<Position> blocked,
-                          Set<Position> harvestTargets, int actionLimit, int apiCallLimit) {
+                          Set<Position> harvestTargets, int actionLimit, int apiCallLimit,
+                          Set<Position> waterTargets, int waterSupply) {
+        public Fixture(int width,int height,Position start,Map<Position,Crop> crops,Set<Position> blocked,
+                       Set<Position> harvestTargets,int actionLimit,int apiCallLimit) {
+            this(width,height,start,crops,blocked,harvestTargets,actionLimit,apiCallLimit,Set.of(),0);
+        }
         public Fixture {
             Objects.requireNonNull(start, "start");
             crops = Map.copyOf(crops);
             blocked = Set.copyOf(blocked);
             harvestTargets = Set.copyOf(harvestTargets);
+            waterTargets = Set.copyOf(waterTargets);
+            if (waterSupply < 0) throw new IllegalArgumentException("Water supply cannot be negative.");
             if (width <= 0 || height <= 0 || actionLimit <= 0 || apiCallLimit <= 0) {
                 throw new IllegalArgumentException("Dimensions and limits must be positive.");
             }
@@ -40,8 +47,12 @@ public final class RobotSimulation {
                     throw new IllegalArgumentException("Crop must be inside a passable cell.");
                 }
             }
-            if (harvestTargets.isEmpty()) {
-                throw new IllegalArgumentException("Harvest fixture needs at least one target.");
+            if (harvestTargets.isEmpty() == waterTargets.isEmpty()) {
+                throw new IllegalArgumentException("Fixture needs exactly one goal: harvest or watering.");
+            }
+            for (Position position : waterTargets) {
+                if (!inside(position,width,height) || blocked.contains(position))
+                    throw new IllegalArgumentException("Dry target must be inside a passable cell.");
             }
             for (Position position : harvestTargets) {
                 if (crops.get(position) != Crop.RIPE) {
@@ -63,16 +74,25 @@ public final class RobotSimulation {
     public record Snapshot(Position robot, Map<Position, Crop> crops,
                            Set<Position> remainingTargets, int actionCount, int apiCallCount,
                            int moveCount, int harvestCount, int invalidHarvestCount,
-                           Outcome outcome, String message) {
+                           Outcome outcome, String message, Set<Position> dryCells, int waterRemaining, int waterUsed) {
+        public Snapshot(Position robot,Map<Position,Crop> crops,Set<Position> remainingTargets,
+                        int actionCount,int apiCallCount,int moveCount,int harvestCount,int invalidHarvestCount,
+                        Outcome outcome,String message) {
+            this(robot,crops,remainingTargets,actionCount,apiCallCount,moveCount,harvestCount,invalidHarvestCount,
+                 outcome,message,Set.of(),0,0);
+        }
         public Snapshot {
             crops = Map.copyOf(crops);
             remainingTargets = Set.copyOf(remainingTargets);
+            dryCells = Set.copyOf(dryCells);
         }
     }
 
     private final Fixture fixture;
     private final Map<Position, Crop> crops = new HashMap<>();
     private final Set<Position> remainingTargets = new HashSet<>();
+    private final Set<Position> dryCells = new HashSet<>();
+    private int waterRemaining, waterUsed;
     private Position robot;
     private int actionCount;
     private int apiCallCount;
@@ -121,7 +141,7 @@ public final class RobotSimulation {
             return false;
         }
         crops.put(robot, Crop.EMPTY);
-        remainingTargets.remove(robot);
+        if (fixture.harvestTargets().contains(robot)) remainingTargets.remove(robot);
         harvestCount++;
         message = "Tanaman dipanen.";
         return true;
@@ -132,16 +152,40 @@ public final class RobotSimulation {
         return crops.getOrDefault(robot, Crop.EMPTY) == Crop.RIPE;
     }
 
+    /** Sensors read Java's state, never the renderer or the Python namespace. */
+    public boolean needsWater() { beginCall(); return dryCells.contains(robot); }
+
+    public boolean water() {
+        beginCall(); chargeAction();
+        if (waterRemaining == 0) { message = "Air habis; tidak ada air yang dipakai."; return false; }
+        waterRemaining--; waterUsed++;
+        boolean wasDry = dryCells.remove(robot);
+        if (wasDry) remainingTargets.remove(robot);
+        message = wasDry ? "Petak disiram menjadi lembap." : "Petak sudah lembap; satu unit air tetap terpakai.";
+        return true;
+    }
+
     public Position getPos() {
         beginCall();
         return robot;
     }
 
     /** Only normal completion evaluates the current harvest targets, never an intermediate action. */
-    public Snapshot finish() {
+    public Snapshot finish() { return finish(false); }
+
+    /** Puzzle policy is evaluated only on normal completion; failed young harvests remain charged. */
+    public Snapshot finish(boolean rejectYoungHarvest) {
+        EvaluationStrategy goals = fixture.waterTargets().isEmpty() ? new HarvestEvaluation() : new IrrigationEvaluation();
+        return finish(rejectYoungHarvest ? new MatureHarvestEvaluation(goals) : goals);
+    }
+
+    /** Only the domain owner commits evaluation, and only while the scenario is active. */
+    public Snapshot finish(EvaluationStrategy strategy) {
+        Objects.requireNonNull(strategy, "strategy");
         if (outcome == Outcome.ACTIVE) {
-            outcome = remainingTargets.isEmpty() ? Outcome.SUCCESS : Outcome.INCOMPLETE;
-            message = outcome == Outcome.SUCCESS ? "Semua target panen selesai." : "Masih ada target panen.";
+            Evaluation result = Objects.requireNonNull(strategy.evaluate(snapshot()), "evaluation");
+            outcome = result.outcome();
+            message = result.message();
         }
         return snapshot();
     }
@@ -152,6 +196,9 @@ public final class RobotSimulation {
         crops.putAll(fixture.crops());
         remainingTargets.clear();
         remainingTargets.addAll(fixture.harvestTargets());
+        remainingTargets.addAll(fixture.waterTargets());
+        dryCells.clear(); dryCells.addAll(fixture.waterTargets());
+        waterRemaining = fixture.waterSupply(); waterUsed = 0;
         actionCount = apiCallCount = moveCount = harvestCount = invalidHarvestCount = 0;
         outcome = Outcome.ACTIVE;
         message = "Siap menjalankan percobaan baru.";
@@ -159,7 +206,7 @@ public final class RobotSimulation {
 
     public Snapshot snapshot() {
         return new Snapshot(robot, crops, remainingTargets, actionCount, apiCallCount,
-            moveCount, harvestCount, invalidHarvestCount, outcome, message);
+            moveCount, harvestCount, invalidHarvestCount, outcome, message, dryCells, waterRemaining, waterUsed);
     }
 
     private void beginCall() {

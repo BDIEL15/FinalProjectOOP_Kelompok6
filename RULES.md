@@ -167,3 +167,25 @@ Belum tercakup: `water`/`needs_water`, kebijakan gagal panen young puzzle 3 (bar
 ## 11. Integrasi kandidat p1-a ke terminal
 
 Per 13 November 2026, kandidat puzzle 1 panen terhubung ke terminal Python nyata, robot/replay/hasil, Run/Stop/Reset dan progres sesi. Paket Windows x64 menyertakan CPython 3.15.2; Java 21+ masih diperlukan. Backend, puzzle 2–9, save lintas restart dan komputer kedua belum terverifikasi. Untuk subset p1, API Python `move(direction)`, `harvest()`, `can_harvest()`, `get_pos()` sudah meneruskan request ke domain Java. Tidak memakai parser Python buatan atau urutan aksi hardcode. Biaya/fixture/batas bagian 10 tetap kandidat yang sama. Kandidat lifecycle dan batas waktu/output kini diimplementasikan untuk p1 sesuai [kontrak runtime](docs/mars/PYTHON_RUNTIME.md); bagian 10 mencatat tahap domain sebelumnya, bukan batas implementasi terbaru. Source snapshot, akhir normal + exit 0, replay selesai dan identitas Run sah wajib sebelum progres sesi. Stop/Reset/error mempertahankan draf; reset tidak menghapus pencapaian sesi. Skor, siram, verifikator konsep dan puzzle lanjutan belum tersedia.
+
+## 12. Kandidat p2-a terimplementasi — 19 November 2026
+
+Fixture p2-a pada bagian 6 kini diimplementasikan: grid 4x1, ripe x=0..3, start (0,0), empat target, actionLimit 12, apiCallLimit 1024. Referensi for menghasilkan empat panen/tiga move (7 aksi). Mekanik, biaya sensor/aksi gagal, error dan syarat akhir normal mengikuti implementasi yang sama dengan p1.
+
+P2 tersedia setelah P1 selesai dan replay sah. Pemilihan diblokir saat komputasi/replay/cleanup aktif; perpindahan membuat fixture baru, menjaga pencapaian dan draf tiap puzzle selama sesi. Reset tidak menghapus pencapaian. Hasil hanya menunjukkan tujuan dunia; latihan konsep for/EDU-01 tetap belum terverifikasi otomatis. Tidak menolak source unrolled menggunakan regex atau mengklaim dead code loop sebagai bukti konsep.
+
+## 13. Kandidat p3-a terimplementasi — 19 November 2026
+
+Grid 4x1: RIPE x=0,2 adalah dua target; YOUNG x=1,3 bukan target dan tetap muda selama Run. Robot mulai (0,0), batas 12 aksi/1.024 request. can_harvest() false pada young tanpa biaya aksi; referensi membaca sensor empat kali, dua panen + tiga gerak (5 aksi, 9 request).
+
+Panen young mengembalikan false, memakai satu aksi, tidak mengubah tanaman, dan menambah invalidHarvestCount. Pada akhir normal, target lengkap hanya SUCCESS jika invalidHarvestCount==0. Pelanggaran young menjadi INCOMPLETE dengan pesan khusus, termasuk bila seluruh ripe sudah habis. Error/limit/Stop tetap tidak bisa menjadi sukses. P1/P2 tidak mendapat larangan young baru. Reset memulihkan semua metrik. P2 selesai setelah replay membuka P3. Tidak ada penilaian source berbasis regex untuk memaksa sensor/loop.
+
+## 14. Kandidat p4-a/p4-b terimplementasi — 19 November 2026
+
+P4: grid 4x1 tanpa target panen, start (0,0), dryTargets x=0,2 pada p4-a dan x=1,3 pada p4-b; lainnya lembap. Satu source snapshot diuji pada dua proses/fixture/namespace baru. Tiap skenario memiliki 2 air, 12 aksi dan 1.024 request. Target selesai ketika seluruh dry awal menjadi lembap. Panen tidak dapat menggantikan tujuan penyiraman.
+
+needs_water() adalah sensor Java yang menghitung request tanpa aksi/air. water() selalu memakai 1 aksi. Jika air ada: kurangi air 1, tambah waterUsed, petak dry menjadi lembap; pada petak sudah lembap tetap membuang air. Jika air habis: false, air/counter pemakaian tidak bertambah, action tetap dihitung. Tidak ada kematangan/timer atau air negatif. Reset memulihkan fixture/air/metrik.
+
+Referensi sensor yang sama menghasilkan 5 aksi/2 air/9 request per skenario, total 10 aksi/4 air. P4 gagal pada kegagalan pertama (tidak mengklaim skenario berikutnya diuji). Frame lintas p4-a/p4-b ditolak sebelum mutasi. Kegagalan, Stop, timeout/error setelah target, atau hanya lulus skenario pertama tidak memberi pencapaian. Progres baru diberikan setelah dua hasil sah dan replay terakhir selesai. Output global tetap 64 baris/8 KiB ditambah pemberitahuan pemotongan; subhasil tidak menahan salinan output per skenario.
+
+Posisi hardcode 0,2 lulus p4-a tetapi gagal p4-b. Tidak ada klaim pencegahan seluruh strategi hardcode/penilaian konsep Python; hanya dua fixture wajib ini yang diuji. Target game tetap 9 puzzle/3 misi, tahap awal 1–4.

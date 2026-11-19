@@ -50,3 +50,47 @@ tasks.register('runtimeTest', JavaExec) {
   mainClass = 'com.marsreboot.runtime.RuntimeTest'
 }
 check.dependsOn runtimeTest
+
+tasks.register('puzzleProgressTest', JavaExec) {
+  group = 'verification'
+  dependsOn testClasses, ':lwjgl3:preparePython'
+  classpath = sourceSets.test.runtimeClasspath + files(rootProject.file('assets'))
+  mainClass = 'com.marsreboot.runtime.PuzzleProgressTest'
+  systemProperty 'mars.pythonDir', rootProject.layout.buildDirectory.dir('python/windows-x64').get().asFile.absolutePath
+}
+
+tasks.register('editorTest', JavaExec) {
+  group = 'verification'
+  dependsOn testClasses
+  classpath = sourceSets.test.runtimeClasspath
+  mainClass = 'com.marsreboot.habitat.PythonEditingTest'
+}
+check.dependsOn editorTest
+
+tasks.register('waterPuzzleTest', JavaExec) {
+  group = 'verification'
+  dependsOn testClasses, ':lwjgl3:preparePython'
+  classpath = sourceSets.test.runtimeClasspath + files(rootProject.file('assets'))
+  mainClass = 'com.marsreboot.runtime.WaterPuzzleTest'
+  systemProperty 'mars.pythonDir', rootProject.layout.buildDirectory.dir('python/windows-x64').get().asFile.absolutePath
+}
+
+tasks.register('waterSimulationTest', JavaExec) {
+  group = 'verification'
+  dependsOn testClasses
+  classpath = sourceSets.test.runtimeClasspath
+  mainClass = 'com.marsreboot.robot.WaterSimulationTest'
+}
+check.dependsOn waterSimulationTest
+
+// Behavioral suites are JavaExec mains wired to check, not JUnit methods.
+// Keep discovered framework tests enabled; absence alone is expected in this project.
+tasks.named('test') { failOnNoDiscoveredTests = false }
+
+tasks.register('patternTest', JavaExec) {
+  group = 'verification'
+  dependsOn testClasses
+  classpath = sourceSets.test.runtimeClasspath
+  mainClass = 'com.marsreboot.robot.PatternBehaviorTest'
+}
+check.dependsOn patternTest

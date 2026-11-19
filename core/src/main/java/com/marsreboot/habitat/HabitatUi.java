@@ -35,6 +35,7 @@ import com.badlogic.gdx.utils.Align;
 import com.badlogic.gdx.utils.Disposable;
 import com.badlogic.gdx.utils.viewport.ExtendViewport;
 import com.marsreboot.runtime.RunCoordinator;
+import com.marsreboot.runtime.PuzzleDefinition;
 import com.marsreboot.runtime.RunCoordinator.Status;
 import java.util.ArrayList;
 import java.util.List;
@@ -70,6 +71,9 @@ public final class HabitatUi implements Disposable {
 
     private final HabitatWorld world;
     private final RunCoordinator coordinator;
+    private TextButton puzzleOneButton, puzzleTwoButton, puzzleThreeButton, puzzleFourButton;
+    private Label p2MissionStatusLabel, p3MissionStatusLabel, p4MissionStatusLabel, puzzleHintLabel;
+    private final java.util.Map<PuzzleDefinition,String> drafts = new java.util.EnumMap<>(PuzzleDefinition.class);
     private final Stage stage = new Stage(new ExtendViewport(960f, 600f));
     private final Skin skin = new Skin(Gdx.files.internal("ui/uiskin.json"));
     private final List<Texture> ownedTextures = new ArrayList<>();
@@ -309,7 +313,7 @@ public final class HabitatUi implements Disposable {
         inspectBody.pad(12f, 14f, 12f, 14f);
         inspectBody.add(wrapLabel("• Lokasi Target: petak (0,0) dan (1,0) di dalam kubah Bio-Dome.", bodyStyle))
             .growX().minWidth(0).left().padBottom(6f).row();
-        inspectBody.add(wrapLabel("• Cara Kerja: berjalan ke Bio-Dome Timur lalu klik langsung pada Rover untuk menulis kode Python (maksimal 6 aksi).", mutedStyle))
+        inspectBody.add(wrapLabel("• Cara Kerja: berjalan ke Bio-Dome Timur lalu klik langsung pada Rover untuk menulis kode Python. P1: 6 aksi; P2: 12 aksi setelah P1 selesai.", mutedStyle))
             .growX().minWidth(0).left();
         inspection.add(inspectBody).growX().minWidth(0).pad(0f, 10f, 10f, 10f).row();
 
@@ -346,6 +350,22 @@ public final class HabitatUi implements Disposable {
         terminal.getTitleTable().add(helpToggleBtn).height(24f).padRight(6f);
         terminal.getTitleTable().add(termCloseBtn).width(26f).height(24f).padRight(4f);
 
+        Table selector = new Table();
+        puzzleOneButton = new TextButton("P1 Panen", hudPillBtnStyle);
+        puzzleTwoButton = new TextButton("P2 [x]", hudPillBtnStyle);
+        puzzleOneButton.setName("selectPuzzle1"); puzzleTwoButton.setName("selectPuzzle2");
+        puzzleOneButton.addListener(onAction(() -> changePuzzle(PuzzleDefinition.ONE)));
+        puzzleTwoButton.addListener(onAction(() -> changePuzzle(PuzzleDefinition.TWO)));
+        puzzleThreeButton = new TextButton("P3 [x]", hudPillBtnStyle);
+        puzzleThreeButton.setName("selectPuzzle3");
+        puzzleThreeButton.addListener(onAction(() -> changePuzzle(PuzzleDefinition.THREE)));
+        puzzleFourButton = new TextButton("P4 [x]", hudPillBtnStyle);
+        puzzleFourButton.setName("selectPuzzle4");
+        puzzleFourButton.addListener(onAction(() -> changePuzzle(PuzzleDefinition.FOUR)));
+        selector.add(puzzleOneButton).padRight(6f); selector.add(puzzleTwoButton).padRight(6f);
+        selector.add(puzzleThreeButton).padRight(6f); selector.add(puzzleFourButton);
+        terminal.add(selector).growX().minWidth(0).padBottom(4f).row();
+
         // 2a. Compact 1-Line Objective Strip
         Table goalStrip = new Table();
         goalStrip.setBackground(cardNeutralBg);
@@ -372,7 +392,7 @@ public final class HabitatUi implements Disposable {
         lineNumbersLabel = new Label("1\n2\n3\n4", monoStyle);
         lineNumbersLabel.setAlignment(Align.topRight);
 
-        editor = new TextArea(
+        editor = new PythonCodeArea(
             "harvest()\nmove(\"east\")\nharvest()",
             editorStyle
         );
@@ -495,11 +515,17 @@ public final class HabitatUi implements Disposable {
         Table apiBody = new Table();
         apiBody.setBackground(cardNeutralBg);
         apiBody.pad(10f, 12f, 10f, 12f);
+        puzzleHintLabel = wrapLabel("", bodyStyle);
+        apiBody.add(puzzleHintLabel).growX().minWidth(0).left().padBottom(8f).row();
         apiBody.add(wrapLabel("harvest() — Panen petak aktif (1 aksi)", bodyStyle)).growX().minWidth(0).left().padBottom(6f).row();
         apiBody.add(wrapLabel("move(\"east\"|\"west\"|\"north\"|\"south\") — Gerak rover (1 aksi)", bodyStyle)).growX().minWidth(0).left().padBottom(6f).row();
         apiBody.add(wrapLabel("can_harvest() — Cek tanaman matang (gratis)", mutedStyle)).growX().minWidth(0).left().padBottom(6f).row();
         apiBody.add(wrapLabel("get_pos() — Koordinat rover (x, y) (gratis)", mutedStyle)).growX().minWidth(0).left();
-        helpDrawer.add(apiBody).growX().minWidth(0).pad(4f, 10f, 8f, 10f).row();
+        apiBody.row();
+        apiBody.add(wrapLabel("P4: needs_water() — cek petak kering; water() — pakai 1 aksi dan 1 air bila tersedia.", mutedStyle)).growX().minWidth(0).left();
+        ScrollPane apiScroll = new ScrollPane(apiBody, new ScrollPane.ScrollPaneStyle());
+        apiScroll.setScrollingDisabled(true, false); apiScroll.setFadeScrollBars(false);
+        helpDrawer.add(apiScroll).grow().minWidth(0).minHeight(0f).pad(4f, 10f, 8f, 10f).row();
         TextButton closeApiBtn = new TextButton("Tutup [?]", softBtnStyle);
         closeApiBtn.addListener(onAction(() -> {
             helpDrawerOpen = false;
@@ -531,9 +557,15 @@ public final class HabitatUi implements Disposable {
         p1MissionCard.add(p1MissionDetailLabel).growX().minWidth(0).left().padTop(4f);
         missionMapWindow.add(p1MissionCard).growX().minWidth(0).pad(4f, 10f, 8f, 10f).row();
 
+        p2MissionStatusLabel = wrapLabel("P2 Loop: selesaikan P1 untuk membuka.", mutedStyle);
+        missionMapWindow.add(p2MissionStatusLabel).growX().minWidth(0).pad(4f, 10f, 8f, 10f).row();
+        p3MissionStatusLabel = wrapLabel("P3 Sensor: selesaikan P2 untuk membuka.", mutedStyle);
+        missionMapWindow.add(p3MissionStatusLabel).growX().minWidth(0).pad(4f, 10f, 8f, 10f).row();
+        p4MissionStatusLabel = wrapLabel("P4 Irigasi: selesaikan P3 untuk membuka.", mutedStyle);
+        missionMapWindow.add(p4MissionStatusLabel).growX().minWidth(0).pad(4f, 10f, 8f, 10f).row();
         Table pGrid = new Table();
         pGrid.defaults().pad(4f).growX().minWidth(0);
-        for (int p = 2; p <= 9; p++) {
+        for (int p = 5; p <= 9; p++) {
             Table c = new Table();
             c.setBackground(cardNeutralBg);
             c.pad(7f, 10f, 7f, 10f);
@@ -694,17 +726,47 @@ public final class HabitatUi implements Disposable {
         }
     }
 
+    private void changePuzzle(PuzzleDefinition selected) {
+        PuzzleDefinition previous = coordinator.view().puzzle();
+        if (previous == selected) return;
+        String draft = editor.getText();
+        if (!coordinator.selectPuzzle(selected)) return;
+        drafts.put(previous, draft);
+        editor.setText(drafts.getOrDefault(selected, selected.starter()));
+        editor.setCursorPosition(editor.getText().length());
+        stage.setKeyboardFocus(editor);
+    }
+
     private void syncPuzzle() {
         RunCoordinator.View view = coordinator.view();
         shownPuzzle = view;
         var snap = view.snapshot();
 
-        int harvests = snap.harvestCount();
+        boolean watering = view.puzzle().watering();
+        int harvests = watering ? view.puzzle().targetCount() - snap.remainingTargets().size() : snap.harvestCount();
         int actions = snap.actionCount();
-        int maxActions = 6;
-        puzzleStats.setText("M1-P1 | PANEN " + harvests + "/2 | AKSI " + actions + "/" + maxActions);
-        goalSummaryLabel.setText("Panen " + harvests + "/2 • Aksi " + actions + "/" + maxActions);
+        int maxActions = view.puzzle().actionLimit();
+        int targets = view.puzzle().targetCount();
+        terminal.getTitleLabel().setText("ROVER BIO-DOME | PUZZLE " + view.puzzle().number());
+        puzzleOneButton.setDisabled(!view.canRun());
+        puzzleTwoButton.setDisabled(!view.canRun() || !coordinator.isCompleted(PuzzleDefinition.ONE));
+        puzzleTwoButton.setText(coordinator.isCompleted(PuzzleDefinition.ONE) ? "P2 Loop" : "P2 [x]");
+        p2MissionStatusLabel.setText(coordinator.isCompleted(PuzzleDefinition.TWO) ? "P2 LOOP • SELESAI (SESI)" : coordinator.isCompleted(PuzzleDefinition.ONE) ? "P2 LOOP • TERSEDIA — pilih P2 pada terminal Rover." : "P2 LOOP • TERKUNCI — selesaikan P1.");
+        puzzleThreeButton.setDisabled(!view.canRun() || !coordinator.isCompleted(PuzzleDefinition.TWO));
+        puzzleThreeButton.setText(coordinator.isCompleted(PuzzleDefinition.TWO) ? "P3 Sensor" : "P3 [x]");
+        p3MissionStatusLabel.setText(coordinator.isCompleted(PuzzleDefinition.THREE) ? "P3 SENSOR • SELESAI (SESI)" : coordinator.isCompleted(PuzzleDefinition.TWO) ? "P3 SENSOR • TERSEDIA — pilih P3 pada terminal Rover." : "P3 SENSOR • TERKUNCI — selesaikan P2.");
+        puzzleFourButton.setDisabled(!view.canRun() || !coordinator.isCompleted(PuzzleDefinition.THREE));
+        puzzleFourButton.setText(coordinator.isCompleted(PuzzleDefinition.THREE) ? "P4 Irigasi" : "P4 [x]");
+        p4MissionStatusLabel.setText(coordinator.isCompleted(PuzzleDefinition.FOUR) ? "P4 IRIGASI • SELESAI (2 SKENARIO)" : coordinator.isCompleted(PuzzleDefinition.THREE) ? "P4 IRIGASI • TERSEDIA — kode sama, dua skenario." : "P4 IRIGASI • TERKUNCI — selesaikan P3.");
+        puzzleHintLabel.setText(view.puzzle().instruction() + "\n" + view.puzzle().reference());
+        puzzleStats.setText("M1-P" + view.puzzle().number() + " | PANEN " + harvests + "/" + targets + " | AKSI " + actions + "/" + maxActions);
+        goalSummaryLabel.setText("Panen " + harvests + "/" + targets + " • Aksi " + actions + "/" + maxActions);
 
+        if (watering) {
+            terminal.getTitleLabel().setText("P4 IRIGASI | SKENARIO " + view.scenarioNumber() + "/2");
+            puzzleStats.setText("M2-P4 | AIR " + snap.waterRemaining() + "/2 | SK " + view.scenarioNumber() + "/2 | AKSI " + actions + "/12");
+            goalSummaryLabel.setText("Siram " + harvests + "/2 • Air " + snap.waterRemaining() + "/2");
+        }
         Status st = view.status();
         updateStatusBadge(st, view.completed());
         updateMissionMapCard(st, view.completed(), harvests, actions, maxActions);
@@ -749,25 +811,31 @@ public final class HabitatUi implements Disposable {
                 consoleBox.setBackground(consoleNormalBg);
                 consoleTitleLabel.setColor(COL_CYAN);
                 title = "Memutar aksi rover secara halus...";
-                hint = "Amati rover bergerak dan memanen di Bio-Dome kanan.";
+                hint = watering ? "Skenario " + view.scenarioNumber() + "/2: amati petak kering menjadi lembap. Lulus " + view.scenariosPassed() + "/2." : "Amati rover bergerak dan memanen di Bio-Dome kanan.";
             }
             case SUCCESS -> {
                 consoleBox.setBackground(consoleSuccessBg);
                 consoleTitleLabel.setColor(COL_EMERALD);
-                title = "Sukses! " + harvests + "/2 tanaman dipanen (" + actions + "/" + maxActions + " aksi).";
-                hint = "Pencapaian sesi P1 tercatat.";
+                title = "Sukses! " + harvests + "/" + targets + " tanaman dipanen (" + actions + "/" + maxActions + " aksi).";
+                hint = "Pencapaian sesi puzzle tercatat.";
+                if (watering) {
+                    title = "Sukses! " + view.scenariosPassed() + "/2 skenario lulus.";
+                    hint = "Total " + view.totalActions() + " aksi dan " + view.totalWaterUsed() + " air (batas 12 aksi/2 air per skenario).";
+                }
             }
             case INCOMPLETE -> {
                 consoleBox.setBackground(consoleWarnBg);
                 consoleTitleLabel.setColor(COL_AMBER);
-                title = "Target belum selesai (" + harvests + "/2 dipanen).";
-                hint = "Pastikan rover memanen di (0,0), pindah east, lalu harvest() di (1,0).";
+                title = view.puzzle().rejectsYoungHarvest() && snap.invalidHarvestCount() > 0
+                    ? "Tidak lulus: mencoba panen tanaman muda." : "Target belum selesai (" + harvests + "/" + targets + " dipanen).";
+                if (watering) title = "Belum lulus: " + view.scenarioId() + " (" + harvests + "/2 petak disiram).";
+                hint = watering ? view.message() + " Gunakan needs_water() agar air tidak terbuang pada petak lembap." : view.puzzle() == PuzzleDefinition.THREE ? view.message() + " " + view.puzzle().instruction() : "Panen setiap tanaman dari x=0 sampai x=" + (targets - 1) + ". Gunakan [?] API untuk contoh.";
             }
             case LIMIT_EXCEEDED -> {
                 consoleBox.setBackground(consoleWarnBg);
                 consoleTitleLabel.setColor(COL_AMBER);
                 title = "Batas aksi terlampaui (" + actions + "/" + maxActions + ").";
-                hint = "Kurangi langkah gerak/panen agar <= 6 aksi.";
+                hint = "Kurangi langkah gerak/aksi agar <= " + maxActions + " aksi per skenario.";
             }
             case ERROR -> {
                 consoleBox.setBackground(consoleErrorBg);
@@ -803,7 +871,8 @@ public final class HabitatUi implements Disposable {
         boolean showSuccessActions = st == Status.SUCCESS;
         successSummaryRow.setVisible(showSuccessActions);
         successSummaryRowCell.height(showSuccessActions ? 32f : 0f).padTop(showSuccessActions ? 4f : 0f);
-        successSummaryLabel.setText("2 dipanen • " + actions + " aksi");
+        successSummaryLabel.setText(watering ? view.totalActions() + " aksi • " + view.totalWaterUsed() + " air"
+            : harvests + " dipanen • " + actions + " aksi");
     }
 
     private void updateStatusBadge(Status st, boolean completed) {
@@ -832,12 +901,13 @@ public final class HabitatUi implements Disposable {
     }
 
     private void updateMissionMapCard(Status st, boolean completed, int harvests, int actions, int maxActions) {
-        boolean running = st == Status.PREPARING || st == Status.RUNNING || st == Status.REPLAYING;
+        completed = coordinator.isCompleted(PuzzleDefinition.ONE);
+        boolean running = coordinator.view().puzzle() == PuzzleDefinition.ONE && (st == Status.PREPARING || st == Status.RUNNING || st == Status.REPLAYING);
         if (completed) {
             p1MissionCard.setBackground(cardEmeraldBg);
             p1MissionStatusLabel.setStyle(emeraldStyle);
             p1MissionStatusLabel.setText("P1 • SELESAI (SESI)");
-            p1MissionDetailLabel.setText("Dua tanaman dipanen. Terakhir: " + harvests + "/2, " + actions + "/" + maxActions + " aksi.");
+            p1MissionDetailLabel.setText("Dua tanaman dipanen. Pencapaian P1 tersimpan selama sesi.");
         } else if (running) {
             p1MissionCard.setBackground(cardAmberBg);
             p1MissionStatusLabel.setStyle(amberStyle);
