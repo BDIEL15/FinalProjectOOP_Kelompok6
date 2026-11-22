@@ -2,7 +2,7 @@
 
 ## Tujuan dan status
 
-Repository ini adalah sumber utama **mars_reboot.py**: kode libGDX existing ada di core/ dan lwjgl3/, aset di assets/, serta dokumentasi dan skill pada root repo yang sama. Habitat/kontrol dan visual dasar sudah tersedia; robot/runtime, evaluator puzzle dan backend belum dibuktikan. Prototype web lama di prototype-web/ hanya referensi; ringkasan/arsipnya di PROTOTYPE.md dan docs/prototype/. Baca TEAM_GUIDE.md dan TEAM_PROMPTS.md saat bergabung. Jangan menjalankan generator ulang atau mencampur aturan kedua target.
+Repository ini adalah sumber utama **mars_reboot.py**: source libGDX core/lwjgl3, backend Spring, assets, dokumentasi dan skill berada pada root yang sama. Per 22 November 2026, kandidat puzzle 1 panen terhubung ke terminal Python nyata, robot/replay/hasil, Run/Stop/Reset dan progres sesi; Home/login/tamu, setelan, akun/skor lokal dan scoreboard P1 juga ada. Java 21 langsung mengompilasi core/backend, tetapi Gradle Wrapper gagal start karena `native-platform.dll`, sehingga UI terbaru belum diverifikasi. Puzzle 2–9, save lintas restart, server bersama dan komputer kedua belum terverifikasi. Baca TEAM_GUIDE, TEAM_PROMPTS, [kontrak runtime](docs/mars/PYTHON_RUNTIME.md), serta handoff terbaru TASKS sebelum melanjutkan. Prototype web di prototype-web/ hanya referensi; jangan menjalankan generator ulang atau mencampur aturan kedua target.
 
 Utamakan pekerjaan yang diminta pengguna pada giliran aktif. Keberadaan TASKS.md bukan izin untuk otomatis mengimplementasikan semua tugas, memasang software global, atau memublikasikan proyek.
 
@@ -69,7 +69,7 @@ npm run build        # build produksi
 npm run preview      # menyajikan build produksi
 ```
 
-Script npm di atas tersedia di prototype-web/package.json; jalankan hanya dari prototype-web/. Mars memakai Wrapper root: .\gradlew.bat :lwjgl3:run, :core:controlTest, :lwjgl3:desktopSmokeTest, dan build. Versi serta batas bukti Wrapper/JDK ada di README dan VERIFICATION; jangan mengklaim build lulus sebelum dijalankan. Hasil historis prototype di docs/prototype/VERIFICATION.md tidak menggantikan verifikasi perubahan saat ini. Pemain browser tidak perlu Python lokal. Bila lingkungan pengembangan tidak memiliki Python, laporkan test Python belum dijalankan dan gunakan pengujian Pyodide sebagai bukti tambahan; jangan menginstal Python global tanpa kebutuhan/otorisasi yang sesuai.
+Script npm di atas tersedia di prototype-web/package.json; jalankan hanya dari prototype-web/. Mars memakai Wrapper root: .\gradlew.bat :lwjgl3:run, :core:controlTest, :core:robotTest, :lwjgl3:desktopSmokeTest, dan build. Versi serta batas bukti Wrapper/JDK ada di README dan VERIFICATION; jangan mengklaim build lulus sebelum dijalankan. Hasil historis prototype di docs/prototype/VERIFICATION.md tidak menggantikan verifikasi perubahan saat ini. Pemain browser tidak perlu Python lokal. Bila lingkungan pengembangan tidak memiliki Python, laporkan test Python belum dijalankan dan gunakan pengujian Pyodide sebagai bukti tambahan; jangan menginstal Python global tanpa kebutuhan/otorisasi yang sesuai.
 
 Setelah checks yang relevan lulus, jangan mengulang test luas tanpa perubahan atau alasan baru. Laporkan apa yang diubah, bukti verifikasi, dan batas yang masih ada.
 

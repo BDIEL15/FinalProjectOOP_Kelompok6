@@ -1,14 +1,14 @@
 # TEAM_GUIDE — Mulai kerja bersama mars_reboot.py
 
-Panduan tim, 13 November 2026. Buka **root clone MarsReboot**: folder yang memuat settings.gradle, gradlew, core/, lwjgl3/, dan AGENTS.md. Dokumentasi, source game, aset, dan skill sekarang berada pada satu repo. Nama orang/koordinator dan assignment tugas masih harus diisi tim; empat peran di bawah adalah pembagian yang disarankan, bukan nama kontributor rekaan.
+Panduan tim, diperbarui 22 November 2026. Buka **root clone MarsReboot**: folder yang memuat settings.gradle, gradlew, core/, lwjgl3/, backend/, dan AGENTS.md. Dokumentasi, source game, aset, dan skill berada pada satu repo. Nama orang/koordinator dan assignment tugas masih harus diisi tim; empat peran di bawah adalah pembagian yang disarankan, bukan nama kontributor rekaan.
 
 ## 1. Game yang sedang dibuat
 
 Pemain menjadi astronaut yang menyelidiki kerusakan habitat Mars. Dari panel/inspeksi, pemain memahami masalah, lalu menulis program di terminal untuk robot. Robot memanen, menyiram dan mencari jalan; keberhasilan program memulihkan habitat. Target **9 puzzle dalam 3 misi**, dikerjakan mulai **puzzle 1–4**.
 
 - **Sudah tersedia berdasarkan bukti terdahulu:** habitat, gerak/collision astronaut, interaksi, panel, terminal multiline sementara, visual outpost dan layar preview. Periksa source/handoff terbaru sebelum mengklaim status lebih jauh.
-- **Belum tersedia sebagai gameplay nyata:** simulasi/evaluator robot, runtime Python, alur Run/Stop puzzle, autentikasi/skor backend serta progres puzzle lengkap. Tampilan akun/hasil/Before–After dapat berupa preview, bukan integrasi.
-- **Keputusan terbuka:** konfirmasi Python ke aslab, runtime, kontrak API/skor, backend/database/sesi, paket final, dan rincian konten. Rancangan bertanda Usulan bukan keputusan final pengguna.
+- **Integrasi terbaru:** Per 22 November 2026, kandidat puzzle 1 panen tetap terhubung ke terminal Python nyata, robot/replay/hasil, Run/Stop/Reset dan progres sesi. Home/login/tamu, setelan, backend akun/skor lokal dan papan skor P1 ditambahkan; `javac` langsung lulus, tetapi Gradle Wrapper gagal start sebelum build sehingga desktop terbaru belum diverifikasi. Puzzle 2–9, save lintas restart, server bersama, dan komputer kedua masih terbuka. Detail backend di `backend/README.md`; runtime di [kontrak runtime](docs/mars/PYTHON_RUNTIME.md).
+- **Keputusan terbuka:** konfirmasi Python ke aslab, penerimaan fixture/UX, API/skor backend/database/sesi serta paket final komputer kedua. CPython bundel Windows x64 kini dipilih untuk eksperimen p1; bukan persetujuan seluruh Usulan.
 
 Sumber: [PROJECT](PROJECT.md), [PRD](PRD.md), [RULES](RULES.md), dan [bukti aktual](VERIFICATION.md). Jangan menambah combat, crafting, survival timer, multiplayer, atau engine baru dari ide AI sendiri.
 
@@ -16,7 +16,7 @@ Sumber: [PROJECT](PROJECT.md), [PRD](PRD.md), [RULES](RULES.md), dan [bukti aktu
 
 | Lokasi | Tanggung jawab |
 | --- | --- |
-| core/src/main/java/com/marsreboot/ | Game Java; habitat/ berisi state, input, renderer, UI dan lifecycle existing. |
+| core/src/main/java/com/marsreboot/ | Game Java; habitat/ berisi dunia/input/render/UI, robot/ berisi kandidat domain robot dan evaluator p1-a tanpa libGDX/Python. |
 | lwjgl3/ | Launcher dan bagian desktop serta smoke test existing. |
 | assets/ | Skin dan aset game; pertahankan asal/lisensi/manifest. |
 | gradle/, gradlew, gradlew.bat | Wrapper/toolchain existing; ikut repo, jangan memakai versi Gradle global sembarang. |
@@ -25,7 +25,7 @@ Sumber: [PROJECT](PROJECT.md), [PRD](PRD.md), [RULES](RULES.md), dan [bukti aktu
 | .agents/skills/ + skills-lock.json | Paket skill yang sama untuk Codex/Antigravity; tool eksternal tidak otomatis terpasang. |
 | prototype-web/ + docs/prototype/ | Source dan arsip web lama untuk referensi; bukan game Mars atau backend. |
 
-Backend belum dibuat/disatukan build; jangan menganggap ada folder backend aktif atau membuat backend kedua tanpa membaca handoff. Batas root/modul ditetapkan pada tugas bootstrap terkait.
+Folder `backend/` sekarang berisi Spring Boot untuk akun dan skor lokal, dan klien UI sudah tersambung di source game. Kompilasi langsung lulus pada 22 November 2026; Gradle Wrapper gagal start pada mesin itu sehingga run desktop terbaru belum diverifikasi. Jangan membuat backend kedua; baca `backend/README.md`, `ARCHITECTURE.md` §7, dan handoff terbaru di `TASKS.md` sebelum mengubah kontrak.
 
 ## 3. Pertama kali clone
 
@@ -36,13 +36,13 @@ Backend belum dibuat/disatukan build; jangan menganggap ada folder backend aktif
 5. Jalankan dari root clone:
 
 ```powershell
-.\gradlew.bat :core:controlTest
+.\gradlew.bat :core:robotTest :core:controlTest
 .\gradlew.bat :lwjgl3:run
 # Opsional setelah desktop tersedia:
 .\gradlew.bat :lwjgl3:desktopSmokeTest
 ```
 
-Untuk build: `.\gradlew.bat :lwjgl3:jar` atau `.\gradlew.bat build`. Di IntelliJ gunakan task lwjgl3/application/run atau launcher Lwjgl3Launcher dengan working directory assets. Jangan Run kelas game core langsung. Semua command di atas adalah petunjuk dari task existing; cek [VERIFICATION](VERIFICATION.md): Wrapper pernah terhambat unduhan, jadi hasil mesin masing-masing harus dicatat, bukan dianggap otomatis PASS.
+Untuk build: `.\gradlew.bat :lwjgl3:jar` atau `.\gradlew.bat build`. Di IntelliJ gunakan task lwjgl3/application/run atau launcher Lwjgl3Launcher dengan working directory assets. Jangan Run kelas game core langsung. Pada 13 Nov, robotTest/controlTest, compileJava desktop dan JAR melalui Wrapper lulus dengan cache mesin ini; belum menjalankan full build/desktopSmokeTest melalui Wrapper. Hasil mesin masing-masing harus dicatat sendiri di [VERIFICATION](VERIFICATION.md).
 
 6. Coba berjalan, panel/terminal, Esc, fokus editor dan resize. Laporkan masalah sebelum mengerjakan fitur besar. Source dan UI existing tidak perlu digenerate ulang.
 7. Buka sesi baru Codex/Antigravity pada root clone. Baca [SKILLS](SKILLS.md) dan minta AI membaca satu skill relevan. Bedakan file tersedia, discovery aplikasi, dependency tool, dan uji menjalankan tugas. Tidak perlu memasang Node/npm untuk game desktop; itu diperlukan hanya jika mengerjakan prototype atau tool skill yang relevan.

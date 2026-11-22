@@ -1,0 +1,21 @@
+mars_reboot.py — paket uji puzzle 1, Windows x64
+
+Ekstrak seluruh ZIP ke folder biasa, lalu buka run.bat. Java 21 atau lebih
+baru diperlukan. Python 3.15.2 sudah disertakan; tidak perlu instal Python/pip.
+Jangan memindahkan JAR saja tanpa folder runtime.
+
+WASD/panah: berjalan. E: inspeksi/buka terminal. Esc: tutup panel.
+Terminal M1-P1: panen dua tanaman matang, maksimal enam aksi.
+API: move("east"), harvest(), can_harvest(), get_pos().
+Run menjalankan salinan kode saat tombol ditekan; Stop menghentikan program;
+Reset mengembalikan petak tanpa menghapus draf. Draf/pencapaian belum disimpan
+lintas restart. Esc tidak menghentikan program. Preview visual bukan progres.
+
+Contoh solusi:
+harvest()
+move("east")
+harvest()
+
+Backend, login/skor nyata, dan puzzle 2–9 belum terintegrasi.
+Runtime ini untuk kode pembelajaran sendiri, bukan sandbox script bermusuhan.
+Lisensi Python berada di runtime/python/LICENSE.txt.

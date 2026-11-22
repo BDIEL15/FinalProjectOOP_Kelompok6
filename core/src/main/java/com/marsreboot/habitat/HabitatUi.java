@@ -13,11 +13,16 @@ import com.badlogic.gdx.scenes.scene2d.Actor;
 import com.badlogic.gdx.scenes.scene2d.InputEvent;
 import com.badlogic.gdx.scenes.scene2d.InputListener;
 import com.badlogic.gdx.scenes.scene2d.Stage;
+import com.badlogic.gdx.scenes.scene2d.ui.Cell;
+import com.badlogic.gdx.scenes.scene2d.ui.Image;
 import com.badlogic.gdx.scenes.scene2d.ui.Label;
 import com.badlogic.gdx.scenes.scene2d.ui.Label.LabelStyle;
+import com.badlogic.gdx.scenes.scene2d.ui.ScrollPane;
+import com.badlogic.gdx.scenes.scene2d.ui.ScrollPane.ScrollPaneStyle;
 import com.badlogic.gdx.scenes.scene2d.ui.Skin;
 import com.badlogic.gdx.scenes.scene2d.ui.Table;
 import com.badlogic.gdx.scenes.scene2d.ui.TextArea;
+import com.badlogic.gdx.scenes.scene2d.ui.TextField;
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton;
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton.TextButtonStyle;
 import com.badlogic.gdx.scenes.scene2d.ui.TextField.TextFieldStyle;
@@ -29,26 +34,32 @@ import com.badlogic.gdx.scenes.scene2d.utils.NinePatchDrawable;
 import com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable;
 import com.badlogic.gdx.utils.Align;
 import com.badlogic.gdx.utils.Disposable;
-import com.badlogic.gdx.utils.viewport.FitViewport;
+import com.badlogic.gdx.Preferences;
+import com.badlogic.gdx.utils.viewport.ExtendViewport;
+import com.marsreboot.runtime.RunCoordinator;
+import com.marsreboot.runtime.RunCoordinator.Status;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 /**
- * Sci-Fi Game HUD and complete UI overlays for the Outdoor Mars Outpost:
- * - Top/Bottom Sci-Fi HUD with Before/After toggle [B], Field Log [J], Mission Map 1-9 [M], Settings [O]
- * - Outdoor Solar & Water Panel Inspection Modal
- * - Upgraded Floating Draggable Terminal (The Farmer Was Replaced style) + Error/Timeout/Stopped states
- * - 3-Step Progressive Help Drawer (FR-020)
- * - Field Log Astronaut Modal, Mission Map 1-9 Modal, and Settings & Accessibility Modal (UI-05)
+ * Rounded, non-boxy Mars Outpost HUD & Unified Resizable Rover Terminal:
+ * - ExtendViewport(960, 600) with floating pill HUDs (no rigid edge-to-edge black bars)
+ * - 3x supersampled anti-aliased rounded glass windows, pills, and buttons
+ * - Minimalist movable & resizable Rover Terminal opened via direct Rover click or [E] nearby
+ *   with expandable [?] API drawer and auto-collapsing [Log] output panel
  */
 public final class HabitatUi implements Disposable {
     private static final Color COL_TEXT_PRIMARY = Color.valueOf("F8FAFC");
     private static final Color COL_TEXT_SECONDARY = Color.valueOf("CBD5E1");
     private static final Color COL_TEXT_MUTED = Color.valueOf("94A3B8");
     private static final Color COL_CYAN = Color.valueOf("38BDF8");
-    private static final Color COL_MARS = Color.valueOf("F59E0B");
-    private static final Color COL_GREEN = Color.valueOf("34D399");
-    private static final Color COL_ALERT = Color.valueOf("F87171");
+    private static final Color COL_AMBER = Color.valueOf("F59E0B");
+    private static final Color COL_EMERALD = Color.valueOf("34D399");
+    private static final Color COL_CORAL = Color.valueOf("F87171");
+
+    public static final float TERMINAL_MIN_W = 350f;
+    public static final float TERMINAL_MIN_H = 280f;
 
     private static boolean outpostRestored = false;
     private static boolean reducedMotion = false;
@@ -56,13 +67,32 @@ public final class HabitatUi implements Disposable {
 
     public static boolean isOutpostRestored() { return outpostRestored; }
     public static boolean isReducedMotion() { return reducedMotion; }
-    public static void setOutpostRestored(boolean restored) { outpostRestored = restored; }
+    public static boolean isHighContrastFocus() { return highContrastFocus; }
+    public static void setOutpostRestored(boolean restored) { outpostRestored = restored; saveSettings(); }
+    public static void setReducedMotion(boolean enabled) { reducedMotion = enabled; saveSettings(); }
+    public static void setHighContrastFocus(boolean enabled) { highContrastFocus = enabled; saveSettings(); }
+
+    public static void loadSettings() {
+        Preferences saved = Gdx.app.getPreferences("mars-reboot-settings");
+        outpostRestored = saved.getBoolean("outpostRestored", false);
+        reducedMotion = saved.getBoolean("reducedMotion", false);
+        highContrastFocus = saved.getBoolean("highContrastFocus", true);
+    }
+
+    private static void saveSettings() {
+        if (Gdx.app == null) return;
+        Preferences saved = Gdx.app.getPreferences("mars-reboot-settings");
+        saved.putBoolean("outpostRestored", outpostRestored);
+        saved.putBoolean("reducedMotion", reducedMotion);
+        saved.putBoolean("highContrastFocus", highContrastFocus);
+        saved.flush();
+    }
 
     public enum AuxOverlay { NONE, FIELD_LOG, MISSION_MAP, SETTINGS }
-    public enum TerminalState { NORMAL, ERROR, TIMEOUT, STOPPED }
 
     private final HabitatWorld world;
-    private final Stage stage = new Stage(new FitViewport(960, 600));
+    private final RunCoordinator coordinator;
+    private final Stage stage = new Stage(new ExtendViewport(960f, 600f));
     private final Skin skin = new Skin(Gdx.files.internal("ui/uiskin.json"));
     private final List<Texture> ownedTextures = new ArrayList<>();
     private final List<BitmapFont> ownedFonts = new ArrayList<>();
@@ -70,449 +100,571 @@ public final class HabitatUi implements Disposable {
     private final BitmapFont uiFont;
     private final BitmapFont uiBoldFont;
     private final BitmapFont monoFont;
+    private final BitmapFont hudFont;
+    private final BitmapFont hudBoldFont;
 
     private final Label prompt;
     private final Label modeBadge;
-    private final Label focusStatusLabel;
+    private final Label puzzleStats;
+    private final Label goalSummaryLabel;
+    private final Label goalStatusLabel;
+    private final Label editorHeaderRangeLabel;
     private final Label lineNumbersLabel;
     private final Label consoleTitleLabel;
     private final Label consoleDetailLabel;
+    private final ScrollPane consoleScroll;
     private final Table consoleBox;
+    private final Cell<Table> consoleBoxCell;
+    private final Table editorPanel;
     private final Table bottomPromptBox;
+    private final Table successSummaryRow;
+    private final Cell<Table> successSummaryRowCell;
+    private final Label successSummaryLabel;
+
     private final Drawable promptIdleBg;
     private final Drawable promptNearBg;
     private final Drawable promptModalBg;
     private final Drawable consoleNormalBg;
+    private final Drawable consoleSuccessBg;
     private final Drawable consoleErrorBg;
     private final Drawable consoleWarnBg;
+    private final Drawable editorNormalBg;
+    private final Drawable editorFocusHighBg;
+    private final Drawable editorFocusStdBg;
+    private final Drawable cardNeutralBg;
+    private final Drawable cardCyanBg;
+    private final Drawable cardEmeraldBg;
+    private final Drawable cardAmberBg;
 
-    private final TextButton beforeAfterBtn;
-    private final TextButton step3UnlockBtn;
-    private final Label step3BodyLabel;
+    private final TextFieldStyle editorStyle;
     private final TextButton reducedMotionBtn;
     private final TextButton highContrastBtn;
-    private final TextButton outpostStateSettingsBtn;
+    private final TextButton previewVisualBtn;
+    private final TextButton logToggleBtn;
+    private final TextButton helpToggleBtn;
 
-    // Exact reflection fields verified by HabitatDesktopSmokeTest
+    private final Table p1MissionCard;
+    private final Label p1MissionStatusLabel;
+    private final Label p1MissionDetailLabel;
+    private final TextField backendUsernameField;
+    private final TextField backendPasswordField;
+    private final Label backendStatusLabel;
+    private final Label backendBestScoreLabel;
+    private final Label backendLeaderboardLabel;
+    private final TextButton backendLoginButton;
+    private final TextButton backendRegisterButton;
+    private final TextButton backendLogoutButton;
+    private final TextButton saveScoreButton;
+    private final Cell<TextButton> saveScoreButtonCell;
+    private final LabelStyle cyanStyle;
+    private final LabelStyle emeraldStyle;
+    private final LabelStyle amberStyle;
+    private final ScoreBackendClient scoreBackend;
+
+    // Reflection fields inspected by desktop smoke tests
     private final Window inspection;
     private final Window terminal;
     private final TextArea editor;
 
-    // Additional UI screens from approved Outdoor Mars Outpost design (07..11)
     private final Window helpDrawer;
     private final Window fieldLogWindow;
     private final Window missionMapWindow;
     private final Window settingsWindow;
 
+    private final TextButton runButton;
+    private final TextButton stopButton;
+    private final TextButton resetButton;
+    private final TextButton retryButton;
+    private final TextButton returnHabitatButton;
+
     private HabitatWorld.Mode shown;
     private AuxOverlay activeOverlay = AuxOverlay.NONE;
-    private TerminalState terminalState = TerminalState.NORMAL;
+    private RunCoordinator.View shownPuzzle;
+    private long scoreAttemptedGeneration = -1;
+    private long scoreSavedGeneration = -1;
+    private long scoreSubmissionGeneration = -1;
+    private String scoreSubmissionId;
     private boolean helpDrawerOpen = false;
-    private boolean step3Unlocked = false;
+    private boolean logManualExpanded = false;
 
-    public HabitatUi(HabitatWorld world) {
+    public HabitatUi(HabitatWorld world, RunCoordinator coordinator) {
+        this(world, coordinator, new ScoreBackendClient());
+    }
+
+    public HabitatUi(HabitatWorld world, RunCoordinator coordinator, ScoreBackendClient scoreBackend) {
         this.world = world;
-        outpostRestored = false;
-        reducedMotion = false;
+        this.coordinator = coordinator;
+        this.scoreBackend = scoreBackend;
+        loadSettings();
 
-        BitmapFont fallbackFont = skin.getFont("default");
-        fallbackFont.setUseIntegerPositions(true);
-        uiFont = loadHiDpiFont("ui/ui_sans.fnt", "ui/ui_sans.png", 0.37f, fallbackFont);
-        uiBoldFont = loadHiDpiFont("ui/ui_sans_bold.fnt", "ui/ui_sans_bold.png", 0.37f, fallbackFont);
-        monoFont = loadHiDpiFont("ui/ui_mono.fnt", "ui/ui_mono.png", 0.36f, fallbackFont);
+        // Clear ~18 UI-unit body typography + 15 UI-unit top/bottom pills
+        uiFont = loadBitmapFont("ui/ui_sans.fnt", "ui/ui_sans.png", 0.50f, false);
+        uiBoldFont = loadBitmapFont("ui/ui_sans_bold.fnt", "ui/ui_sans_bold.png", 0.50f, false);
+        monoFont = loadBitmapFont("ui/ui_mono.fnt", "ui/ui_mono.png", 0.53f, false);
+        hudFont = loadBitmapFont("ui/ui_sans.fnt", "ui/ui_sans.png", 0.43f, false);
+        hudBoldFont = loadBitmapFont("ui/ui_sans_bold.fnt", "ui/ui_sans_bold.png", 0.43f, false);
 
-        LabelStyle primaryStyle = new LabelStyle(uiFont, COL_TEXT_PRIMARY);
-        LabelStyle boldPrimaryStyle = new LabelStyle(uiBoldFont, COL_TEXT_PRIMARY);
-        LabelStyle secondaryStyle = new LabelStyle(uiFont, COL_TEXT_SECONDARY);
-        LabelStyle mutedStyle = new LabelStyle(uiFont, COL_TEXT_MUTED);
-        LabelStyle cyanStyle = new LabelStyle(uiBoldFont, COL_CYAN);
-        LabelStyle marsStyle = new LabelStyle(uiBoldFont, COL_MARS);
-        LabelStyle greenStyle = new LabelStyle(uiBoldFont, COL_GREEN);
-        LabelStyle alertStyle = new LabelStyle(uiBoldFont, COL_ALERT);
-        LabelStyle monoCyanStyle = new LabelStyle(monoFont, COL_CYAN);
-        LabelStyle monoMutedStyle = new LabelStyle(monoFont, COL_TEXT_MUTED);
+        LabelStyle bodyStyle = new LabelStyle(uiFont, COL_TEXT_PRIMARY);
+        LabelStyle mutedStyle = new LabelStyle(uiFont, COL_TEXT_SECONDARY);
+        LabelStyle boldStyle = new LabelStyle(uiBoldFont, COL_TEXT_PRIMARY);
+        LabelStyle hudStyle = new LabelStyle(hudFont, COL_TEXT_PRIMARY);
+        LabelStyle hudMutedStyle = new LabelStyle(hudFont, COL_TEXT_MUTED);
+        LabelStyle hudBoldStyle = new LabelStyle(hudBoldFont, COL_TEXT_PRIMARY);
+        LabelStyle monoStyle = new LabelStyle(monoFont, COL_TEXT_MUTED);
 
-        promptIdleBg = createBoxDrawable("131C28", "334155", 1, 8, 8, 3, 3);
-        promptNearBg = createBoxDrawable("0F293A", "38BDF8", 2, 8, 8, 3, 3);
-        promptModalBg = createBoxDrawable("261710", "F59E0B", 1, 8, 8, 3, 3);
-        consoleNormalBg = createBoxDrawable("090D14", "1E293B", 1, 8, 8, 5, 5);
-        consoleErrorBg = createBoxDrawable("221014", "EF4444", 2, 8, 8, 5, 5);
-        consoleWarnBg = createBoxDrawable("23180C", "F59E0B", 2, 8, 8, 5, 5);
+        cyanStyle = new LabelStyle(uiBoldFont, COL_CYAN);
+        emeraldStyle = new LabelStyle(uiBoldFont, COL_EMERALD);
+        amberStyle = new LabelStyle(uiBoldFont, COL_AMBER);
+        LabelStyle consoleTitleStyle = new LabelStyle(uiBoldFont, COL_CYAN);
 
-        prompt = new Label("", boldPrimaryStyle);
-        modeBadge = new Label("MODE: OUTPOST", greenStyle);
-        focusStatusLabel = new Label("FOKUS: EDITOR AKTIF", cyanStyle);
-        lineNumbersLabel = new Label("1\n2\n3", monoMutedStyle);
-        lineNumbersLabel.setAlignment(Align.topRight);
+        Drawable topPillBg = makeRoundedBox(28, 12, Color.valueOf("091220E6"), Color.valueOf("334155"), 1.5f);
+        Drawable statusPillBg = makeRoundedBox(26, 12, Color.valueOf("0C192CE6"), COL_CYAN, 1.5f);
+        promptIdleBg = makeRoundedBox(28, 14, Color.valueOf("091220E0"), Color.valueOf("334155"), 1.5f);
+        promptNearBg = makeRoundedBox(28, 14, Color.valueOf("071D2EEB"), COL_CYAN, 1.8f);
+        promptModalBg = makeRoundedBox(28, 14, Color.valueOf("21150CEB"), COL_AMBER, 1.8f);
 
-        // 1. Sci-Fi Top & Bottom HUD Bars (leaves y=40..560 outdoor Mars yard 100% unobstructed)
-        Table hud = new Table();
-        hud.setFillParent(true);
+        cardNeutralBg = makeRoundedBox(26, 11, Color.valueOf("0E1828EB"), Color.valueOf("334155"), 1.5f);
+        cardCyanBg = makeRoundedBox(26, 11, Color.valueOf("081C2EEB"), COL_CYAN, 1.6f);
+        cardEmeraldBg = makeRoundedBox(26, 11, Color.valueOf("06221BE8"), COL_EMERALD, 1.6f);
+        cardAmberBg = makeRoundedBox(26, 11, Color.valueOf("22170BE8"), COL_AMBER, 1.6f);
 
-        Table topBar = new Table();
-        topBar.setBackground(createBoxDrawable("0F1722", "334155", 1, 8, 8, 3, 3));
-        topBar.add(new Label("MARS_REBOOT.PY", cyanStyle)).left().padRight(6);
+        editorNormalBg = makeRoundedBox(26, 10, Color.valueOf("070F1CF2"), Color.valueOf("283A52"), 1.5f);
+        editorFocusStdBg = makeRoundedBox(26, 10, Color.valueOf("07101DF4"), COL_CYAN, 2.0f);
+        editorFocusHighBg = makeRoundedBox(26, 10, Color.valueOf("091527F6"), Color.valueOf("7DD3FC"), 2.5f);
 
-        Table statsChip = new Table();
-        statsChip.setBackground(createBoxDrawable("162232", "334155", 1, 5, 5, 2, 2));
-        statsChip.add(new Label("M1-P2 | AKSI 00/30 | AIR 2/2", secondaryStyle));
-        topBar.add(statsChip).left().padRight(6);
+        consoleNormalBg = makeRoundedBox(26, 10, Color.valueOf("08121FED"), Color.valueOf("334155"), 1.5f);
+        consoleSuccessBg = makeRoundedBox(26, 10, Color.valueOf("06211AEE"), COL_EMERALD, 1.8f);
+        consoleErrorBg = makeRoundedBox(26, 10, Color.valueOf("220B10EE"), COL_CORAL, 1.8f);
+        consoleWarnBg = makeRoundedBox(26, 10, Color.valueOf("211509EE"), COL_AMBER, 1.8f);
 
-        beforeAfterBtn = smallHudButton("[B] BEFORE", "261C14", "F59E0B", () -> toggleBeforeAfter());
-        topBar.add(beforeAfterBtn).left().padRight(6);
+        WindowStyle glassWindowStyle = new WindowStyle(
+            uiBoldFont, COL_TEXT_PRIMARY,
+            makeRoundedWindow(Color.valueOf("09111FEB"), Color.valueOf("38BDF8"), 14, 34)
+        );
+        WindowStyle warmWindowStyle = new WindowStyle(
+            uiBoldFont, COL_TEXT_PRIMARY,
+            makeRoundedWindow(Color.valueOf("0B111CEB"), COL_AMBER, 14, 34)
+        );
 
-        topBar.add().expandX();
+        TextButtonStyle hudPillBtnStyle = makeButtonStyle(
+            hudBoldFont, COL_TEXT_PRIMARY,
+            Color.valueOf("122036EC"), Color.valueOf("1B3352F4"), Color.valueOf("264972FF"),
+            Color.valueOf("3B526E"), COL_CYAN, 11
+        );
+        TextButtonStyle softBtnStyle = makeButtonStyle(
+            uiBoldFont, COL_TEXT_PRIMARY,
+            Color.valueOf("16243AEF"), Color.valueOf("203759F5"), Color.valueOf("294B7AFF"),
+            Color.valueOf("475569"), COL_CYAN, 10
+        );
+        TextButtonStyle primaryEmeraldStyle = makeButtonStyle(
+            uiBoldFont, Color.valueOf("042219"),
+            COL_EMERALD, Color.valueOf("6EE7B7"), Color.valueOf("10B981"),
+            Color.valueOf("A7F3D0"), Color.WHITE, 10
+        );
+        TextButtonStyle primaryCyanStyle = makeButtonStyle(
+            uiBoldFont, Color.valueOf("051B2C"),
+            COL_CYAN, Color.valueOf("7DD3FC"), Color.valueOf("0284C7"),
+            Color.valueOf("BAE6FD"), Color.WHITE, 10
+        );
+        TextButtonStyle stopAmberStyle = makeButtonStyle(
+            uiBoldFont, Color.valueOf("FFFBEB"),
+            Color.valueOf("B45309"), Color.valueOf("D97706"), Color.valueOf("92400E"),
+            COL_AMBER, Color.WHITE, 10
+        );
 
-        topBar.add(smallHudButton("[J] Log", "162232", "38BDF8", () -> toggleOverlay(AuxOverlay.FIELD_LOG)))
-            .right().padRight(4);
-        topBar.add(smallHudButton("[M] Misi", "162232", "38BDF8", () -> toggleOverlay(AuxOverlay.MISSION_MAP)))
-            .right().padRight(4);
-        topBar.add(smallHudButton("[O] Setelan", "162232", "38BDF8", () -> toggleOverlay(AuxOverlay.SETTINGS)))
-            .right().padRight(6);
+        Drawable cursorDrawable = makeSolidColor(Color.valueOf("38BDF8"), 2, 18);
+        Drawable selectionDrawable = makeSolidColor(new Color(0.22f, 0.74f, 0.97f, 0.35f), 2, 18);
+        editorStyle = new TextFieldStyle(
+            monoFont, COL_TEXT_PRIMARY, cursorDrawable, selectionDrawable, editorFocusHighBg
+        );
+        editorStyle.fontColor = COL_TEXT_PRIMARY;
+        editorStyle.focusedFontColor = COL_TEXT_PRIMARY;
 
-        Table modeBox = new Table();
-        modeBox.setBackground(createBoxDrawable("142230", "385268", 1, 5, 5, 2, 2));
-        modeBox.add(modeBadge);
-        topBar.add(modeBox).right();
+        ScrollPaneStyle scrollStyle = new ScrollPaneStyle();
+        scrollStyle.vScroll = makeSolidColor(new Color(0.18f, 0.25f, 0.36f, 0.45f), 5, 16);
+        scrollStyle.vScrollKnob = makeRoundedBox(8, 4, COL_CYAN, COL_CYAN, 0.5f);
 
-        Table bottomBar = new Table();
-        bottomBar.setBackground(createBoxDrawable("0F1722", "334155", 1, 8, 8, 3, 3));
+        // --- Floating HUD Pills (Top & Bottom; world remains breathable!) ---
+        Table root = new Table();
+        root.setFillParent(true);
+        root.top().left();
+        stage.addActor(root);
+
+        Table topLeftPill = new Table();
+        topLeftPill.setBackground(topPillBg);
+        topLeftPill.pad(6f, 14f, 6f, 14f);
+        Label brandLabel = new Label("MARS_REBOOT.PY", new LabelStyle(hudBoldFont, COL_CYAN));
+        puzzleStats = new Label("M1-P1 | PANEN 0/2 | AKSI 0/6", hudBoldStyle);
+        topLeftPill.add(brandLabel).padRight(10f);
+        topLeftPill.add(puzzleStats);
+
+        Table topRightBar = new Table();
+        topRightBar.defaults().space(6f);
+        TextButton missionBtn = new TextButton("[M] Misi", hudPillBtnStyle);
+        missionBtn.addListener(onAction(() -> toggleAuxOverlay(AuxOverlay.MISSION_MAP)));
+        TextButton logBtn = new TextButton("[J] Log", hudPillBtnStyle);
+        logBtn.addListener(onAction(() -> toggleAuxOverlay(AuxOverlay.FIELD_LOG)));
+        TextButton settingsBtn = new TextButton("[O] Setelan", hudPillBtnStyle);
+        settingsBtn.addListener(onAction(() -> toggleAuxOverlay(AuxOverlay.SETTINGS)));
+
+        Table badgeBox = new Table();
+        badgeBox.setBackground(statusPillBg);
+        badgeBox.pad(5f, 12f, 5f, 12f);
+        modeBadge = new Label("OUTPOST", new LabelStyle(hudBoldFont, COL_EMERALD));
+        badgeBox.add(modeBadge);
+
+        topRightBar.add(logBtn).height(28f);
+        topRightBar.add(missionBtn).height(28f);
+        topRightBar.add(settingsBtn).height(28f);
+        topRightBar.add(badgeBox).height(28f);
+
+        Table topRow = new Table();
+        topRow.pad(10f, 14f, 0f, 14f);
+        topRow.add(topLeftPill).left().expandX();
+        topRow.add(topRightBar).right();
+        root.add(topRow).growX().row();
+        root.add().expand().row();
+
         bottomPromptBox = new Table();
         bottomPromptBox.setBackground(promptIdleBg);
-        bottomPromptBox.add(prompt).left();
-        bottomBar.add(bottomPromptBox).left().expandX();
+        bottomPromptBox.pad(7f, 18f, 7f, 18f);
+        prompt = new Label("Jelajahi Outpost [WASD] • Klik Rover atau [E] saat dekat", hudStyle);
+        bottomPromptBox.add(prompt);
 
-        Table controlsBox = new Table();
-        controlsBox.setBackground(createBoxDrawable("141E2B", "334155", 1, 6, 6, 2, 2));
-        controlsBox.add(new Label("[WASD] Gerak  [E] Aksi  [B/J/M/O] Menu  [Esc] Tutup", secondaryStyle));
-        bottomBar.add(controlsBox).right().padLeft(6);
+        Table bottomRow = new Table();
+        bottomRow.pad(0f, 14f, 10f, 14f);
+        bottomRow.add(bottomPromptBox).center();
+        root.add(bottomRow).growX();
 
-        hud.top();
-        hud.add(topBar).growX().height(34).row();
-        hud.add().expand().fill().row();
-        hud.add(bottomBar).growX().height(34);
-        stage.addActor(hud);
+        // --- 1. Panel Telemetri Inspection Modal ---
+        inspection = createBaseWindow(" PANEL TELEMETRI BIO-DOME | P1", warmWindowStyle, 560f, 340f);
+        inspection.setPosition(200f, 130f);
 
-        // 2. Outdoor Solar & Water Panel Inspection Modal Window
-        WindowStyle cyanWinStyle = new WindowStyle(
-            uiBoldFont, COL_TEXT_PRIMARY, createWindowDrawable("101925", "16263A", "38BDF8", 2, 30)
-        );
-        inspection = new Window("  INSPEKSI OUTPOST MARS  |  PANEL SURYA & TANGKI AIR", cyanWinStyle);
-        inspection.setModal(true);
-        inspection.setMovable(false);
-        inspection.getTitleTable().padLeft(6).padTop(4);
-        inspection.padTop(38).padLeft(16).padRight(16).padBottom(14);
+        Table inspectIntro = new Table();
+        inspectIntro.setBackground(cardCyanBg);
+        inspectIntro.pad(10f, 14f, 10f, 14f);
+        inspectIntro.add(wrapLabel("Misi 1: Panen 2 tanaman matang di Bio-Dome Timur memakai Rover.", boldStyle))
+            .growX().minWidth(0).left();
+        inspection.add(inspectIntro).growX().minWidth(0).pad(4f, 10f, 8f, 10f).row();
 
-        Table inspMetaRow = new Table();
-        Table inspTypeBadge = new Table();
-        inspTypeBadge.setBackground(createBoxDrawable("0F293A", "38BDF8", 1, 8, 8, 2, 2));
-        inspTypeBadge.add(new Label("TEMUAN LAPANGAN OUTDOOR (TERCATAT KE FIELD LOG [J])", cyanStyle));
-        inspMetaRow.add(inspTypeBadge).left().expandX();
+        Table inspectBody = new Table();
+        inspectBody.setBackground(cardNeutralBg);
+        inspectBody.pad(12f, 14f, 12f, 14f);
+        inspectBody.add(wrapLabel("• Lokasi Target: petak (0,0) dan (1,0) di dalam kubah Bio-Dome.", bodyStyle))
+            .growX().minWidth(0).left().padBottom(6f).row();
+        inspectBody.add(wrapLabel("• Cara Kerja: berjalan ke Bio-Dome Timur lalu klik langsung pada Rover untuk menulis kode Python (maksimal 6 aksi).", mutedStyle))
+            .growX().minWidth(0).left();
+        inspection.add(inspectBody).growX().minWidth(0).pad(0f, 10f, 10f, 10f).row();
 
-        Table inspFocusBadge = new Table();
-        inspFocusBadge.setBackground(createBoxDrawable("1E293B", "38BDF8", 1, 8, 8, 2, 2));
-        inspFocusBadge.add(new Label("FOKUS: INSPEKSI [Esc]", primaryStyle));
-        inspMetaRow.add(inspFocusBadge).right();
-        inspection.add(inspMetaRow).growX().padBottom(10).row();
+        Table inspectBtns = new Table();
+        TextButton inspectCloseBtn = new TextButton("Kembali ke Outpost [Esc]", primaryCyanStyle);
+        inspectCloseBtn.addListener(onAction(world::closePanel));
+        TextButton inspectGoRoverBtn = new TextButton("Buka Editor Rover", softBtnStyle);
+        inspectGoRoverBtn.addListener(onAction(() -> {
+            world.closePanel();
+            world.openRoverTerminal();
+        }));
+        inspectBtns.add(inspectGoRoverBtn).height(34f).padRight(10f);
+        inspectBtns.add(inspectCloseBtn).height(34f);
+        inspection.add(inspectBtns).right().pad(2f, 10f, 10f, 10f);
 
-        inspection.add(buildInfoCard(
-            "1. Panel Surya Hab (Outdoor): Tertutup Debu Mars 78%",
-            "Daya cadangan terbatas (maks 30 aksi per run). Tekan [B] di HUD untuk preview kondisi setelah pulih.",
-            marsStyle, secondaryStyle, "0C131D", "F59E0B"
-        )).growX().padBottom(8).row();
-
-        inspection.add(buildInfoCard(
-            "2. Platform Bio-Dome (4x4): 2 Petak Kering [!] & Jatah Air 2 Unit",
-            "Tangki air eksternal di sisi barat Bio-Dome hanya memuat 2 unit air. Hindari batu merah di jalur tengah.",
-            cyanStyle, secondaryStyle, "0C131D", "38BDF8"
-        )).growX().padBottom(8).row();
-
-        inspection.add(buildInfoCard(
-            "3. Jalur Pipa Timur -> Stasiun Pompa Utama (Misi 3)",
-            "Pipa air menuju Stasiun Pompa Utama akan menyala otomatis setelah Misi 1 & 2 di Bio-Dome selesai.",
-            greenStyle, mutedStyle, "0C131D", "34D399"
-        )).growX().padBottom(12).row();
-
-        Table inspFooter = new Table();
-        inspFooter.add(new Label("Temuan ini dapat dibuka kembali lewat [J] Field Log saat coding.", mutedStyle))
-            .left().expandX();
-        inspFooter.add(closeButton("Kembali ke Outpost [Esc]", () -> world.closePanel())).right();
-        inspection.add(inspFooter).growX();
-
-        inspection.setSize(610, 392);
-        inspection.setPosition(175, 104);
-
-        // 3. Upgraded Sci-Fi Floating Draggable Terminal Window (08_scifi_floating_terminal_hud.png)
-        WindowStyle terminalWinStyle = new WindowStyle(
-            uiBoldFont, COL_TEXT_PRIMARY, createWindowDrawable("0D141E", "152336", "38BDF8", 2, 30)
-        );
-        terminal = new Window("  ::: TERMINAL LAPANGAN BIO-DOME  |  M1-P2 (geser judul)", terminalWinStyle);
-        terminal.setModal(true);
+        // --- 2. Unified Simple & Resizable Rover Terminal Window ---
+        terminal = new Window(" ROVER BIO-DOME | PUZZLE 1", glassWindowStyle);
+        terminal.setName("roverTerminal");
+        terminal.setVisible(false);
         terminal.setMovable(true);
-        terminal.getTitleTable().padLeft(6).padTop(4);
-        terminal.padTop(36).padLeft(12).padRight(12).padBottom(12);
+        terminal.setResizable(true);
+        terminal.setResizeBorder(14);
+        terminal.setSize(430f, 400f);
+        terminal.setPosition(16f, 82f);
+        terminal.setKeepWithinStage(false);
+        terminal.pad(36f, 10f, 8f, 10f);
 
-        // Top status & Help Drawer toggle strip
-        Table statusStrip = new Table();
-        Table noExecBadge = new Table();
-        noExecBadge.setBackground(createBoxDrawable("2A1612", "F59E0B", 1, 5, 5, 2, 2));
-        noExecBadge.add(new Label("[!] Preview UI", marsStyle));
-        statusStrip.add(noExecBadge).left().padRight(5);
+        helpToggleBtn = new TextButton("? API", hudPillBtnStyle);
+        helpToggleBtn.setName("apiHelpToggle");
+        helpToggleBtn.addListener(onAction(() -> setHelpDrawerOpen(!helpDrawerOpen)));
+        TextButton termCloseBtn = new TextButton("X", hudPillBtnStyle);
+        termCloseBtn.setName("roverTerminalClose");
+        termCloseBtn.addListener(onAction(world::closePanel));
+        terminal.getTitleTable().add(helpToggleBtn).height(24f).padRight(6f);
+        terminal.getTitleTable().add(termCloseBtn).width(26f).height(24f).padRight(4f);
 
-        Table focusBadge = new Table();
-        focusBadge.setBackground(createBoxDrawable("0F293A", "38BDF8", 1, 5, 5, 2, 2));
-        focusBadge.add(focusStatusLabel);
-        statusStrip.add(focusBadge).left().expandX();
+        // 2a. Compact 1-Line Objective Strip
+        Table goalStrip = new Table();
+        goalStrip.setBackground(cardNeutralBg);
+        goalStrip.pad(7f, 12f, 7f, 12f);
+        goalSummaryLabel = new Label("Target: Panen 2/2 • Aksi 0/6", bodyStyle);
+        goalStatusLabel = new Label("SIAP", emeraldStyle);
+        goalStatusLabel.setAlignment(Align.right);
+        goalStrip.add(goalSummaryLabel).growX().minWidth(0).left();
+        goalStrip.add(goalStatusLabel).minWidth(72f).right().padLeft(10f).padRight(6f);
+        terminal.add(goalStrip).growX().minWidth(0).padBottom(6f).row();
 
-        TextButton helpBtn = smallHudButton("? BANTUAN (3)", "1E3A5F", "38BDF8", () -> toggleHelpDrawer());
-        statusStrip.add(helpBtn).right();
-        terminal.add(statusStrip).growX().padBottom(6).row();
+        // 2b. Flexible Scrollable Code Editor + Live Gutter
+        editorPanel = new Table();
+        editorPanel.setBackground(editorFocusHighBg);
+        editorPanel.pad(6f, 10f, 6f, 10f);
 
-        // Quick-Ref API Chips row (08_scifi_floating_terminal_hud.png)
-        Table chipsRow = new Table();
-        chipsRow.left();
-        chipsRow.add(new Label("API:", mutedStyle)).padRight(5);
-        for (String chip : new String[] {"move()", "turn_left()", "water()", "scan()"}) {
-            Table chipBox = new Table();
-            chipBox.setBackground(createBoxDrawable("132238", "334155", 1, 5, 5, 2, 2));
-            chipBox.add(new Label(chip, monoCyanStyle));
-            chipsRow.add(chipBox).padRight(4);
-        }
-        terminal.add(chipsRow).growX().padBottom(6).row();
-
-        // Editor header bar
         Table editorHeader = new Table();
-        editorHeader.setBackground(createBoxDrawable("162232", "334155", 1, 6, 6, 3, 3));
-        editorHeader.add(new Label(">_ solusi_biodome.py", monoCyanStyle)).left().expandX();
-        editorHeader.add(new Label("Draf aman | Esc keluar", mutedStyle)).right();
-        terminal.add(editorHeader).growX().row();
+        editorHeaderRangeLabel = new Label("Baris 1-6 / 6", hudMutedStyle);
+        Label editorLangTag = new Label("Python • Edit kode lalu Run", hudMutedStyle);
+        editorHeader.add(editorLangTag).growX().minWidth(0).left();
+        editorHeader.add(editorHeaderRangeLabel).right();
+        editorPanel.add(editorHeader).growX().minWidth(0).padBottom(4f).row();
 
-        TextFieldStyle editorStyle = new TextFieldStyle(
-            monoFont,
-            COL_TEXT_PRIMARY,
-            createFlatDrawable("38BDF8", 2, 16),
-            createFlatDrawable("1E4E68", 4, 16),
-            createBoxDrawable("090D14", "1E293B", 1, 8, 8, 6, 6)
-        );
-        editorStyle.focusedBackground = createBoxDrawable("0B131E", "38BDF8", 2, 8, 8, 6, 6);
-        editorStyle.disabledBackground = createBoxDrawable("090E14", "1E293B", 1, 8, 8, 6, 6);
-        editorStyle.focusedFontColor = COL_TEXT_PRIMARY;
-        editorStyle.messageFont = monoFont;
-        editorStyle.messageFontColor = COL_TEXT_MUTED;
+        lineNumbersLabel = new Label("1\n2\n3\n4", monoStyle);
+        lineNumbersLabel.setAlignment(Align.topRight);
 
         editor = new TextArea(
-            "# Pulihkan bed hidroponik Bio-Dome\nfor i in range(2):\n    move()\n    water()\n",
+            "harvest()\nmove(\"east\")\nharvest()",
             editorStyle
         );
-        editor.setFocusTraversal(false);
-        editor.setCursorPosition(editor.getText().length());
+        editor.setName("puzzleEditor");
+        editor.setPrefRows(5);
 
-        Table editorContainer = new Table();
-        Table gutter = new Table();
-        gutter.setBackground(createBoxDrawable("0D131D", "243442", 1, 6, 6, 6, 6));
-        gutter.top().right();
-        gutter.add(lineNumbersLabel).top().right();
-        editorContainer.add(gutter).width(32).fillY();
-        editorContainer.add(editor).grow().minHeight(170);
-        terminal.add(editorContainer).grow().padBottom(6).row();
+        Table editorBody = new Table();
+        editorBody.add(lineNumbersLabel).width(28f).top().padRight(8f).padTop(4f);
+        editorBody.add(editor).grow().minWidth(0).minHeight(90f);
+        editorPanel.add(editorBody).grow().minWidth(0);
 
-        // Interactive Terminal State Switcher (lets user inspect Normal, Error, Timeout, Stopped from 09)
-        Table stateBar = new Table();
-        stateBar.left();
-        stateBar.add(new Label("State:", mutedStyle)).padRight(5);
-        stateBar.add(smallHudButton("Normal", "142636", "38BDF8", () -> setTerminalState(TerminalState.NORMAL))).padRight(4);
-        stateBar.add(smallHudButton("Error", "3B1219", "F87171", () -> setTerminalState(TerminalState.ERROR))).padRight(4);
-        stateBar.add(smallHudButton("Timeout", "2E1F0F", "F59E0B", () -> setTerminalState(TerminalState.TIMEOUT))).padRight(4);
-        stateBar.add(smallHudButton("Stopped", "1E293B", "94A3B8", () -> setTerminalState(TerminalState.STOPPED)));
-        terminal.add(stateBar).growX().padBottom(6).row();
+        editor.addListener(new InputListener() {
+            @Override
+            public boolean scrolled(InputEvent event, float x, float y, float amountX, float amountY) {
+                int maxLine = Math.max(0, editor.getLines() - 1);
+                int targetLine = Math.max(0, Math.min(maxLine, editor.getCursorLine() + (amountY > 0 ? 2 : -2)));
+                editor.moveCursorLine(targetLine);
+                updateVisibleEditorGutter();
+                return true;
+            }
+        });
 
-        // Output / Error Feedback Box (08 & 09)
+        terminal.add(editorPanel).grow().minWidth(0).minHeight(110f).padBottom(6f).row();
+
+        // 2c. Compact Control Bar: Run, Stop, Reset, [Log] toggle
+        Table actionBar = new Table();
+        actionBar.defaults().height(32f);
+        runButton = new TextButton("> Run", primaryEmeraldStyle);
+        runButton.setName("runPuzzle");
+        runButton.addListener(onAction(() -> {
+            coordinator.run(editor.getText());
+            stage.setKeyboardFocus(editor);
+        }));
+
+        stopButton = new TextButton("Stop", stopAmberStyle);
+        stopButton.setName("stopPuzzle");
+        stopButton.addListener(onAction(() -> {
+            coordinator.stop();
+            stage.setKeyboardFocus(editor);
+        }));
+
+        resetButton = new TextButton("Reset", softBtnStyle);
+        resetButton.setName("resetPuzzle");
+        resetButton.addListener(onAction(() -> {
+            coordinator.reset();
+            stage.setKeyboardFocus(editor);
+        }));
+
+        logToggleBtn = new TextButton("Log", hudPillBtnStyle);
+        logToggleBtn.setName("logToggleBtn");
+        logToggleBtn.addListener(onAction(() -> {
+            logManualExpanded = !logManualExpanded;
+            syncPuzzle();
+        }));
+
+        actionBar.add(runButton).minWidth(86f).padRight(6f);
+        actionBar.add(stopButton).minWidth(68f).padRight(6f);
+        actionBar.add(resetButton).minWidth(72f);
+        actionBar.add().expandX();
+        actionBar.add(logToggleBtn).minWidth(68f);
+        terminal.add(actionBar).growX().minWidth(0).padBottom(4f).row();
+
+        // 2d. Contextual Collapsible Output & Post-Success Row
         consoleBox = new Table();
+        consoleBox.setClip(true);
         consoleBox.setBackground(consoleNormalBg);
-        consoleTitleLabel = new Label("OUTPUT TERMINAL (PREVIEW UI)", cyanStyle);
-        consoleTitleLabel.setWrap(true);
-        consoleDetailLabel = new Label(
-            "Draf kode aman. Klik tombol State di atas atau [? BANTUAN (3)] untuk cek UI.",
-            secondaryStyle
-        );
-        consoleDetailLabel.setWrap(true);
-        consoleBox.add(consoleTitleLabel).width(492).left().padBottom(2).row();
-        consoleBox.add(consoleDetailLabel).width(492).left();
-        terminal.add(consoleBox).growX().padBottom(8).row();
+        consoleBox.pad(7f, 10f, 7f, 10f);
 
-        Table termFooter = new Table();
-        termFooter.add(new Label("Geser judul | Bio-Dome terlihat di kanan", secondaryStyle))
-            .left().expandX();
-        termFooter.add(closeButton("Kembali [Esc]", () -> world.closePanel())).right();
-        terminal.add(termFooter).growX();
+        consoleTitleLabel = new Label("Siap dijalankan", consoleTitleStyle);
+        consoleBox.add(consoleTitleLabel).growX().minWidth(0).left().padBottom(3f).row();
 
-        terminal.setSize(540, 512);
-        terminal.setPosition(22, 42);
+        consoleDetailLabel = wrapLabel("", mutedStyle);
+        consoleScroll = new ScrollPane(consoleDetailLabel, scrollStyle);
+        consoleScroll.setScrollingDisabled(true, false);
+        consoleScroll.setFadeScrollBars(false);
+        consoleScroll.setOverscroll(false, false);
+        consoleBox.add(consoleScroll).grow().minWidth(0).minHeight(0f).row();
 
-        // 4. Progressive 3-Step Help Drawer (09_terminal_error_and_help_drawer.png · FR-020)
-        helpDrawer = new Window("  DRAWER BANTUAN BERTAHAP (3 LANGKAH · FR-020)", cyanWinStyle);
-        helpDrawer.setModal(false);
-        helpDrawer.setMovable(true);
-        helpDrawer.getTitleTable().padLeft(6).padTop(4);
-        helpDrawer.padTop(36).padLeft(12).padRight(12).padBottom(12);
+        successSummaryRow = new Table();
+        successSummaryLabel = wrapLabel("2 tanaman dipanen!", emeraldStyle);
+        retryButton = new TextButton("Coba lagi", softBtnStyle);
+        retryButton.setName("retryPuzzle");
+        retryButton.addListener(onAction(() -> {
+            coordinator.reset();
+            stage.setKeyboardFocus(editor);
+        }));
+        returnHabitatButton = new TextButton("Kembali", primaryCyanStyle);
+        returnHabitatButton.setName("returnHabitatPuzzle");
+        returnHabitatButton.addListener(onAction(world::closePanel));
+        successSummaryRow.add(successSummaryLabel).growX().minWidth(0).left();
+        successSummaryRow.add(retryButton).height(28f).padRight(6f);
+        successSummaryRow.add(returnHabitatButton).height(28f);
+        successSummaryRowCell = consoleBox.add(successSummaryRow).growX().minWidth(0);
 
-        helpDrawer.add(buildInfoCard(
-            "LANGKAH 1 · MASALAH",
-            "Tanaman di bed timur Bio-Dome belum terjangkau jika rover keluar batas platform.",
-            cyanStyle, secondaryStyle, "0C131D", "38BDF8"
-        )).growX().padBottom(8).row();
+        consoleBoxCell = terminal.add(consoleBox).growX().minWidth(0);
+        terminal.row();
 
-        helpDrawer.add(buildInfoCard(
-            "LANGKAH 2 · SENSOR TERKAIT",
-            "Field Log [J]: Grid Bio-Dome berukuran 4x4 (0..3) dan jatah air 2 unit. Cek scan() sebelum water().",
-            marsStyle, secondaryStyle, "0C131D", "F59E0B"
-        )).growX().padBottom(8).row();
+        // 2e. Subtle Bottom Resize Handle Indicator
+        Table gripBar = new Table();
+        Label gripHint = new Label("Tarik tepi/sudut untuk resize", new LabelStyle(hudFont, COL_TEXT_MUTED));
+        Image gripIcon = new Image(makeResizeGripDrawable());
+        gripBar.add(gripHint).left().expandX();
+        gripBar.add(gripIcon).right().size(14f, 14f);
+        terminal.add(gripBar).growX().minWidth(0).padTop(3f);
 
-        Table step3Card = new Table();
-        step3Card.setBackground(createBoxDrawable("0C131D", "34D399", 1, 10, 10, 7, 7));
-        step3Card.add(new Label("LANGKAH 3 · CONTOH POLA", greenStyle)).left().growX().padBottom(3).row();
-        step3BodyLabel = new Label("Terkunci agar tidak langsung membocorkan pola. Klik tombol di bawah untuk membuka.", mutedStyle);
-        step3BodyLabel.setWrap(true);
-        step3Card.add(step3BodyLabel).left().growX().padBottom(6).row();
-        step3UnlockBtn = smallHudButton("BUKA PETUNJUK LANGKAH 3", "112822", "34D399", () -> toggleStep3());
-        step3Card.add(step3UnlockBtn).left();
-        helpDrawer.add(step3Card).growX().padBottom(10).row();
-
-        helpDrawer.add(closeButton("Tutup Bantuan", () -> setHelpDrawerOpen(false))).right();
-
-        helpDrawer.setSize(372, 460);
-        helpDrawer.setPosition(568, 68);
-        helpDrawer.setVisible(false);
-
-        // 5. Field Log Astronaut Modal [J] (10_field_log_and_mission_map.png)
-        WindowStyle goldWinStyle = new WindowStyle(
-            uiBoldFont, COL_TEXT_PRIMARY, createWindowDrawable("101723", "241C12", "F59E0B", 2, 30)
-        );
-        fieldLogWindow = new Window("  FIELD LOG ASTRONAUT [J]  |  CATATAN INSPEKSI OUTPOST", goldWinStyle);
-        fieldLogWindow.setModal(true);
-        fieldLogWindow.setMovable(true);
-        fieldLogWindow.getTitleTable().padLeft(6).padTop(4);
-        fieldLogWindow.padTop(38).padLeft(16).padRight(16).padBottom(14);
-
-        fieldLogWindow.add(buildInfoCard(
-            "PANEL SURYA HAB (OUTDOOR)",
-            "Debu menutup 78% permukaan. Daya cadangan hanya cukup untuk maks 30 aksi awal.",
-            marsStyle, secondaryStyle, "0C131D", "F59E0B"
-        )).growX().padBottom(8).row();
-        fieldLogWindow.add(buildInfoCard(
-            "TANGKI AIR BIO-DOME BASE",
-            "Jatah air tersedia: 2 unit per run. Jangan boros memanggil water() di petak tanah kosong.",
-            cyanStyle, secondaryStyle, "0C131D", "38BDF8"
-        )).growX().padBottom(8).row();
-        fieldLogWindow.add(buildInfoCard(
-            "SENSOR ROVER (M1-P2)",
-            "Batu merah di (1, 2) memblokir jalur tengah. Putari lewat jalur selatan sebelum naik.",
-            alertStyle, secondaryStyle, "0C131D", "F87171"
-        )).growX().padBottom(8).row();
-        fieldLogWindow.add(buildInfoCard(
-            "PIPA TIMUR -> STASIUN POMPA UTAMA",
-            "Terkunci hingga Misi 1 & 2 selesai. Terhubung ke Stasiun Pompa Utama (Misi 3).",
-            mutedStyle, secondaryStyle, "0C131D", "64748B"
-        )).growX().padBottom(12).row();
-
-        Table flFooter = new Table();
-        flFooter.add(new Label("Tekan [J] atau [Esc] untuk menutup Field Log.", mutedStyle)).left().expandX();
-        flFooter.add(closeButton("Tutup Field Log [Esc]", () -> closeAuxOverlays())).right();
-        fieldLogWindow.add(flFooter).growX();
-        fieldLogWindow.setSize(620, 440);
-        fieldLogWindow.setPosition(170, 80);
-        fieldLogWindow.setVisible(false);
-
-        // 6. Mission Map & Scores Modal [M] (10_field_log_and_mission_map.png · Puzzle 1-9)
-        missionMapWindow = new Window("  PETA MISI OUTPOST & REKOR SKOR [M]  |  PUZZLE 1-9", cyanWinStyle);
-        missionMapWindow.setModal(true);
-        missionMapWindow.setMovable(true);
-        missionMapWindow.getTitleTable().padLeft(6).padTop(4);
-        missionMapWindow.padTop(38).padLeft(16).padRight(16).padBottom(14);
-
-        missionMapWindow.add(new Label("MISI 1 · BIO-DOME DASAR (FASE DEMO P1-P3)", cyanStyle)).left().padBottom(4).row();
-        Table m1Row = new Table();
-        m1Row.add(missionCard("P1 · Uji Rover", "SELESAI", "Rekor: 6 aksi · 1 air", greenStyle, "34D399")).growX().padRight(6);
-        m1Row.add(missionCard("P2 · Siram Bed", "AKTIF", "Target: <=12 aksi", cyanStyle, "38BDF8")).growX().padRight(6);
-        m1Row.add(missionCard("P3 · Hindari Batu", "TERBUKA", "Rekor: Belum", marsStyle, "F59E0B")).growX();
-        missionMapWindow.add(m1Row).growX().padBottom(10).row();
-
-        missionMapWindow.add(new Label("MISI 2 · IRIGASI & SENSOR (P4-P6)", secondaryStyle)).left().padBottom(4).row();
-        Table m2Row = new Table();
-        m2Row.add(missionCard("P4 · Scan Tanaman", "TERBUKA (DEMO)", "Rekor: Belum", marsStyle, "F59E0B")).growX().padRight(6);
-        m2Row.add(missionCard("P5 · Loop Irigasi", "TERKUNCI", "Selesaikan P4", mutedStyle, "475569")).growX().padRight(6);
-        m2Row.add(missionCard("P6 · Jalur Ganda", "TERKUNCI", "Selesaikan P5", mutedStyle, "475569")).growX();
-        missionMapWindow.add(m2Row).growX().padBottom(10).row();
-
-        missionMapWindow.add(new Label("MISI 3 · STASIUN POMPA UTAMA (P7-P9)", mutedStyle)).left().padBottom(4).row();
-        Table m3Row = new Table();
-        m3Row.add(missionCard("P7 · Pipa Utama", "TERKUNCI", "Buka di Misi 3", mutedStyle, "475569")).growX().padRight(6);
-        m3Row.add(missionCard("P8 · Katup Tekanan", "TERKUNCI", "Buka di Misi 3", mutedStyle, "475569")).growX().padRight(6);
-        m3Row.add(missionCard("P9 · Pemulihan", "TERKUNCI", "Buka di Misi 3", mutedStyle, "475569")).growX();
-        missionMapWindow.add(m3Row).growX().padBottom(12).row();
-
-        Table mmFooter = new Table();
-        mmFooter.add(new Label("Sinkronisasi rekor Spring Boot menunggu kontrak M-09.", mutedStyle)).left().expandX();
-        mmFooter.add(closeButton("Tutup Peta Misi [Esc]", () -> closeAuxOverlays())).right();
-        missionMapWindow.add(mmFooter).growX();
-        missionMapWindow.setSize(680, 460);
-        missionMapWindow.setPosition(140, 70);
-        missionMapWindow.setVisible(false);
-
-        // 7. Settings & Accessibility Modal [O] (11_settings_modal.png · UI-05)
-        settingsWindow = new Window("  PENGATURAN SISTEM & AKSESIBILITAS [O]", cyanWinStyle);
-        settingsWindow.setModal(true);
-        settingsWindow.setMovable(true);
-        settingsWindow.getTitleTable().padLeft(6).padTop(4);
-        settingsWindow.padTop(38).padLeft(16).padRight(16).padBottom(14);
-
-        settingsWindow.add(new Label("AUDIO & AMBIENCE PERMUKAAN MARS (PREVIEW UI)", cyanStyle)).left().padBottom(6).row();
-        settingsWindow.add(audioSliderRow("Master Volume", "80%", 0.80f, primaryStyle, mutedStyle)).growX().padBottom(6).row();
-        settingsWindow.add(audioSliderRow("SFX Rover & Pipa Air", "85%", 0.85f, primaryStyle, mutedStyle)).growX().padBottom(6).row();
-        settingsWindow.add(audioSliderRow("Ambience Angin Mars", "55%", 0.55f, primaryStyle, mutedStyle)).growX().padBottom(12).row();
-
-        settingsWindow.add(new Label("AKSESIBILITAS & VISUAL OUTPOST (UI-05)", greenStyle)).left().padBottom(6).row();
-
-        Table rmRow = new Table();
-        rmRow.setBackground(createBoxDrawable("0C131D", "334155", 1, 10, 10, 6, 6));
-        rmRow.add(new Label("Reduced Motion (Matikan partikel debu & animasi kilau)", primaryStyle)).left().expandX();
-        reducedMotionBtn = smallHudButton("OFF", "334155", "94A3B8", () -> {
-            reducedMotion = !reducedMotion;
-            refreshSettingsLabels();
+        // Focus glow sync
+        stage.addListener(new InputListener() {
+            @Override
+            public boolean touchDown(InputEvent event, float x, float y, int pointer, int button) {
+                boolean focused = event.getTarget() == editor;
+                editorPanel.setBackground(focused
+                    ? (highContrastFocus ? editorFocusHighBg : editorFocusStdBg)
+                    : editorNormalBg);
+                return false;
+            }
         });
-        rmRow.add(reducedMotionBtn).right();
-        settingsWindow.add(rmRow).growX().padBottom(6).row();
 
-        Table hcRow = new Table();
-        hcRow.setBackground(createBoxDrawable("0C131D", "334155", 1, 10, 10, 6, 6));
-        hcRow.add(new Label("High-Contrast Focus Ring (Bingkai fokus 2px cyan)", primaryStyle)).left().expandX();
-        highContrastBtn = smallHudButton("ON", "065F46", "34D399", () -> {
-            highContrastFocus = !highContrastFocus;
+        // --- 3. Optional Floating [?] API Popover beside Terminal ---
+        helpDrawer = createBaseWindow(" REFERENSI PYTHON API", glassWindowStyle, 336f, 294f);
+        Table apiBody = new Table();
+        apiBody.setBackground(cardNeutralBg);
+        apiBody.pad(10f, 12f, 10f, 12f);
+        apiBody.add(wrapLabel("harvest() — Panen petak aktif (1 aksi)", bodyStyle)).growX().minWidth(0).left().padBottom(6f).row();
+        apiBody.add(wrapLabel("move(\"east\"|\"west\"|\"north\"|\"south\") — Gerak rover (1 aksi)", bodyStyle)).growX().minWidth(0).left().padBottom(6f).row();
+        apiBody.add(wrapLabel("can_harvest() — Cek tanaman matang (gratis)", mutedStyle)).growX().minWidth(0).left().padBottom(6f).row();
+        apiBody.add(wrapLabel("get_pos() — Koordinat rover (x, y) (gratis)", mutedStyle)).growX().minWidth(0).left();
+        helpDrawer.add(apiBody).growX().minWidth(0).pad(4f, 10f, 8f, 10f).row();
+        TextButton closeApiBtn = new TextButton("Tutup [?]", softBtnStyle);
+        closeApiBtn.addListener(onAction(() -> {
+            helpDrawerOpen = false;
+            helpDrawer.setVisible(false);
+        }));
+        helpDrawer.add(closeApiBtn).height(30f).right().pad(0f, 10f, 8f, 10f);
+
+        // --- 4. Field Log [J] ---
+        fieldLogWindow = createBaseWindow(" CATATAN LAPANGAN", glassWindowStyle, 520f, 300f);
+        Table logCard = new Table();
+        logCard.setBackground(cardNeutralBg);
+        logCard.pad(12f, 14f, 12f, 14f);
+        logCard.add(wrapLabel("• Lokasi Target: kompleks Bio-Dome sektor Timur.", bodyStyle)).growX().minWidth(0).left().padBottom(6f).row();
+        logCard.add(wrapLabel("• Encounter Rover: klik langsung Rover di Bio-Dome untuk membuka editor kode.", mutedStyle)).growX().minWidth(0).left().padBottom(6f).row();
+        logCard.add(wrapLabel("• Kode dijalankan Python bundel terisolasi; batas Puzzle 1 adalah 6 aksi.", mutedStyle)).growX().minWidth(0).left();
+        fieldLogWindow.add(logCard).growX().minWidth(0).pad(4f, 10f, 10f, 10f).row();
+        TextButton closeLogBtn = new TextButton("Tutup [Esc]", primaryCyanStyle);
+        closeLogBtn.addListener(onAction(() -> closeAuxOverlays()));
+        fieldLogWindow.add(closeLogBtn).height(32f).right().pad(0f, 10f, 8f, 10f);
+
+        // --- 5. Mission Map [M] ---
+        missionMapWindow = createBaseWindow(" PETA MISI OUTPOST", glassWindowStyle, 650f, 520f);
+        p1MissionCard = new Table();
+        p1MissionCard.setBackground(cardCyanBg);
+        p1MissionCard.pad(10f, 12f, 10f, 12f);
+        p1MissionStatusLabel = new Label("P1 • TERSEDIA", cyanStyle);
+        p1MissionDetailLabel = wrapLabel("Panen dua tanaman matang Bio-Dome (0,0) & (1,0).", mutedStyle);
+        p1MissionCard.add(p1MissionStatusLabel).growX().minWidth(0).left().row();
+        p1MissionCard.add(p1MissionDetailLabel).growX().minWidth(0).left().padTop(4f);
+        missionMapWindow.add(p1MissionCard).growX().minWidth(0).pad(4f, 10f, 8f, 10f).row();
+
+        Table accountCard = new Table();
+        accountCard.setBackground(cardNeutralBg);
+        accountCard.pad(8f, 12f, 8f, 12f);
+        Label accountTitle = new Label("Akun dan rekor tersimpan", hudBoldStyle);
+        accountCard.add(accountTitle).growX().minWidth(0).left().colspan(3).row();
+
+        backendUsernameField = new TextField("", editorStyle);
+        backendUsernameField.setMessageText("Nama akun");
+        backendPasswordField = new TextField("", editorStyle);
+        backendPasswordField.setMessageText("Kata sandi (min. 8 karakter)");
+        backendPasswordField.setPasswordMode(true);
+        backendPasswordField.setPasswordCharacter('*');
+
+        accountCard.add(backendUsernameField).growX().minWidth(0).height(32f).padTop(6f).padRight(6f);
+        accountCard.add(backendPasswordField).growX().minWidth(0).height(32f).padTop(6f).row();
+
+        backendRegisterButton = new TextButton("Daftar", softBtnStyle);
+        backendRegisterButton.addListener(onAction(this::registerBackendAccount));
+        backendLoginButton = new TextButton("Masuk", primaryCyanStyle);
+        backendLoginButton.addListener(onAction(this::loginBackendAccount));
+        backendLogoutButton = new TextButton("Keluar", softBtnStyle);
+        backendLogoutButton.addListener(onAction(this::logoutBackendAccount));
+
+        accountCard.add(backendRegisterButton).height(30f).growX().padTop(6f).padRight(4f);
+        accountCard.add(backendLoginButton).height(30f).growX().padTop(6f).padRight(4f);
+        accountCard.add(backendLogoutButton).height(30f).growX().padTop(6f).row();
+
+        backendBestScoreLabel = new Label("Rekor P1: masuk untuk melihat", mutedStyle);
+        accountCard.add(backendBestScoreLabel).growX().minWidth(0).left().colspan(3).padTop(4f).row();
+
+        Table leaderboardRow = new Table();
+        backendLeaderboardLabel = wrapLabel("Papan skor P1: tekan Muat skor", mutedStyle);
+        leaderboardRow.add(backendLeaderboardLabel).growX().minWidth(0).left().padRight(8f);
+        TextButton refreshLeaderboardButton = new TextButton("Muat skor", softBtnStyle);
+        refreshLeaderboardButton.addListener(onAction(this::refreshBackendLeaderboard));
+        leaderboardRow.add(refreshLeaderboardButton).height(30f).right();
+        accountCard.add(leaderboardRow).growX().minWidth(0).colspan(3).padTop(6f).row();
+
+        saveScoreButton = new TextButton("Coba simpan skor P1 lagi", softBtnStyle);
+        saveScoreButton.addListener(onAction(() -> saveCurrentScore(coordinator.view())));
+        saveScoreButtonCell = accountCard.add(saveScoreButton).height(0f).growX().colspan(3).padTop(0f);
+        accountCard.row();
+
+        backendStatusLabel = wrapLabel("Masuk agar rekor tersimpan di backend lokal.", mutedStyle);
+        accountCard.add(backendStatusLabel).growX().minWidth(0).left().colspan(3).padTop(4f);
+        missionMapWindow.add(accountCard).growX().minWidth(0).pad(0f, 10f, 8f, 10f).row();
+
+        Table pGrid = new Table();
+        pGrid.defaults().pad(4f).growX().minWidth(0);
+        for (int p = 2; p <= 9; p++) {
+            Table c = new Table();
+            c.setBackground(cardNeutralBg);
+            c.pad(7f, 10f, 7f, 10f);
+            c.add(new Label("P" + p + " • BELUM TERSEDIA", hudMutedStyle)).left().growX().minWidth(0);
+            pGrid.add(c);
+            if ((p - 1) % 2 == 0) pGrid.row();
+        }
+        missionMapWindow.add(pGrid).growX().minWidth(0).pad(0f, 6f, 8f, 6f).row();
+        TextButton closeMissionBtn = new TextButton("Tutup [Esc]", primaryCyanStyle);
+        closeMissionBtn.addListener(onAction(() -> closeAuxOverlays()));
+        missionMapWindow.add(closeMissionBtn).height(32f).right().pad(0f, 10f, 8f, 10f);
+
+        // --- 6. Settings [O] ---
+        settingsWindow = createBaseWindow(" SETELAN & AKSESIBILITAS", glassWindowStyle, 480f, 290f);
+        Table optCard = new Table();
+        optCard.setBackground(cardNeutralBg);
+        optCard.pad(10f, 12f, 10f, 12f);
+        optCard.defaults().height(34f).padBottom(8f);
+
+        reducedMotionBtn = new TextButton("", softBtnStyle);
+        reducedMotionBtn.addListener(onAction(() -> { setReducedMotion(!reducedMotion); refreshSettingsLabels(); }));
+        highContrastBtn = new TextButton("", softBtnStyle);
+        highContrastBtn.addListener(onAction(() -> {
+            setHighContrastFocus(!highContrastFocus);
             refreshSettingsLabels();
-        });
-        hcRow.add(highContrastBtn).right();
-        settingsWindow.add(hcRow).growX().padBottom(6).row();
+        }));
+        previewVisualBtn = new TextButton("", softBtnStyle);
+        previewVisualBtn.setName("previewVisualBtn");
+        previewVisualBtn.addListener(onAction(() -> {
+            outpostRestored = !outpostRestored;
+            saveSettings();
+            refreshSettingsLabels();
+        }));
 
-        Table oaRow = new Table();
-        oaRow.setBackground(createBoxDrawable("0C131D", "334155", 1, 10, 10, 6, 6));
-        oaRow.add(new Label("Preview Dunia Outpost Mars (Before Mati vs After Pulih)", primaryStyle)).left().expandX();
-        outpostStateSettingsBtn = smallHudButton("BEFORE (MATI)", "261C14", "F59E0B", () -> toggleBeforeAfter());
-        oaRow.add(outpostStateSettingsBtn).right();
-        settingsWindow.add(oaRow).growX().padBottom(10).row();
-
-        settingsWindow.add(buildInfoCard(
-            "AKUN SPRING BOOT: abdiel_01 (MODE PREVIEW LOKAL)",
-            "Autentikasi & penyimpanan rekor ke server Spring Boot menunggu implementasi kontrak M-09.",
-            marsStyle, mutedStyle, "0C131D", "334155"
-        )).growX().padBottom(12).row();
-
-        Table setFooter = new Table();
-        setFooter.add(new Label("Tekan [O] atau [Esc] untuk menutup Pengaturan.", mutedStyle)).left().expandX();
-        setFooter.add(closeButton("Tutup Pengaturan [Esc]", () -> closeAuxOverlays())).right();
-        settingsWindow.add(setFooter).growX();
-        settingsWindow.setSize(620, 456);
-        settingsWindow.setPosition(170, 72);
-        settingsWindow.setVisible(false);
+        optCard.add(reducedMotionBtn).growX().minWidth(0).row();
+        optCard.add(highContrastBtn).growX().minWidth(0).row();
+        optCard.add(previewVisualBtn).growX().minWidth(0).padBottom(0f);
+        settingsWindow.add(optCard).growX().minWidth(0).pad(4f, 10f, 10f, 10f).row();
+        TextButton closeSettingsBtn = new TextButton("Tutup [Esc]", primaryCyanStyle);
+        closeSettingsBtn.addListener(onAction(() -> closeAuxOverlays()));
+        settingsWindow.add(closeSettingsBtn).height(32f).right().pad(0f, 10f, 8f, 10f);
 
         stage.addActor(inspection);
         stage.addActor(terminal);
@@ -520,60 +672,46 @@ public final class HabitatUi implements Disposable {
         stage.addActor(fieldLogWindow);
         stage.addActor(missionMapWindow);
         stage.addActor(settingsWindow);
-        inspection.setVisible(false);
-        terminal.setVisible(false);
 
-        // Stage keyboard listener for [B], [J], [M], [O] when not typing inside TextArea
+        // Global shortcuts [M] [J] [O] when terminal not focused
         stage.addListener(new InputListener() {
             @Override
             public boolean keyDown(InputEvent event, int keycode) {
-                if (stage.getKeyboardFocus() == editor && world.mode() == HabitatWorld.Mode.TERMINAL) {
-                    return false;
-                }
-                if (keycode == Keys.B) {
-                    toggleBeforeAfter();
-                    return true;
-                }
-                if (keycode == Keys.J) {
-                    toggleOverlay(AuxOverlay.FIELD_LOG);
-                    return true;
-                }
-                if (keycode == Keys.M) {
-                    toggleOverlay(AuxOverlay.MISSION_MAP);
-                    return true;
-                }
-                if (keycode == Keys.O) {
-                    toggleOverlay(AuxOverlay.SETTINGS);
-                    return true;
+                if (world.mode() == HabitatWorld.Mode.EXPLORING) {
+                    if (keycode == Keys.M) { toggleAuxOverlay(AuxOverlay.MISSION_MAP); return true; }
+                    if (keycode == Keys.J) { toggleAuxOverlay(AuxOverlay.FIELD_LOG); return true; }
+                    if (keycode == Keys.O) { toggleAuxOverlay(AuxOverlay.SETTINGS); return true; }
                 }
                 return false;
             }
         });
 
-        sync();
-    }
-
-    private void toggleBeforeAfter() {
-        outpostRestored = !outpostRestored;
         refreshSettingsLabels();
-        if (world.mode() == HabitatWorld.Mode.TERMINAL) {
-            stage.setKeyboardFocus(editor);
+        syncPuzzle();
+        if (scoreBackend.isLoggedIn()) {
+            backendStatusLabel.setText("Login sebagai " + scoreBackend.getUsername() + ".");
+            refreshBackendBestScore();
         }
     }
 
-    private void refreshSettingsLabels() {
-        beforeAfterBtn.setText(outpostRestored ? "[B] AFTER" : "[B] BEFORE");
-        outpostStateSettingsBtn.setText(outpostRestored ? "AFTER (PULIH)" : "BEFORE (MATI)");
-        reducedMotionBtn.setText(reducedMotion ? "ON (AKTIF)" : "OFF");
-        highContrastBtn.setText(highContrastFocus ? "ON (AKTIF)" : "OFF");
+    public Stage stage() { return stage; }
+    public boolean hasOpenOverlay() { return activeOverlay != AuxOverlay.NONE; }
+
+    public void setHelpDrawerOpen(boolean open) {
+        helpDrawerOpen = open;
+        helpDrawer.setVisible(world.mode() == HabitatWorld.Mode.TERMINAL && helpDrawerOpen);
+        positionHelpDrawerNextToTerminal();
+        if (helpDrawer.isVisible()) helpDrawer.toFront();
     }
 
-    public void toggleOverlay(AuxOverlay target) {
-        if (world.mode() != HabitatWorld.Mode.EXPLORING) {
-            return;
-        }
-        activeOverlay = (activeOverlay == target) ? AuxOverlay.NONE : target;
+    public void toggleAuxOverlay(AuxOverlay overlay) {
+        if (world.mode() != HabitatWorld.Mode.EXPLORING) return;
+        activeOverlay = (activeOverlay == overlay) ? AuxOverlay.NONE : overlay;
         updateAuxOverlayVisibility();
+        if (activeOverlay == AuxOverlay.MISSION_MAP) {
+            refreshBackendLeaderboard();
+            if (scoreBackend.isLoggedIn()) refreshBackendBestScore();
+        }
     }
 
     public void closeAuxOverlays() {
@@ -582,268 +720,16 @@ public final class HabitatUi implements Disposable {
     }
 
     private void updateAuxOverlayVisibility() {
-        boolean exploring = world.mode() == HabitatWorld.Mode.EXPLORING;
-        fieldLogWindow.setVisible(exploring && activeOverlay == AuxOverlay.FIELD_LOG);
-        missionMapWindow.setVisible(exploring && activeOverlay == AuxOverlay.MISSION_MAP);
-        settingsWindow.setVisible(exploring && activeOverlay == AuxOverlay.SETTINGS);
-        if (fieldLogWindow.isVisible()) fieldLogWindow.toFront();
-        if (missionMapWindow.isVisible()) missionMapWindow.toFront();
-        if (settingsWindow.isVisible()) settingsWindow.toFront();
-    }
-
-    public void setTerminalState(TerminalState state) {
-        this.terminalState = state;
-        switch (state) {
-            case NORMAL -> {
-                consoleBox.setBackground(consoleNormalBg);
-                consoleTitleLabel.setText("OUTPUT TERMINAL (PREVIEW UI - CPYTHON BELUM AKTIF)");
-                consoleTitleLabel.setColor(COL_CYAN);
-                consoleDetailLabel.setText("Draf kode aman. Gunakan tombol Preview State di atas atau [? Bantuan 3-Langkah].");
-            }
-            case ERROR -> {
-                consoleBox.setBackground(consoleErrorBg);
-                consoleTitleLabel.setText("[!] BoundaryError pada baris 2: move()  (KODE TETAP AMAN)");
-                consoleTitleLabel.setColor(COL_ALERT);
-                consoleDetailLabel.setText("Rover mencapai tepi platform Bio-Dome di (3, 0). Saran: gunakan turn_left() sebelum move().");
-            }
-            case TIMEOUT -> {
-                consoleBox.setBackground(consoleWarnBg);
-                consoleTitleLabel.setText("[!] TIMEOUT 2.0s: Loop dihentikan oleh Watchdog  (KODE TETAP AMAN)");
-                consoleTitleLabel.setColor(COL_MARS);
-                consoleDetailLabel.setText("Eksekusi melampaui batas 2.0 detik. Periksa kondisi berhenti pada loop Anda.");
-            }
-            case STOPPED -> {
-                consoleBox.setBackground(consoleNormalBg);
-                consoleTitleLabel.setText("■ STOPPED: Percobaan dihentikan pengguna  (SOURCE TETAP UTUH)");
-                consoleTitleLabel.setColor(COL_TEXT_SECONDARY);
-                consoleDetailLabel.setText("Snapshot terakhir dipertahankan. Klik Reset atau lanjutkan edit kode di atas.");
-            }
-        }
-        if (world.mode() == HabitatWorld.Mode.TERMINAL) {
-            stage.setKeyboardFocus(editor);
-        }
-    }
-
-    public void setHelpDrawerOpen(boolean open) {
-        this.helpDrawerOpen = open;
-        helpDrawer.setVisible(open && world.mode() == HabitatWorld.Mode.TERMINAL);
-        if (helpDrawer.isVisible()) {
-            helpDrawer.toFront();
-        }
-        if (world.mode() == HabitatWorld.Mode.TERMINAL) {
-            stage.setKeyboardFocus(editor);
-        }
-    }
-
-    private void toggleHelpDrawer() {
-        setHelpDrawerOpen(!helpDrawerOpen);
-    }
-
-    private void toggleStep3() {
-        step3Unlocked = !step3Unlocked;
-        step3BodyLabel.setText(step3Unlocked
-            ? "Pola hemat aksi: move(); move(); turn_left(); move(); water()"
-            : "Terkunci agar tidak langsung membocorkan pola. Klik tombol di bawah untuk membuka.");
-        step3UnlockBtn.setText(step3Unlocked ? "SEMBUNYIKAN LANGKAH 3" : "BUKA PETUNJUK LANGKAH 3");
-        if (world.mode() == HabitatWorld.Mode.TERMINAL) {
-            stage.setKeyboardFocus(editor);
-        }
-    }
-
-    private Table missionCard(String title, String status, String record, LabelStyle titleStyle, String borderHex) {
-        Table card = new Table();
-        card.setBackground(createBoxDrawable("0C131D", borderHex, 1, 8, 8, 6, 6));
-        card.add(new Label(title, titleStyle)).left().growX().padBottom(3).row();
-        card.add(new Label("Status: " + status, new LabelStyle(uiFont, COL_TEXT_SECONDARY)))
-            .left().growX().padBottom(2).row();
-        card.add(new Label(record, new LabelStyle(uiFont, COL_TEXT_MUTED))).left().growX();
-        return card;
-    }
-
-    private Table audioSliderRow(String label, String pct, float ratio, LabelStyle labelStyle, LabelStyle pctStyle) {
-        Table row = new Table();
-        row.setBackground(createBoxDrawable("0C131D", "243442", 1, 8, 8, 5, 5));
-        row.add(new Label(label, labelStyle)).width(210).left();
-
-        int barW = 260;
-        int fillW = Math.round(barW * ratio);
-        Table barTrack = new Table();
-        barTrack.setBackground(createBoxDrawable("1E293B", "334155", 1, 0, 0, 0, 0));
-        Table barFill = new Table();
-        barFill.setBackground(createFlatDrawable("22D3EE", fillW, 8));
-        barTrack.add(barFill).width(fillW).height(8).left().expandX();
-        row.add(barTrack).width(barW).height(10).padRight(12);
-        row.add(new Label(pct, pctStyle)).right();
-        return row;
-    }
-
-    private Table buildInfoCard(String title, String body, LabelStyle titleStyle, LabelStyle bodyStyle,
-                                String bgHex, String borderHex) {
-        Table card = new Table();
-        card.setBackground(createBoxDrawable(bgHex, borderHex, 1, 10, 10, 6, 6));
-        card.add(new Label(title, titleStyle)).left().growX().padBottom(2).row();
-        Label bodyLabel = new Label(body, bodyStyle);
-        bodyLabel.setWrap(true);
-        card.add(bodyLabel).left().growX();
-        return card;
-    }
-
-    private TextButton smallHudButton(String text, String bgHex, String borderHex, Runnable onClick) {
-        TextButtonStyle style = new TextButtonStyle(
-            createBoxDrawable(bgHex, borderHex, 1, 7, 7, 2, 2),
-            createBoxDrawable("0F293A", "38BDF8", 2, 7, 7, 2, 2),
-            createBoxDrawable(bgHex, borderHex, 1, 7, 7, 2, 2),
-            uiBoldFont
-        );
-        style.over = createBoxDrawable("1E3A5F", "BAE6FD", 1, 7, 7, 2, 2);
-        style.fontColor = COL_TEXT_PRIMARY;
-        style.overFontColor = Color.WHITE;
-        TextButton btn = new TextButton(text, style);
-        btn.addListener(new ChangeListener() {
-            @Override
-            public void changed(ChangeEvent event, Actor actor) {
-                onClick.run();
-            }
-        });
-        return btn;
-    }
-
-    private TextButton closeButton(String label, Runnable onClose) {
-        TextButtonStyle btnStyle = new TextButtonStyle(
-            createBoxDrawable("1A2D3D", "38BDF8", 1, 10, 10, 4, 4),
-            createBoxDrawable("0F293A", "38BDF8", 2, 10, 10, 4, 4),
-            createBoxDrawable("1A2D3D", "38BDF8", 1, 10, 10, 4, 4),
-            uiBoldFont
-        );
-        btnStyle.over = createBoxDrawable("233D52", "BAE6FD", 2, 10, 10, 4, 4);
-        btnStyle.focused = createBoxDrawable("1F374B", "38BDF8", 2, 10, 10, 4, 4);
-        btnStyle.fontColor = COL_TEXT_PRIMARY;
-        btnStyle.overFontColor = Color.WHITE;
-        btnStyle.downFontColor = COL_CYAN;
-        btnStyle.focusedFontColor = Color.WHITE;
-
-        TextButton button = new TextButton(label, btnStyle);
-        button.addListener(new ChangeListener() {
-            @Override
-            public void changed(ChangeEvent event, Actor actor) {
-                onClose.run();
-            }
-        });
-        return button;
-    }
-
-    private BitmapFont loadHiDpiFont(String fntPath, String pngPath, float scale, BitmapFont fallback) {
-        var fntHandle = Gdx.files.internal(fntPath);
-        if (!fntHandle.exists()) fntHandle = Gdx.files.local("assets/" + fntPath);
-        var pngHandle = Gdx.files.internal(pngPath);
-        if (!pngHandle.exists()) pngHandle = Gdx.files.local("assets/" + pngPath);
-        if (!fntHandle.exists() || !pngHandle.exists()) {
-            return fallback;
-        }
-        Texture fontTex = new Texture(pngHandle, true);
-        fontTex.setFilter(TextureFilter.MipMapLinearLinear, TextureFilter.Linear);
-        ownedTextures.add(fontTex);
-        BitmapFont loaded = new BitmapFont(fntHandle, new TextureRegion(fontTex), false);
-        loaded.setUseIntegerPositions(false);
-        loaded.getData().setScale(scale);
-        ownedFonts.add(loaded);
-        return loaded;
-    }
-
-    private Drawable createFlatDrawable(String hex, int w, int h) {
-        Pixmap pixmap = new Pixmap(w, h, Pixmap.Format.RGBA8888);
-        pixmap.setColor(Color.valueOf(hex));
-        pixmap.fill();
-        Texture texture = new Texture(pixmap);
-        texture.setFilter(TextureFilter.Nearest, TextureFilter.Nearest);
-        pixmap.dispose();
-        ownedTextures.add(texture);
-        return new TextureRegionDrawable(new TextureRegion(texture));
-    }
-
-    private Drawable createBoxDrawable(String fillHex, String borderHex, int borderThickness,
-                                       int padLeft, int padRight, int padTop, int padBottom) {
-        // 3x supersampled sci-fi box texture so borders & rounded corner highlights stay silky crisp
-        int scale = 3;
-        int size = 14 * scale;
-        Pixmap pixmap = new Pixmap(size, size, Pixmap.Format.RGBA8888);
-        Color fill = Color.valueOf(fillHex);
-        Color border = Color.valueOf(borderHex);
-        pixmap.setColor(0, 0, 0, 0);
-        pixmap.fill();
-
-        // Fill body with 2px chamfered corner cuts in 3x space
-        pixmap.setColor(fill);
-        pixmap.fillRectangle(1, 1, size - 2, size - 2);
-        // Subtle top inner sheen
-        pixmap.setColor(Math.min(1f, fill.r + 0.06f), Math.min(1f, fill.g + 0.08f), Math.min(1f, fill.b + 0.11f), 0.95f);
-        pixmap.fillRectangle(scale, scale, size - scale * 2, scale);
-
-        if (borderThickness > 0) {
-            int t = borderThickness * scale;
-            pixmap.setColor(border);
-            for (int i = 0; i < t; i++) {
-                pixmap.drawRectangle(i, i, size - i * 2, size - i * 2);
-            }
-        }
-        Texture texture = new Texture(pixmap, true);
-        texture.setFilter(TextureFilter.MipMapLinearLinear, TextureFilter.Linear);
-        pixmap.dispose();
-        ownedTextures.add(texture);
-
-        int split = Math.max(2, borderThickness + 2) * scale;
-        NinePatch patch = new NinePatch(texture, split, split, split, split);
-        patch.scale(1f / scale, 1f / scale);
-        NinePatchDrawable drawable = new NinePatchDrawable(patch);
-        drawable.setLeftWidth(padLeft);
-        drawable.setRightWidth(padRight);
-        drawable.setTopHeight(padTop);
-        drawable.setBottomHeight(padBottom);
-        return drawable;
-    }
-
-    private Drawable createWindowDrawable(String bodyHex, String headerHex, String borderHex,
-                                          int borderThickness, int headerHeight) {
-        int scale = 3;
-        int w = 24 * scale;
-        int h = (headerHeight + 16) * scale;
-        int hh = headerHeight * scale;
-        Pixmap pixmap = new Pixmap(w, h, Pixmap.Format.RGBA8888);
-        Color body = Color.valueOf(bodyHex);
-        Color header = Color.valueOf(headerHex);
-        Color border = Color.valueOf(borderHex);
-
-        pixmap.setColor(body);
-        pixmap.fill();
-        pixmap.setColor(header);
-        pixmap.fillRectangle(0, 0, w, hh);
-        // Subtle top inner glass specular line
-        pixmap.setColor(border.r, border.g, border.b, 0.35f);
-        pixmap.fillRectangle(0, scale * borderThickness, w, scale);
-        // Header divider line
-        pixmap.setColor(border);
-        pixmap.fillRectangle(0, hh - 2 * scale, w, 2 * scale);
-
-        int t = borderThickness * scale;
-        for (int i = 0; i < t; i++) {
-            pixmap.drawRectangle(i, i, w - i * 2, h - i * 2);
-        }
-        Texture texture = new Texture(pixmap, true);
-        texture.setFilter(TextureFilter.MipMapLinearLinear, TextureFilter.Linear);
-        pixmap.dispose();
-        ownedTextures.add(texture);
-
-        int sideSplit = Math.max(3, borderThickness + 2) * scale;
-        NinePatch patch = new NinePatch(texture, sideSplit, sideSplit, (headerHeight + 2) * scale, sideSplit);
-        patch.scale(1f / scale, 1f / scale);
-        return new NinePatchDrawable(patch);
-    }
-
-    public Stage stage() {
-        return stage;
+        fieldLogWindow.setVisible(activeOverlay == AuxOverlay.FIELD_LOG);
+        missionMapWindow.setVisible(activeOverlay == AuxOverlay.MISSION_MAP);
+        settingsWindow.setVisible(activeOverlay == AuxOverlay.SETTINGS);
+        if (fieldLogWindow.isVisible()) { centerWindow(fieldLogWindow); fieldLogWindow.toFront(); }
+        if (missionMapWindow.isVisible()) { centerWindow(missionMapWindow); missionMapWindow.toFront(); }
+        if (settingsWindow.isVisible()) { centerWindow(settingsWindow); settingsWindow.toFront(); }
     }
 
     public void sync() {
+        syncPuzzle();
         if (Gdx.input.isKeyJustPressed(Keys.ESCAPE) && activeOverlay != AuxOverlay.NONE) {
             closeAuxOverlays();
         }
@@ -859,88 +745,607 @@ public final class HabitatUi implements Disposable {
             updateAuxOverlayVisibility();
             if (mode == HabitatWorld.Mode.TERMINAL) {
                 terminal.toFront();
+                positionHelpDrawerNextToTerminal();
                 if (helpDrawer.isVisible()) helpDrawer.toFront();
                 stage.setKeyboardFocus(editor);
-            }
-            if (mode == HabitatWorld.Mode.INSPECTION) {
+            } else if (mode == HabitatWorld.Mode.INSPECTION) {
+                centerWindow(inspection);
                 inspection.toFront();
                 stage.setKeyboardFocus(inspection);
             }
             shown = mode;
         }
 
-        refreshSettingsLabels();
         if (mode == HabitatWorld.Mode.EXPLORING) {
             modeBadge.setText(activeOverlay == AuxOverlay.NONE ? "OUTPOST" : activeOverlay.name());
-            modeBadge.setColor(COL_GREEN);
+            modeBadge.setColor(COL_EMERALD);
         } else if (mode == HabitatWorld.Mode.INSPECTION) {
-            modeBadge.setText("INSPEKSI");
+            modeBadge.setText("TELEMETRI");
             modeBadge.setColor(COL_CYAN);
         } else {
-            modeBadge.setText("TERMINAL");
-            modeBadge.setColor(COL_MARS);
+            modeBadge.setText("ROVER IDE");
+            modeBadge.setColor(COL_AMBER);
         }
 
-        boolean editorFocused = stage.getKeyboardFocus() == editor;
-        focusStatusLabel.setText(editorFocused ? "FOKUS: EDITOR" : "FOKUS: TERMINAL");
-        focusStatusLabel.setColor(editorFocused ? COL_CYAN : COL_TEXT_SECONDARY);
-
-        String text = editor.getText();
-        int lines = 1;
-        for (int i = 0; i < text.length(); i++) {
-            if (text.charAt(i) == '\n') lines++;
-        }
-        int displayLines = Math.max(8, lines);
-        StringBuilder sb = new StringBuilder();
-        for (int i = 1; i <= displayLines; i++) {
-            if (i > 1) sb.append('\n');
-            sb.append(i);
-        }
-        lineNumbersLabel.setText(sb.toString());
+        editorPanel.setBackground(stage.getKeyboardFocus() == editor
+            ? (highContrastFocus ? editorFocusHighBg : editorFocusStdBg)
+            : editorNormalBg);
+        updateVisibleEditorGutter();
 
         HabitatWorld.Facility nearby = world.nearbyFacility();
         if (mode != HabitatWorld.Mode.EXPLORING) {
             bottomPromptBox.setBackground(promptModalBg);
-            prompt.setText("Panel aktif (gerak terkunci) | Tekan [Esc] untuk kembali");
+            prompt.setText(mode == HabitatWorld.Mode.TERMINAL
+                ? "Editor Rover aktif (tarik sudut untuk resize) | [Esc] kembali ke Outpost"
+                : "Panel Telemetri aktif | Tekan [Esc] untuk kembali");
         } else if (activeOverlay != AuxOverlay.NONE) {
             bottomPromptBox.setBackground(promptModalBg);
-            prompt.setText("Overlay " + activeOverlay.name() + " aktif | Tekan [Esc] untuk tutup");
-        } else if (nearby == null) {
-            bottomPromptBox.setBackground(promptIdleBg);
-            prompt.setText("Outpost Mars: dekati PANEL SURYA (kiri) atau TERMINAL (kanan).");
-        } else {
+            prompt.setText("Overlay aktif | Tekan [Esc] untuk tutup");
+        } else if (nearby == HabitatWorld.Facility.ROVER) {
             bottomPromptBox.setBackground(promptNearBg);
-            prompt.setText("[E] " + (nearby == HabitatWorld.Facility.PANEL
-                ? "Inspeksi Panel Surya & Air"
-                : "Buka Floating Terminal Bio-Dome"));
+            prompt.setText("Klik Rover atau tekan [E] untuk edit kode Python");
+        } else if (nearby == HabitatWorld.Facility.PANEL) {
+            bottomPromptBox.setBackground(promptNearBg);
+            prompt.setText("[E] atau klik Panel Telemetri untuk melihat briefing P1");
+        } else {
+            bottomPromptBox.setBackground(promptIdleBg);
+            prompt.setText("[WASD] Jelajah Outpost • Ikuti jalur menuju Bio-Dome Timur & klik Rover");
         }
+    }
+
+    private void registerBackendAccount() {
+        String username = backendUsernameField.getText().trim();
+        String password = backendPasswordField.getText();
+
+        if (username.isEmpty() || password.isEmpty()) {
+            backendStatusLabel.setText("Isi nama akun dan kata sandi dulu.");
+            return;
+        }
+
+        try {
+            scoreBackend.register(username, password);
+            backendStatusLabel.setText("Akun dibuat. Tekan Masuk dengan kata sandi yang sama.");
+        } catch (Exception error) {
+            backendStatusLabel.setText("Daftar gagal: " + error.getMessage());
+        }
+    }
+
+    private void loginBackendAccount() {
+        String username = backendUsernameField.getText().trim();
+        String password = backendPasswordField.getText();
+
+        if (username.isEmpty() || password.isEmpty()) {
+            backendStatusLabel.setText("Isi nama akun dan kata sandi dulu.");
+            return;
+        }
+
+        try {
+            scoreBackend.login(username, password);
+            backendPasswordField.setText("");
+            backendStatusLabel.setText("Login sebagai " + scoreBackend.getUsername() + ".");
+            refreshBackendBestScore();
+            syncPuzzle();
+        } catch (Exception error) {
+            backendStatusLabel.setText("Login gagal: " + error.getMessage());
+        }
+    }
+
+    private void logoutBackendAccount() {
+        try {
+            scoreBackend.logout();
+            backendStatusLabel.setText("Kamu sudah keluar dari akun.");
+            backendBestScoreLabel.setText("Rekor P1: masuk untuk melihat");
+            syncPuzzle();
+        } catch (Exception error) {
+            backendStatusLabel.setText("Gagal keluar: " + error.getMessage());
+        }
+    }
+
+    private void refreshBackendBestScore() {
+        try {
+            Integer bestScore = scoreBackend.getBestScore();
+
+            if (bestScore == null) {
+                backendBestScoreLabel.setText("Rekor P1: belum ada skor");
+            } else {
+                backendBestScoreLabel.setText("Rekor terbaik P1: " + bestScore + " aksi");
+            }
+        } catch (Exception error) {
+            backendBestScoreLabel.setText("Rekor P1 belum bisa dimuat.");
+        }
+    }
+
+    private void refreshBackendLeaderboard() {
+        try {
+            List<String> rows = scoreBackend.getLeaderboard();
+            if (rows.isEmpty()) {
+                backendLeaderboardLabel.setText("Papan skor P1: belum ada skor.");
+                return;
+            }
+
+            StringBuilder text = new StringBuilder("Papan skor P1 (aksi paling sedikit):");
+            int shown = Math.min(5, rows.size());
+            for (int i = 0; i < shown; i++) {
+                text.append("\n").append(rows.get(i));
+            }
+            backendLeaderboardLabel.setText(text.toString());
+        } catch (Exception error) {
+            backendLeaderboardLabel.setText("Papan skor belum bisa dimuat. Cek backend lalu coba lagi.");
+        }
+    }
+
+    private void saveCurrentScore(RunCoordinator.View view) {
+        if (view.status() != Status.SUCCESS) {
+            backendStatusLabel.setText("Selesaikan puzzle P1 dulu sebelum menyimpan skor.");
+            return;
+        }
+
+        if (!scoreBackend.isLoggedIn()) {
+            backendStatusLabel.setText("Masuk dulu agar skor bisa disimpan ke akunmu.");
+            return;
+        }
+
+        if (scoreSubmissionGeneration != view.generation()) {
+            scoreSubmissionGeneration = view.generation();
+            scoreSubmissionId = UUID.randomUUID().toString();
+        }
+
+        scoreAttemptedGeneration = view.generation();
+
+        try {
+            int actionCount = view.snapshot().actionCount();
+            scoreBackend.submitScore(scoreSubmissionId, actionCount);
+            scoreSavedGeneration = view.generation();
+            backendStatusLabel.setText("Skor P1 berhasil disimpan.");
+            refreshBackendBestScore();
+            refreshBackendLeaderboard();
+        } catch (Exception error) {
+            backendStatusLabel.setText("Skor belum tersimpan: " + error.getMessage());
+        }
+    }
+
+    private void syncPuzzle() {
+        RunCoordinator.View view = coordinator.view();
+        shownPuzzle = view;
+        var snap = view.snapshot();
+
+        int harvests = snap.harvestCount();
+        int actions = snap.actionCount();
+        int maxActions = 6;
+        puzzleStats.setText("M1-P1 | PANEN " + harvests + "/2 | AKSI " + actions + "/" + maxActions);
+        goalSummaryLabel.setText("Panen " + harvests + "/2 • Aksi " + actions + "/" + maxActions);
+
+        Status st = view.status();
+        updateStatusBadge(st, view.completed());
+        updateMissionMapCard(st, view.completed(), harvests, actions, maxActions);
+
+        if (st == Status.SUCCESS) {
+            if (!scoreBackend.isLoggedIn()) {
+                backendStatusLabel.setText("Puzzle sukses. Masuk untuk menyimpan skornya.");
+            } else if (scoreAttemptedGeneration != view.generation()) {
+                saveCurrentScore(view);
+            }
+        }
+
+        boolean loggedIn = scoreBackend.isLoggedIn();
+        backendLoginButton.setDisabled(loggedIn);
+        backendRegisterButton.setDisabled(loggedIn);
+        backendLogoutButton.setDisabled(!loggedIn);
+        backendUsernameField.setDisabled(loggedIn);
+        backendPasswordField.setDisabled(loggedIn);
+
+        boolean scoreCanBeSaved = st == Status.SUCCESS && loggedIn;
+        saveScoreButton.setVisible(scoreCanBeSaved);
+        saveScoreButtonCell.height(scoreCanBeSaved ? 30f : 0f).padTop(scoreCanBeSaved ? 4f : 0f);
+        saveScoreButton.setDisabled(!scoreCanBeSaved || scoreSavedGeneration == view.generation());
+        saveScoreButton.setText(scoreSavedGeneration == view.generation()
+                ? "Skor P1 tersimpan"
+                : "Coba simpan skor P1 lagi");
+
+        runButton.setDisabled(!view.canRun());
+        stopButton.setDisabled(!view.canStop());
+        runButton.getColor().a = view.canRun() ? 1f : 0.45f;
+        stopButton.getColor().a = view.canStop() ? 1f : 0.45f;
+
+        boolean hasOutput = view.output() != null && !view.output().isBlank();
+        boolean hasNotableState = st != Status.READY;
+        boolean showLog = logManualExpanded || hasOutput || hasNotableState;
+
+        logToggleBtn.setText(showLog ? "Log [-]" : (hasOutput || view.completed() ? "Log •" : "Log [+]"));
+
+        if (!showLog) {
+            consoleBox.setVisible(false);
+            consoleBoxCell.height(0f);
+        } else {
+            consoleBox.setVisible(true);
+            float baseH = Math.max(96f, Math.min(140f, terminal.getHeight() * 0.28f));
+            float boxH = st == Status.SUCCESS ? Math.max(114f, baseH) : baseH;
+            consoleBoxCell.height(boxH);
+        }
+
+        String title;
+        String hint;
+        switch (st) {
+            case PREPARING -> {
+                consoleBox.setBackground(consoleNormalBg);
+                consoleTitleLabel.setColor(COL_CYAN);
+                title = "Menyiapkan Python bundel...";
+                hint = "Tunggu sebentar, runtime sedang dijalankan.";
+            }
+            case RUNNING -> {
+                consoleBox.setBackground(consoleNormalBg);
+                consoleTitleLabel.setColor(COL_CYAN);
+                title = "Menjalankan kode Python...";
+                hint = "Klik Stop bila loop terlalu lama.";
+            }
+            case REPLAYING -> {
+                consoleBox.setBackground(consoleNormalBg);
+                consoleTitleLabel.setColor(COL_CYAN);
+                title = "Memutar aksi rover secara halus...";
+                hint = "Amati rover bergerak dan memanen di Bio-Dome kanan.";
+            }
+            case SUCCESS -> {
+                consoleBox.setBackground(consoleSuccessBg);
+                consoleTitleLabel.setColor(COL_EMERALD);
+                title = "Sukses! " + harvests + "/2 tanaman dipanen (" + actions + "/" + maxActions + " aksi).";
+                hint = "Skor dikirim otomatis jika kamu sudah login.";
+            }
+            case INCOMPLETE -> {
+                consoleBox.setBackground(consoleWarnBg);
+                consoleTitleLabel.setColor(COL_AMBER);
+                title = "Target belum selesai (" + harvests + "/2 dipanen).";
+                hint = "Pastikan rover memanen di (0,0), pindah east, lalu harvest() di (1,0).";
+            }
+            case LIMIT_EXCEEDED -> {
+                consoleBox.setBackground(consoleWarnBg);
+                consoleTitleLabel.setColor(COL_AMBER);
+                title = "Batas aksi terlampaui (" + actions + "/" + maxActions + ").";
+                hint = "Kurangi langkah gerak/panen agar <= 6 aksi.";
+            }
+            case ERROR -> {
+                consoleBox.setBackground(consoleErrorBg);
+                consoleTitleLabel.setColor(COL_CORAL);
+                title = "Terjadi Error pada Script Python";
+                hint = view.message();
+            }
+            case TIMEOUT -> {
+                consoleBox.setBackground(consoleErrorBg);
+                consoleTitleLabel.setColor(COL_CORAL);
+                title = "Waktu Eksekusi Habis (Timeout)";
+                hint = view.message();
+            }
+            case STOPPED -> {
+                consoleBox.setBackground(consoleWarnBg);
+                consoleTitleLabel.setColor(COL_AMBER);
+                title = "Eksekusi Dihentikan";
+                hint = "Draf kode Anda tetap aman untuk diedit ulang.";
+            }
+            default -> {
+                consoleBox.setBackground(consoleNormalBg);
+                consoleTitleLabel.setColor(COL_CYAN);
+                title = "Log Percobaan";
+                hint = view.message();
+            }
+        }
+
+        consoleTitleLabel.setText(title);
+        String detailText = hasOutput ? hint + "\n" + view.output().stripTrailing() : hint;
+        consoleDetailLabel.setText(detailText);
+        consoleDetailLabel.setColor(st == Status.ERROR || st == Status.TIMEOUT ? COL_CORAL : COL_TEXT_SECONDARY);
+
+        boolean showSuccessActions = st == Status.SUCCESS;
+        successSummaryRow.setVisible(showSuccessActions);
+        successSummaryRowCell.height(showSuccessActions ? 32f : 0f).padTop(showSuccessActions ? 4f : 0f);
+        successSummaryLabel.setText("2 dipanen • " + actions + " aksi");
+    }
+
+    private void updateStatusBadge(Status st, boolean completed) {
+        switch (st) {
+            case PREPARING, RUNNING, REPLAYING -> {
+                goalStatusLabel.setText("JALAN");
+                goalStatusLabel.setColor(COL_CYAN);
+            }
+            case SUCCESS -> {
+                goalStatusLabel.setText("SELESAI");
+                goalStatusLabel.setColor(COL_EMERALD);
+            }
+            case ERROR, TIMEOUT -> {
+                goalStatusLabel.setText("ERROR");
+                goalStatusLabel.setColor(COL_CORAL);
+            }
+            case INCOMPLETE, LIMIT_EXCEEDED, STOPPED -> {
+                goalStatusLabel.setText("CEK");
+                goalStatusLabel.setColor(COL_AMBER);
+            }
+            default -> {
+                goalStatusLabel.setText(completed ? "LULUS" : "SIAP");
+                goalStatusLabel.setColor(completed ? COL_EMERALD : COL_TEXT_PRIMARY);
+            }
+        }
+    }
+
+    private void updateMissionMapCard(Status st, boolean completed, int harvests, int actions, int maxActions) {
+        boolean running = st == Status.PREPARING || st == Status.RUNNING || st == Status.REPLAYING;
+        if (completed) {
+            p1MissionCard.setBackground(cardEmeraldBg);
+            p1MissionStatusLabel.setStyle(emeraldStyle);
+            p1MissionStatusLabel.setText("P1 • SELESAI (SESI)");
+            p1MissionDetailLabel.setText("Dua tanaman dipanen. Terakhir: " + harvests + "/2, " + actions + "/" + maxActions + " aksi.");
+        } else if (running) {
+            p1MissionCard.setBackground(cardAmberBg);
+            p1MissionStatusLabel.setStyle(amberStyle);
+            p1MissionStatusLabel.setText("P1 • SEDANG DIJALANKAN");
+            p1MissionDetailLabel.setText("Simulasi rover berjalan (" + actions + "/" + maxActions + " aksi).");
+        } else {
+            p1MissionCard.setBackground(cardCyanBg);
+            p1MissionStatusLabel.setStyle(cyanStyle);
+            p1MissionStatusLabel.setText("P1 • TERSEDIA");
+            p1MissionDetailLabel.setText("Klik Rover di Bio-Dome Timur untuk memulai puzzle.");
+        }
+    }
+
+    private void updateVisibleEditorGutter() {
+        int totalLines = Math.max(1, editor.getLines());
+        int showing = Math.max(1, editor.getLinesShowing());
+        int firstLine = Math.max(0, Math.min(totalLines - 1, editor.getFirstLineShowing()));
+        int endLine = Math.min(totalLines, firstLine + showing);
+
+        StringBuilder sb = new StringBuilder();
+        for (int i = firstLine + 1; i <= endLine; i++) {
+            if (sb.length() > 0) sb.append('\n');
+            sb.append(i);
+        }
+        lineNumbersLabel.setText(sb.toString());
+        editorHeaderRangeLabel.setText("Baris " + (firstLine + 1) + "-" + endLine + " / " + totalLines);
+    }
+
+    private void refreshSettingsLabels() {
+        reducedMotionBtn.setText("Kurangi Animasi Kamera & Partikel: " + (reducedMotion ? "AKTIF" : "MATI"));
+        highContrastBtn.setText("Bingkai Fokus Kontras Tinggi: " + (highContrastFocus ? "AKTIF" : "STANDAR"));
+        previewVisualBtn.setText("Preview Visual Outpost Pulih (Kosmetik): " + (outpostRestored ? "AKTIF" : "MATI"));
     }
 
     public void resize(int width, int height) {
         stage.getViewport().update(width, height, true);
+        clampTerminalWindow();
         clampWindow(inspection);
-        clampWindow(terminal);
         clampWindow(helpDrawer);
         clampWindow(fieldLogWindow);
         clampWindow(missionMapWindow);
         clampWindow(settingsWindow);
-    }
-
-    private void clampWindow(Window w) {
-        w.setPosition(
-            Math.max(0, Math.min(960 - w.getWidth(), w.getX())),
-            Math.max(0, Math.min(600 - w.getHeight(), w.getY()))
-        );
+        positionHelpDrawerNextToTerminal();
     }
 
     public void draw(float delta) {
         stage.getViewport().apply();
-        terminal.setPosition(
-            Math.max(8, Math.min(960 - terminal.getWidth() - 8, terminal.getX())),
-            Math.max(36, Math.min(564 - terminal.getHeight(), terminal.getY()))
-        );
+        clampTerminalWindow();
+        positionHelpDrawerNextToTerminal();
+        editorPanel.setBackground(stage.getKeyboardFocus() == editor
+            ? (highContrastFocus ? editorFocusHighBg : editorFocusStdBg)
+            : editorNormalBg);
+        updateVisibleEditorGutter();
         stage.act(Math.min(delta, 0.1f));
         stage.draw();
+    }
+
+    private void clampTerminalWindow() {
+        float sw = stage.getViewport().getWorldWidth();
+        float sh = stage.getViewport().getWorldHeight();
+        float maxW = Math.max(TERMINAL_MIN_W, sw - 24f);
+        float maxH = Math.max(TERMINAL_MIN_H, sh - 76f);
+        float w = Math.max(TERMINAL_MIN_W, Math.min(maxW, terminal.getWidth()));
+        float h = Math.max(TERMINAL_MIN_H, Math.min(maxH, terminal.getHeight()));
+        if (Math.abs(w - terminal.getWidth()) > 0.5f || Math.abs(h - terminal.getHeight()) > 0.5f) {
+            terminal.setSize(w, h);
+        }
+        float x = Math.max(10f, Math.min(sw - w - 10f, terminal.getX()));
+        float y = Math.max(44f, Math.min(sh - h - 42f, terminal.getY()));
+        terminal.setPosition(x, y);
+    }
+
+    private void positionHelpDrawerNextToTerminal() {
+        if (!helpDrawer.isVisible()) return;
+        float sw = stage.getViewport().getWorldWidth();
+        float rightX = terminal.getRight() + 10f;
+        float targetX = (rightX + helpDrawer.getWidth() <= sw - 10f)
+            ? rightX
+            : Math.max(10f, terminal.getX() - helpDrawer.getWidth() - 10f);
+        helpDrawer.setPosition(targetX, terminal.getTop() - helpDrawer.getHeight());
+        clampWindow(helpDrawer);
+    }
+
+    private void centerWindow(Window w) {
+        float sw = stage.getViewport().getWorldWidth();
+        float sh = stage.getViewport().getWorldHeight();
+        w.setPosition(Math.round((sw - w.getWidth()) * 0.5f), Math.round((sh - w.getHeight()) * 0.5f));
+        clampWindow(w);
+    }
+
+    private void clampWindow(Window w) {
+        float sw = stage.getViewport().getWorldWidth();
+        float sh = stage.getViewport().getWorldHeight();
+        w.setPosition(
+            Math.max(8f, Math.min(sw - w.getWidth() - 8f, w.getX())),
+            Math.max(8f, Math.min(sh - w.getHeight() - 8f, w.getY()))
+        );
+    }
+
+    private Window createBaseWindow(String title, WindowStyle style, float width, float height) {
+        Window w = new Window(title, style);
+        w.setVisible(false);
+        w.setMovable(true);
+        w.setKeepWithinStage(false);
+        w.setSize(width, height);
+        w.pad(36f, 10f, 10f, 10f);
+        return w;
+    }
+
+    private Label wrapLabel(String text, LabelStyle style) {
+        Label label = new Label(text, style);
+        label.setWrap(true);
+        return label;
+    }
+
+    private static ChangeListener onAction(Runnable action) {
+        return new ChangeListener() {
+            @Override
+            public void changed(ChangeEvent event, Actor actor) {
+                action.run();
+            }
+        };
+    }
+
+    private BitmapFont loadBitmapFont(String fntPath, String pngPath, float scale, boolean integerPos) {
+        BitmapFont font = new BitmapFont(
+            Gdx.files.internal(fntPath),
+            new TextureRegion(loadUiTexture(pngPath)),
+            false
+        );
+        font.setUseIntegerPositions(integerPos);
+        font.getData().setScale(scale);
+        ownedFonts.add(font);
+        return font;
+    }
+
+    private Texture loadUiTexture(String path) {
+        Texture texture = new Texture(Gdx.files.internal(path), true);
+        texture.setFilter(TextureFilter.MipMapLinearLinear, TextureFilter.Linear);
+        ownedTextures.add(texture);
+        return texture;
+    }
+
+    private Drawable makeSolidColor(Color color, int w, int h) {
+        Pixmap pixmap = new Pixmap(w, h, Pixmap.Format.RGBA8888);
+        pixmap.setColor(color);
+        pixmap.fill();
+        Texture texture = new Texture(pixmap);
+        pixmap.dispose();
+        ownedTextures.add(texture);
+        return new TextureRegionDrawable(new TextureRegion(texture));
+    }
+
+    private TextButtonStyle makeButtonStyle(
+        BitmapFont font, Color fontCol, Color upFill, Color overFill, Color downFill,
+        Color upBorder, Color focusBorder, int radius
+    ) {
+        TextButtonStyle style = new TextButtonStyle();
+        style.font = font;
+        style.fontColor = fontCol;
+        style.overFontColor = fontCol;
+        style.downFontColor = fontCol;
+        style.up = makeRoundedBox(radius * 2 + 12, radius, upFill, upBorder, 1.5f);
+        style.over = makeRoundedBox(radius * 2 + 12, radius, overFill, focusBorder, 1.8f);
+        style.down = makeRoundedBox(radius * 2 + 12, radius, downFill, focusBorder, 2.0f);
+        style.focused = style.over;
+        return style;
+    }
+
+    /** 3x supersampled SDF anti-aliased rounded rectangle NinePatch (zero jagged boxy edges on resize!). */
+    private Drawable makeRoundedBox(int logicalMinSize, int logicalRadius, Color fill, Color border, float borderWidth) {
+        int scale = 3;
+        int minSize = Math.max(logicalRadius * 2 + 8, logicalMinSize);
+        int size = minSize * scale;
+        float radius = logicalRadius * scale;
+        float bw = borderWidth * scale;
+
+        Pixmap pm = new Pixmap(size, size, Pixmap.Format.RGBA8888);
+        paintSignedRoundedRect(pm, size, size, radius, bw, fill, border, 0, null);
+        Texture tex = new Texture(pm, true);
+        tex.setFilter(TextureFilter.MipMapLinearLinear, TextureFilter.Linear);
+        pm.dispose();
+        ownedTextures.add(tex);
+
+        int split = Math.min(size / 2 - 2, (int) Math.ceil(radius + bw) + 2);
+        NinePatch patch = new NinePatch(tex, split, split, split, split);
+        patch.scale(1f / scale, 1f / scale);
+        return new NinePatchDrawable(patch);
+    }
+
+    private Drawable makeRoundedWindow(Color fill, Color border, int logicalRadius, int logicalHeaderH) {
+        int scale = 3;
+        int radius = logicalRadius * scale;
+        int headerH = logicalHeaderH * scale;
+        int w = (logicalRadius * 2 + 16) * scale;
+        int h = headerH + (logicalRadius + 16) * scale;
+        float bw = 1.6f * scale;
+
+        Pixmap pm = new Pixmap(w, h, Pixmap.Format.RGBA8888);
+        Color headerTint = new Color(
+            Math.min(1f, fill.r + 0.04f),
+            Math.min(1f, fill.g + 0.06f),
+            Math.min(1f, fill.b + 0.10f),
+            Math.min(1f, fill.a + 0.05f)
+        );
+        paintSignedRoundedRect(pm, w, h, radius, bw, fill, border, headerH, headerTint);
+        Texture tex = new Texture(pm, true);
+        tex.setFilter(TextureFilter.MipMapLinearLinear, TextureFilter.Linear);
+        pm.dispose();
+        ownedTextures.add(tex);
+
+        int sideSplit = radius + 6;
+        int bottomSplit = radius + 6;
+        int topSplit = headerH + 6;
+        NinePatch patch = new NinePatch(tex, sideSplit, sideSplit, topSplit, bottomSplit);
+        patch.scale(1f / scale, 1f / scale);
+        return new NinePatchDrawable(patch);
+    }
+
+    private static void paintSignedRoundedRect(
+        Pixmap pm, int w, int h, float radius, float borderWidth,
+        Color fill, Color border, int headerHeight, Color headerTint
+    ) {
+        float halfW = (w - 2f) * 0.5f;
+        float halfH = (h - 2f) * 0.5f;
+        float cx = w * 0.5f - 0.5f;
+        float cy = h * 0.5f - 0.5f;
+        float r = Math.min(radius, Math.min(halfW, halfH));
+        float innerW = halfW - r;
+        float innerH = halfH - r;
+
+        for (int py = 0; py < h; py++) {
+            for (int px = 0; px < w; px++) {
+                float dx = Math.abs(px - cx) - innerW;
+                float dy = Math.abs(py - cy) - innerH;
+                float dist = (float) Math.hypot(Math.max(dx, 0f), Math.max(dy, 0f)) + Math.min(Math.max(dx, dy), 0f) - r;
+
+                float edgeCoverage = clamp01(0.6f - dist);
+                if (edgeCoverage <= 0f) {
+                    pm.drawPixel(px, py, 0);
+                    continue;
+                }
+                float borderBlend = borderWidth > 0f ? clamp01((dist + borderWidth + 0.5f) / 1.4f) : 0f;
+                Color baseFill = (headerHeight > 0 && py < headerHeight && headerTint != null) ? headerTint : fill;
+                if (headerHeight > 0 && Math.abs(py - headerHeight) <= 1.2f && dist < -borderWidth) {
+                    baseFill = border;
+                }
+
+                float outR = baseFill.r + (border.r - baseFill.r) * borderBlend;
+                float outG = baseFill.g + (border.g - baseFill.g) * borderBlend;
+                float outB = baseFill.b + (border.b - baseFill.b) * borderBlend;
+                float outA = (baseFill.a + (border.a - baseFill.a) * borderBlend) * edgeCoverage;
+                pm.drawPixel(px, py, Color.rgba8888(outR, outG, outB, outA));
+            }
+        }
+    }
+
+    private Drawable makeResizeGripDrawable() {
+        int s = 28;
+        Pixmap pm = new Pixmap(s, s, Pixmap.Format.RGBA8888);
+        pm.setColor(new Color(COL_CYAN.r, COL_CYAN.g, COL_CYAN.b, 0.78f));
+        for (int k = 0; k < 3; k++) {
+            int offset = 4 + k * 7;
+            pm.drawLine(offset, s - 4, s - 4, offset);
+            pm.drawLine(offset + 1, s - 4, s - 4, offset + 1);
+        }
+        Texture tex = new Texture(pm);
+        tex.setFilter(TextureFilter.Linear, TextureFilter.Linear);
+        pm.dispose();
+        ownedTextures.add(tex);
+        return new TextureRegionDrawable(new TextureRegion(tex));
+    }
+
+    private static float clamp01(float v) {
+        return v < 0f ? 0f : (v > 1f ? 1f : v);
     }
 
     @Override

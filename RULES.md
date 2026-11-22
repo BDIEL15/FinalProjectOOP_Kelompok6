@@ -1,6 +1,6 @@
 # RULES — mars_reboot.py
 
-Status: rancangan lengkap untuk review, 12 November 2026; belum diimplementasikan. Acuan kebutuhan: [PRD](PRD.md). Keputusan pengguna tetap di [PROJECT](PROJECT.md). Semua angka, fixture, nama API, dan kebijakan rinci baru di dokumen ini berstatus **Usulan**, bukan aturan yang sudah disetujui. Kontrak final baru berlaku setelah dipilih dan diuji. Aturan prototype di [arsip](docs/prototype/RULES.md) tidak berlaku otomatis.
+Status: rancangan lengkap untuk review; per 13 November 2026 subset kandidat p1-a diimplementasikan dan diuji pada domain Java (bagian 10). Acuan kebutuhan: [PRD](PRD.md). Keputusan pengguna tetap di [PROJECT](PROJECT.md). Semua angka, fixture, nama API, dan kebijakan rinci baru di dokumen ini berstatus **Usulan**, bukan aturan yang sudah disetujui. Implementasi eksperimen tidak menjadikan seluruh kontrak final. Aturan prototype di [arsip](docs/prototype/RULES.md) tidak berlaku otomatis.
 
 ## 1. Istilah dan sumber state
 
@@ -73,7 +73,7 @@ Angka ini dipilih sebagai kandidat awal Mars, bukan hasil pengukuran atau salina
 
 actionCount menghitung move/harvest/water yang tervalidasi termasuk gagal; moveCount hanya langkah yang berhasil; waterUsed adalah unit yang benar-benar dipakai. Panen berhasil dan invalidHarvestCount dicatat terpisah. Sensor tidak menambah actionCount tetapi dibatasi request/watchdog. Pengaruh sumber nondeterministik yang dapat dipakai Python harus ditangani saat runtime dipilih; belum ada jaminan sandbox atau batas memori keras.
 
-**Usulan skor sederhana:** jumlah actionCount semua skenario wajib, lebih kecil lebih baik. Hanya percobaan success yang boleh menjadi rekor; simpan juga metrik air. Bandingkan rekor hanya dalam puzzleId, rulesVersion, dan fixtureVersion yang sama. Formula ini belum dipilih dan harus divalidasi melalui solusi referensi/playtest. Loop dengan aksi sama tidak otomatis menghasilkan skor lebih kecil. Tidak ada leaderboard kompetitif yang ditambahkan.
+**Usulan skor sederhana:** jumlah actionCount semua skenario wajib, lebih kecil lebih baik. Hanya percobaan success yang boleh menjadi rekor; simpan juga metrik air. Bandingkan rekor hanya dalam puzzleId, rulesVersion, dan fixtureVersion yang sama. Formula ini belum dipilih sebagai aturan kelompok dan harus divalidasi melalui solusi referensi/playtest. Implementasi lokal saat ini memakai jumlah aksi P1 sebagai skor dan menampilkan papan skor 10 akun teratas atas permintaan pengguna; keputusan kompetisi kelompok belum dicatat. Loop dengan aksi sama tidak otomatis menghasilkan skor lebih kecil.
 
 ## 6. Fixture puzzle 1–4 — Usulan
 
@@ -152,3 +152,18 @@ Latihan loop pada puzzle 2 dan fungsi pada puzzle 6 berbeda dari tujuan dunia. P
 | R-04 | Apa kontrak peta/checkpoint/pompa dan fixture 5–9? | Lengkapi sebelum tiap puzzle dikerjakan. |
 
 Kebutuhan FR/NFR/AC tetap di [PRD](PRD.md); struktur dan pembatalan di [ARCHITECTURE](ARCHITECTURE.md); daftar test di [TEST_PLAN](TEST_PLAN.md).
+
+## 10. Tahap domain kandidat sebelum integrasi — 13 November 2026
+
+`com.marsreboot.robot.RobotSimulation` mengimplementasikan eksperimen `p1-a`: grid 2×1, robot `(0,0)`, dua tanaman ripe pada `(0,0)`/`(1,0)`, target keduanya, batas 6 aksi dan 1.024 panggilan API. Urutan referensi `harvest → move("east") → harvest → finish` menghasilkan 3 aksi, 1 gerak berhasil dan 2 panen.
+
+- API **Java** saat ini: `move(String)`, `harvest()`, `canHarvest()`, `getPos()`; penghubung nama Python belum dibuat. Gerak empat arah, tepi/penghalang dan panen gagal tetap mengikuti biaya kandidat. Sensor menghitung request tanpa menambah aksi.
+- `snapshot()` memberikan salinan immutable tanpa biaya request. `reset()` memulihkan fixture dan seluruh penghitung; tidak mengelola source, rekor, identitas Run atau progres aplikasi.
+- `finish()` dipanggil host hanya pada akhir normal: target lengkap menjadi `SUCCESS`, target parsial `INCOMPLETE`. Target tercapai di tengah program belum berarti sukses. Argumen arah salah menetapkan `ERROR`; batas terlampaui menetapkan `LIMIT_EXCEEDED`; keduanya tidak dipromosikan oleh `finish()`. Panggilan setelah hasil terminal ditolak sampai reset.
+- Nilai enum ini hasil **skenario domain**, belum status sukses aplikasi/replay. Aksi melampaui batas tidak memutasi dunia; tepat batas masih dapat sukses. API over-budget tidak menambah penghitung melewati cap. Fixture dan snapshot tidak dapat diubah dari luar.
+
+Belum tercakup: `water`/`needs_water`, kebijakan gagal panen young puzzle 3 (baru metrik), evaluator multi-skenario/latihan, skor, timeout/Stop, runtime dan progres. Bukti 81 assertion ada di [VERIFICATION](VERIFICATION.md#7-domain-robot-dan-kandidat-puzzle-1--13-november-2026); jangan menganggap puzzle 1–4 atau penerimaan produk selesai.
+
+## 11. Integrasi kandidat p1-a ke terminal
+
+Per 22 November 2026, kandidat puzzle 1 panen terhubung ke terminal Python nyata, robot/replay/hasil, Run/Stop/Reset dan progres sesi. Paket Windows x64 menyertakan CPython 3.15.2; Java 21+ masih diperlukan. Akun/skor Spring Boot dan leaderboard P1 lokal sudah dibuat, tetapi build/run terbaru, ranking multiakun, puzzle 2–9, save lintas restart dan komputer kedua belum diverifikasi. Untuk subset p1, API Python `move(direction)`, `harvest()`, `can_harvest()`, `get_pos()` sudah meneruskan request ke domain Java. Tidak memakai parser Python buatan atau urutan aksi hardcode. Biaya/fixture/batas bagian 10 tetap kandidat yang sama. Kandidat lifecycle dan batas waktu/output kini diimplementasikan untuk p1 sesuai [kontrak runtime](docs/mars/PYTHON_RUNTIME.md); bagian 10 mencatat tahap domain sebelumnya, bukan batas implementasi terbaru. Source snapshot, akhir normal + exit 0, replay selesai dan identitas Run sah wajib sebelum progres sesi. Stop/Reset/error mempertahankan draf; reset tidak menghapus pencapaian sesi. Siram, verifikator konsep dan puzzle lanjutan belum tersedia.

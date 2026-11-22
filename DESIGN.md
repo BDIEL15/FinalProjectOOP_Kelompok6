@@ -12,7 +12,7 @@ Pemain memahami masalah lewat inspeksi, mengubah program, lalu melihat akibatnya
 
 ```mermaid
 flowchart LR
-    A[Login / registrasi] --> H[Habitat astronaut]
+    A[Home: login / daftar / tamu] --> H[Habitat astronaut]
     H --> I[Inspeksi fasilitas]
     I --> H
     H --> T[Terminal dan tujuan puzzle]
@@ -24,7 +24,7 @@ flowchart LR
     T -->|Keluar saat idle| H
 ```
 
-Login sebagai pintu masuk adalah usulan PRD KT-02. Jika mode lokal dipilih, alurnya perlu ditambahkan bersama kebijakan akun/skor; belum ada tombol mode lokal wajib. Tiga permukaan utama: habitat, terminal, hasil. Inspeksi berupa panel singkat di atas habitat, bukan cutscene panjang. Ringkasan temuan dan bantuan bertahap mengikuti status Usulan PRD.
+Home menampilkan form akun, tombol mulai sebagai tamu, setelan dasar, dan papan skor P1. Peta Misi `[M]` juga memuat rekor pribadi dan papan skor supaya dapat dicek setelah bermain. Pilihan Home dan papan skor adalah implementasi atas permintaan pengguna; persetujuan kelompok belum dicatat. Setelan pilihan disimpan di komputer pemain. Tiga permukaan utama permainan tetap: habitat, terminal, hasil. Inspeksi berupa panel singkat di atas habitat, bukan cutscene panjang. Ringkasan temuan dan bantuan bertahap mengikuti status Usulan PRD.
 
 ## 3. Wireframe habitat — Usulan
 
@@ -133,11 +133,11 @@ Palette di atas telah diterapkan pada adegan representatif desktop namun tetap b
 | Astronaut | Idle/jalan empat arah | **Aset 2× sprite sheet (`astronaut_eva_sheet.png`, `192×224`, 4 arah × 4 frame `48×56`) + `astronaut_eva.png`**: selaras 1:1 dengan collider `PLAYER_WIDTH/HEIGHT` (`24×28`). |
 | Robot | Idle/gerak/panen/siram | Belum diimplementasikan (menunggu kontrak runtime/puzzle). |
 | Habitat & Outpost | Lantai/dinding/kawah/batu/walkway/panel/terminal/pompa/rover | **Aset 2× crisp pixel art (`TextureFilter.Nearest`)**: `mars_soil_0..3.png` (`64×64`), `floor_tile.png` (`64×64`), `mars_crater_sm/lg.png`, `mars_rock_a/b.png`, `cargo_crate.png`, `walkway_h/v.png`, `solar_array_dusty/clean.png`, `partition_wall(_restored).png` (`64×400`), `water_panel.png` (`200×80`), `robot_terminal.png` (`200×104`), `hab_airlock.png` (`288×224`), `pump_station.png` (`192×176`), `biodome_deck(_restored).png` (`576×304`), `biodome_canopy.png` (`576×304`), `mars_rover.png` (`72×64`), dan `light_glow.png` (`128×128`). |
-| Tanaman/petak | Empty/young/ripe, dry/lembap | **Aset 2× (`hydro_garden.png` & `hydro_garden_restored.png`, `360×200`)**: bed hidroponik 4×4 dengan tanda non-warna (`[!]` kering, tunas muda, tanaman matang). |
-| UI | Tombol, fokus, status, ikon air/aksi, font | **Hi-DPI BMFont `30px` (`ui_sans.fnt`, `ui_sans_bold.fnt`, `ui_mono.fnt` dgn `MipMapLinearLinear`)** + **NinePatch 3× supersampled mipmapped** (`HabitatUi`, tetap pada kanvas virtual `960×600` yang disyaratkan smoke test), bingkai fokus `2px` cyan, state hover/down/focused, dan badge status. |
+| Tanaman/petak | Empty/young/ripe, dry/lembap | **Aset 2× (`hydro_garden.png` & `hydro_garden_restored.png`, `360×200`)** + **render lokal 2×1 P1 (`74×64` per petak di `HabitatRenderer`)**: bed hidroponik dengan pemisahan petak kiri `roverTexture` dan petak kanan crop matang/kosong, label `(0,0)`/`(1,0)`, serta penanda lokal `PANEN P1 SELESAI (SESI)` tanpa menutupi rover maupun tanaman. |
+| UI | Tombol, fokus, status, ikon air/aksi, font | **Hi-DPI BMFont (`ui_sans.fnt`, `ui_sans_bold.fnt` `36px` skala `0.50f`; `ui_mono.fnt` `34px` skala `0.53f` → `~18` unit UI / `~12px` di `640×480`, `MipMapLinearLinear`)** + **NinePatch 3× supersampled mipmapped** (`HabitatUi` pada stage `960×600`): panel inspeksi (`680×424`), terminal kiri geser (`556×518` di `(12,42)`) berurutan tujuan/status → API 2 kolom → editor scroll dgn gutter baris terlihat → kontrol `Run`/`Stop`/`Reset` → output scroll berbatas → ringkasan sukses (`Coba lagi` + `Kembali ke habitat`), Peta Misi P1 berbasis `RunCoordinator.View` + P2–9 `BELUM TERSEDIA`, serta `Preview Visual` dipindahkan ke `[O] Setelan`. |
 | Audio | Interaksi, gerak/aksi, hasil, ambience opsional | Belum ada aset audio pada tahap ini. |
 
-Aset adegan Outpost Mars di `assets/habitat/` dan font/UI di `assets/ui/` dibuat secara prosedural oleh proyek (tanpa aset pihak ketiga; tanpa dependensi Gradle baru) dengan skala sprite `2×` untuk raster `TextureFilter.Nearest`, serta didokumentasikan lengkap di `assets/habitat/asset-manifest.json` dan `assets/assets.txt`. Skala tile final, penyesuaian kontras teks/badge akhir, serta frame animasi robot/tanaman gameplay tetap berstatus **Usulan / implementasi kandidat** sampai review tim/pengguna final.
+Aset adegan Outpost Mars di `assets/habitat/` dan font/UI di `assets/ui/` dibuat secara prosedural oleh proyek (tanpa aset pihak ketiga; tanpa dependensi Gradle baru) dengan skala sprite `2×` untuk raster `TextureFilter.Nearest`, serta didokumentasikan lengkap di `assets/habitat/asset-manifest.json` dan `assets/assets.txt`. Skala tile final, tata letak terminal `556×518` (~`18` unit UI), indikator lokal Bio-Dome P1, serta frame animasi robot/tanaman lanjutan berstatus **Usulan / implementasi kandidat** sampai review tim/pengguna final.
 
 ## 9. Pemeriksaan dan keputusan desain
 
@@ -170,3 +170,21 @@ Seluruh ekspor gambar referensi disimpan lokal di `docs/mars/design-refs/` agar 
 | [09_terminal_error_and_help_drawer.png](docs/mars/design-refs/09_terminal_error_and_help_drawer.png) | State *Error / Timeout / Stopped* di terminal + *Drawer Bantuan 3 Langkah* (`FR-020`) |
 | [10_field_log_and_mission_map.png](docs/mars/design-refs/10_field_log_and_mission_map.png) | *Field Log Astronaut* `[J]` + *Peta Misi & Rekor Skor (Puzzle 1–9)* |
 | [11_settings_modal.png](docs/mars/design-refs/11_settings_modal.png) | Modal Pengaturan Audio, *Reduced Motion* (`UI-05`), & Akun Spring Boot |
+
+## Integrasi puzzle 1 — 13 November 2026
+
+Floating terminal kini M1-P1 Panen, berisi tujuan dua tanaman/6 aksi, empat API nyata, editor, output scroll serta Run/Stop/Reset. State preview error/timeout diganti hasil runtime nyata; bantuan akhir membuka referensi tiga aksi. Robot memakai tekstur rover existing pada grid 2x1 di kebun, indikator ripe hilang setelah panen. Seluruh gerak/collider astronaut, font, aset dan viewport existing dipertahankan.
+
+Run memakai source saat ditekan; editor tetap dapat diubah untuk percobaan berikutnya. Esc menutup tanpa Stop; buka kembali menampilkan hasil/draf sama. Penanda selesai p1 hanya progres sesi, bukan pemulihan seluruh habitat. Peta Misi menampilkan status puzzle, rekor pribadi dan papan skor P1 dari backend lokal; konten puzzle lain tetap diberi status belum tersedia/rancangan. Preview Before/After berlabel visual dan tidak mengubah progres. Ukuran desktop historis diperiksa; perubahan Home/scoreboard sesi 22 Nov belum dapat diperiksa visual karena Gradle gagal start, dan playtest manusia masih terbuka. Detail perilaku di [kontrak runtime](docs/mars/PYTHON_RUNTIME.md).
+
+## 11. Desain ulang Outpost 1680×1040, Follow Camera, Interaksi Rover & Terminal Resizable — 15 November 2026
+
+Menindaklanjuti masukan pengguna atas desain visual awal yang masih terasa sempit (seluruh peta terlihat sekaligus), kotak-kotak, terpisah antara terminal dan Rover, serta penuh di terminal:
+
+- **Ekspansi dunia & aset vektor halus (`HabitatWorld`, `AssetBaker`, `assets/habitat/`):** Arena diperluas ke `1680×1040` (`FLOOR = (64,64,1552,912)`) dengan zona `HAB_AIRLOCK` `(110,480,190,140)`, `SOLAR_WING` `(150,760,220,92)`, `PARTITION` `(650,340,44,300)`, `PANEL` `(510,680,96,52)`, `GARDEN` / `ROVER` `(960,360,360,200)`, dan `PUMP_STATION` `(1390,760,140,116)`. Aset `assets/habitat/` (`asset-manifest.json` v3) dibake ulang memakai Java2D `Graphics2D` anti-aliased (`TextureFilter.Linear`, tanpa batas kotak tajam) dan `biodome_deck(_restored).png` / `biodome_canopy.png` `960×640` berdesain konservatori organik melengkung; petak panen 2×1 tetap digambar prosedural di `HabitatRenderer` sehingga posisi robot, crop, dan penanda `PANEN BIO-DOME SELESAI` terbaca jelas.
+- **Follow Camera dinamis (`FollowCamera`):** Kamera dunia memakai `ExtendViewport(720, 450)` sehingga pemain melihat area sekitar astronaut, bukan seluruh peta sekaligus. Kamera mengikuti astronaut memakai deadzone horizontal/vertikal (`24×15`), *velocity look-ahead* (`0.16s`), peredaman eksponensial (`1 - exp(-rate * dt)`), *clamping* batas dunia `[0..1680, 0..1040]`, efek getar trauma kuadratik (`reducedMotion` otomatis menonaktifkan getar/look-ahead dan langsung mengunci kamera), serta *smart terminal framing* yang menggeser pusat kamera ke Bio-Dome saat editor terminal terbuka agar kebun tampak utuh di sisi kanan.
+- **Klik langsung Rover & penyederhanaan booth (`HabitatWorld`, `HabitatInput`, `HabitatRenderer`):** Booth `TERMINAL` terpisah dihapus dari dunia. Untuk membuka editor Python, pemain berjalan ke area Bio-Dome (`INTERACTION_RANGE = 82`) lalu **mengklik langsung** sprite Rover di dalam dunia (menggunakan `ExtendViewport(720, 450)` hit-test `isRoverHit(...)`, diblokir jika pointer berada di atas elemen HUD/overlay Scene2D) atau menekan `[E]` dekat Bio-Dome; klik langsung pada `PANEL` dalam jangkauan juga membuka inspeksi telemetri.
+- **UI kapsul lembut & terminal sederhana resizable (`HabitatUi`):** Stage UI memakai `ExtendViewport(960, 600)` dengan HUD top-bar/bottom-hint berbentuk pill mengambang transparan (`24px` / 3× supersampled anti-aliased SDF rounded drawables). Terminal default terbuka lebih ringkas di kiri (`430×470`, dapat digeser dan di-**resize** bebas dari tepi/sudut dengan border hit `14px` dan grip diagonal, batas minimal `350×280`), menyembunyikan referensi API ke popover `[?] API` (`336×294`) serta otomatis melipat boks `[Log]` ketika kosong saat mode standar. Tombol `Stop` memakai warna teks krem kontras tinggi di atas kapsul amber.
+- **Animasi halus berbasis presentasi (`HabitatWorld`, `HabitatRenderer`):** Gerak astronaut memakai percepatan/perlambatan deterministik sub-step (`1/120s`, `ACCEL_RATE = 18f`, `DECEL_RATE = 15f`) + jejak debu langkah EVA (`StepParticle`). Saat replay Python berjalan, `HabitatRenderer` melakukan interpolasi posisi dan rotasi haluan Rover ke snapshot `RunCoordinator.View`, menyalakan sinar pemindai panen (*harvest beam*), animasi ring spora panen (`+1 PANEN`), dan denyut halo emerald/amber/koral pada perubahan state—tanpa menyentuh aturan simulasi Java, fixture, biaya aksi, maupun protokol runtime Python.
+
+Status: diimplementasikan & diverifikasi di build desktop LWJGL3/OpenGL per 15 November 2026 (`VERIFICATION.md` §10); penyesuaian gaya visual/palette final serta playtest manual pengguna tetap terbuka.
