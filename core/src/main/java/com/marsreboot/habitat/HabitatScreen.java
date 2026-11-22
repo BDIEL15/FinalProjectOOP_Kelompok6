@@ -12,14 +12,29 @@ import com.marsreboot.runtime.RunCoordinator;
  * Lifecycle, smooth follow camera framing, world click-to-rover routing, and UI layering.
  */
 public final class HabitatScreen extends ScreenAdapter {
-    private final HabitatWorld world = new HabitatWorld();
-    private final ExtendViewport viewport = new ExtendViewport(HabitatWorld.CAMERA_WIDTH, HabitatWorld.CAMERA_HEIGHT);
-    private final FollowCamera followCamera = new FollowCamera();
-    private final HabitatRenderer renderer = new HabitatRenderer();
-    private final RunCoordinator coordinator = new RunCoordinator(PythonRuntime.bundled());
-    private final HabitatUi ui = new HabitatUi(world, coordinator);
-    private final HabitatInput input = new HabitatInput(world, viewport, ui, coordinator::view, renderer);
-    private final InputMultiplexer processors = new InputMultiplexer(input, ui.stage());
+    private final HabitatWorld world;
+    private final ExtendViewport viewport;
+    private final FollowCamera followCamera;
+    private final HabitatRenderer renderer;
+    private final RunCoordinator coordinator;
+    private final HabitatUi ui;
+    private final HabitatInput input;
+    private final InputMultiplexer processors;
+
+    public HabitatScreen(ScoreBackendClient scoreBackend) {
+        world = new HabitatWorld();
+        viewport = new ExtendViewport(HabitatWorld.CAMERA_WIDTH, HabitatWorld.CAMERA_HEIGHT);
+        followCamera = new FollowCamera();
+        renderer = new HabitatRenderer();
+        coordinator = new RunCoordinator(PythonRuntime.bundled());
+        ui = new HabitatUi(world, coordinator, scoreBackend);
+        input = new HabitatInput(world, viewport, ui, coordinator::view, renderer);
+        processors = new InputMultiplexer(input, ui.stage());
+    }
+
+    public HabitatScreen() {
+        this(new ScoreBackendClient());
+    }
 
     @Override
     public void show() {

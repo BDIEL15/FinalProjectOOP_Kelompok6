@@ -30,73 +30,183 @@ import org.springframework.web.server.ResponseStatusException;
 import java.nio.charset.StandardCharsets;
 import java.util.Locale;
 
+/** Menangani pendaftaran, login, dan logout pemain. */
 @RestController
 @RequestMapping("/api")
 public class AuthController {
-    private final UserRepository users;
+
+    private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
-    private final SecurityContextRepository contexts;
-    private final CsrfTokenRepository csrfTokens;
+    private final SecurityContextRepository securityContextRepository;
+    private final CsrfTokenRepository csrfTokenRepository;
 
-    public AuthController(UserRepository users, PasswordEncoder passwordEncoder, AuthenticationManager authenticationManager,
-                          SecurityContextRepository contexts, CsrfTokenRepository csrfTokens) {
-        this.users = users; this.passwordEncoder = passwordEncoder; this.authenticationManager = authenticationManager;
-        this.contexts = contexts; this.csrfTokens = csrfTokens;
+    public AuthController(
+            UserRepository userRepository,
+            PasswordEncoder passwordEncoder,
+            AuthenticationManager authenticationManager,
+            SecurityContextRepository securityContextRepository,
+            CsrfTokenRepository csrfTokenRepository) {
+        this.userRepository = userRepository;
+        this.passwordEncoder = passwordEncoder;
+        this.authenticationManager = authenticationManager;
+        this.securityContextRepository = securityContextRepository;
+        this.csrfTokenRepository = csrfTokenRepository;
     }
 
-    public record Credentials(@NotBlank @Size(max = 80) String username,
-                              @NotBlank @Size(max = 72) String password) {}
-    public record UserView(Long id, String username) {}
-    public record AuthResponse(UserView user) {}
-    public record CsrfView(String headerName, String token) {}
+    public static class Credentials {
+        @NotBlank
+        @Size(max = 80)
+        private String username;
 
+        @NotBlank
+        @Size(max = 72)
+        private String password;
+
+        public Credentials() {
+            // Constructor kosong dipakai Jackson saat membaca JSON.
+        }
+
+        public String getUsername() {
+            return username;
+        }
+
+        public void setUsername(String username) {
+            this.username = username;
+        }
+
+        public String getPassword() {
+            return password;
+        }
+
+        public void setPassword(String password) {
+            this.password = password;
+        }
+    }
+
+    public static class UserView {
+        private final Long id;
+        private final String username;
+
+        public UserView(Long id, String username) {
+            this.id = id;
+            this.username = username;
+        }
+
+        public Long getId() {
+            return id;
+        }
+
+        public String getUsername() {
+            return username;
+        }
+    }
+
+    public static class AuthResponse {
+        private final UserView user;
+
+        public AuthResponse(UserView user) {
+            this.user = user;
+        }
+
+        public UserView getUser() {
+            return user;
+        }
+    }
+
+    public static class CsrfView {
+        private final String headerName;
+        private final String token;
+
+        public CsrfView(String headerName, String token) {
+            this.headerName = headerName;
+            this.token = token;
+        }
+
+        public String getHeaderName() {
+            return headerName;
+        }
+
+        public String getToken() {
+            return token;
+        }
+    }
+
+    /** Memberikan token untuk permintaan yang mengubah data. */
     @GetMapping("/csrf")
-    public CsrfView csrf(CsrfToken token) { return new CsrfView(token.getHeaderName(), token.getToken()); }
+    public CsrfView csrf(CsrfToken token) {
+        return new CsrfView(token.getHeaderName(), token.getToken());
+    }
 
+    /** Membuat akun baru setelah memeriksa data pendaftaran. */
     @PostMapping("/auth/register")
     public UserView register(@Valid @RequestBody Credentials credentials) {
-        String username = normalize(credentials.username());
-        int passwordBytes = credentials.password().getBytes(StandardCharsets.UTF_8).length;
+        String username = normalize(credentials.getUsername());
+        // BCrypt membatasi kata sandi sampai 72 byte.
+        int passwordBytes = credentials.getPassword().getBytes(StandardCharsets.UTF_8).length;
+
         if (!username.matches("[a-z0-9_.-]{3,32}") || passwordBytes < 8 || passwordBytes > 72) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid username or password format");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Format nama pengguna atau kata sandi tidak sesuai");
         }
-        if (users.existsByUsername(username)) throw new ResponseStatusException(HttpStatus.CONFLICT, "Username already registered");
-        return view(users.save(new UserEntity(username, passwordEncoder.encode(credentials.password()))));
+        if (userRepository.existsByUsername(username)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Nama pengguna sudah terdaftar");
+        }
+
+        // Kata sandi disimpan sebagai hash, bukan teks asli.
+        String passwordHash = passwordEncoder.encode(credentials.getPassword());
+        UserEntity newUser = new UserEntity(username, passwordHash);
+        UserEntity savedUser = userRepository.save(newUser);
+        return toView(savedUser);
     }
 
+    /** Memeriksa login dan membuat sesi jika datanya benar. */
     @PostMapping("/auth/login")
-    public AuthResponse login(@Valid @RequestBody Credentials credentials, HttpServletRequest request, HttpServletResponse response) {
-        String username = normalize(credentials.username());
+    public AuthResponse login(@Valid @RequestBody Credentials credentials,
+                              HttpServletRequest request, HttpServletResponse response) {
+        String username = normalize(credentials.getUsername());
         Authentication authentication;
         try {
             authentication = authenticationManager.authenticate(
-                    UsernamePasswordAuthenticationToken.unauthenticated(username, credentials.password()));
+                UsernamePasswordAuthenticationToken.unauthenticated(username, credentials.getPassword()));
         } catch (AuthenticationException ex) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid username or password");
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Nama pengguna atau kata sandi salah");
         }
+
+        // Perbarui ID sesi setelah login.
         new ChangeSessionIdAuthenticationStrategy().onAuthentication(authentication, request, response);
         SecurityContext context = SecurityContextHolder.createEmptyContext();
         context.setAuthentication(authentication);
         SecurityContextHolder.setContext(context);
-        contexts.saveContext(context, request, response);
-        csrfTokens.saveToken(null, request, response);
-        return new AuthResponse(view(users.findByUsername(username).orElseThrow()));
+        securityContextRepository.saveContext(context, request, response);
+        // Token CSRF lama dihapus setelah login.
+        csrfTokenRepository.saveToken(null, request, response);
+
+        return new AuthResponse(toView(userRepository.findByUsername(username).orElseThrow()));
     }
 
+    /** Mengembalikan akun yang sedang login. */
     @GetMapping("/auth/me")
     public AuthResponse me(Authentication authentication) {
-        return new AuthResponse(view(users.findByUsername(authentication.getName()).orElseThrow()));
+        return new AuthResponse(toView(userRepository.findByUsername(authentication.getName()).orElseThrow()));
     }
 
+    /** Mengakhiri sesi login pemain. */
     @PostMapping("/auth/logout")
     public void logout(HttpServletRequest request, HttpServletResponse response) {
         HttpSession session = request.getSession(false);
-        if (session != null) session.invalidate();
+        if (session != null) {
+            session.invalidate();
+        }
         SecurityContextHolder.clearContext();
-        csrfTokens.saveToken(null, request, response);
+        csrfTokenRepository.saveToken(null, request, response);
     }
 
-    private static String normalize(String username) { return username.trim().toLowerCase(Locale.ROOT); }
-    private static UserView view(UserEntity user) { return new UserView(user.getId(), user.getUsername()); }
+    // Samakan format nama pengguna sebelum disimpan atau dicari.
+    private static String normalize(String username) {
+        return username.trim().toLowerCase(Locale.ROOT);
+    }
+
+    private static UserView toView(UserEntity user) {
+        return new UserView(user.getId(), user.getUsername());
+    }
 }

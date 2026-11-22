@@ -40,7 +40,7 @@ Frame `start` maksimal **128 KiB** termasuk newline agar source 16 KiB yang di-e
 - Snapshot aksi diputar setiap 0,35 detik tanpa interpolasi, termasuk reduced motion. Sukses/progres sesi diterapkan setelah langkah akhir terlihat; kecepatan replay tidak mengubah metrik.
 - Stop/Reset membatalkan identitas lebih dahulu; hasil lama diabaikan. Watchdog meminta destroy, menunggu hingga 500 ms, lalu force dan wait hingga 1 detik. Jika proses masih hidup, Run diblokir sampai game ditutup. Detail proses mengikuti [API Java 21](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Process.html).
 - Stop mempertahankan snapshot terakhir yang terlihat. Reset memulihkan fixture/output, mempertahankan draf serta pencapaian sesi. Editing saat Run memengaruhi Run berikutnya saja. Esc menutup terminal tanpa membatalkan proses; hide/dispose layar membatalkan dan melepas runtime.
-- Puzzle 1 selesai hanya selama sesi layar; tidak mengaktifkan seluruh habitat atau membuka puzzle lain. Preview Before/After tetap visual dan tidak memberi progres. Rekor/server/save belum dibuat.
+- Puzzle 1 selesai hanya selama sesi layar; tidak mengaktifkan seluruh habitat atau membuka puzzle lain. Preview Before/After tetap visual dan tidak memberi progres. Backend Spring dan papan skor P1 lokal sekarang ada di `backend/` serta `ScoreBackendClient`; autentikasi/skor belum mengubah aturan runtime dan UI terbaru belum diuji lewat Gradle.
 
 Proses terpisah dan mode isolated bukan sandbox keamanan. Script pembelajaran tepercaya masih dapat memakai kemampuan Python; tidak ada jaminan pembatasan file, jaringan, memori, atau seluruh proses turunan.
 

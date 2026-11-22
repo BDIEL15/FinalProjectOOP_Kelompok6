@@ -1,13 +1,13 @@
-# Backend Mars Reboot (draf untuk ditinjau kelompok)
+# Backend Mars Reboot (versi pengembangan lokal)
 
-Modul Spring Boot mandiri. Kebijakan akun, API, alur sesi/CSRF, arti skor, dan penyimpanan data masih berupa usulan. Sepakati dulu dengan kelompok sebelum menghubungkannya ke game.
+Modul backend Spring Boot untuk akun dan skor, dihubungkan ke game desktop. Papan skor P1 ditambahkan atas permintaan pengguna; keputusan kompetisi dan penerimaan kelompok belum dicatat. Jalankan hanya sebagai backend lokal untuk demo.
 
 ## Menjalankan secara lokal
 
 Dari folder utama repository di PowerShell, jalankan perintah ini:
 
 ```powershell
-.\gradlew.bat -p backend bootRun
+.\backend\gradlew.bat bootRun
 ```
 
 Modul ini membutuhkan JDK 21, berjalan di `127.0.0.1:8081`, dan menyimpan data H2 lokal di `backend/data`.
@@ -22,14 +22,45 @@ Modul ini membutuhkan JDK 21, berjalan di `127.0.0.1:8081`, dan menyimpan data H
 - `POST /api/scores` menyimpan skor pada akun yang sedang masuk.
 - `GET /api/scores/me` menampilkan skor milik akun tersebut.
 - `GET /api/scores/me/best` menampilkan skor terbaik untuk puzzle dan versi aturan yang dipilih.
+- `GET /api/scores/leaderboard` menampilkan sampai 10 pemain dengan skor P1 terbaik. Skor terendah muncul di atas dan satu akun hanya tampil sekali.
+
+## Cara membaca kodenya
+
+Mulai dari controller, karena controller menerima permintaan dari game. Untuk alur skor, baca `ScoreController` lalu `ScoreService`, kemudian `ScoreRepository` dan `ScoreEntity`.
+
+| Berkas | Tugasnya |
+| --- | --- |
+| `auth/AuthController.java` | Menerima permintaan daftar, masuk, melihat akun aktif, dan keluar. |
+| `score/ScoreController.java` | Menerima permintaan untuk menyimpan atau melihat skor. |
+| `score/ScoreService.java` | Menjalankan aturan sederhana sebelum skor disimpan atau ditampilkan. |
+| `user/UserEntity.java` dan `score/ScoreEntity.java` | Bentuk data akun dan skor yang disimpan di database. |
+| `user/UserRepository.java` dan `score/ScoreRepository.java` | Mencari dan menyimpan data menggunakan Spring Data JPA. |
+| `config/SecurityConfig.java` | Mengatur login berbasis sesi, kata sandi, CSRF, dan endpoint yang perlu login. |
+| `api/ApiExceptionHandler.java` | Mengubah kesalahan menjadi respons API yang lebih rapi. |
+
+### Contoh alur simpan skor
+
+1. Game mengirim data ke `POST /api/scores`.
+2. `ScoreController` menerima data dan meneruskan nama akun aktif serta data skor ke `ScoreService`.
+3. `ScoreService` memeriksa metrik, mencari skor lama dengan ID kiriman yang sama, lalu memutuskan apakah perlu menyimpan data baru.
+4. `ScoreRepository` menyimpan atau mencari data di database.
+5. Backend mengirim `ScoreView` sebagai jawaban. Skor yang dikirim ulang dengan ID dan isi yang sama tidak dibuat dua kali.
+
+### Contoh alur login
+
+1. Game mengirim nama pengguna dan kata sandi ke `POST /api/auth/login`.
+2. Spring Security mencocokkan kata sandi dengan hash BCrypt di database.
+3. Jika benar, backend menyimpan sesi login. Permintaan API berikutnya memakai sesi tersebut untuk mengenali akun.
+
+Bagian penyimpanan sesi dan CSRF menggunakan Spring Security, jadi detailnya lebih banyak daripada aturan skor. Untuk memahami tugas backend, fokus dahulu pada alur controller → service → repository.
 
 Kontrak API lengkap ada di `openapi.yaml` dan masih berupa draf.
 
 ## Hubungan dengan UI saat ini
 
-UI Peta Misi menampilkan nama akun serta rekor dalam bentuk jumlah aksi dan air. Setelah UI dihubungkan ke API, `GET /api/auth/me` menyediakan nama akun dan `GET /api/scores/me` mengembalikan daftar kiriman per akun. Nilai `metrics.actionCount` dan `metrics.waterUsed` dapat dipakai untuk mengisi teks rekor. Kirim satu kiriman hanya setelah puzzle dinyatakan berhasil di game.
+Halaman awal game memiliki form masuk/daftar, tombol mulai sebagai tamu, setelan dasar, dan papan skor. Peta Misi `[M]` menunjukkan rekor pribadi dan papan skor juga, jadi hasil bisa diperiksa setelah bermain. Game mengirim skor hanya setelah puzzle dinyatakan berhasil.
 
-Nama `abdiel_01` dan rekor P1 yang tertulis di UI saat ini adalah teks preview. Backend tidak membuat akun atau rekor contoh otomatis; daftar akan kosong sampai akun membuat kiriman skor.
+Papan skor hanya berisi skor yang benar-benar dikirim pemain. Endpoint leaderboard dapat dibaca tanpa login; perubahan data tetap memerlukan sesi. Karena server lokal mendengarkan di `127.0.0.1`, akun dari komputer lain belum berbagi papan skor sampai backend dipasang pada server bersama.
 
 Contoh isi `POST /api/scores`:
 

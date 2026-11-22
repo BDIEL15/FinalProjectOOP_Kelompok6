@@ -12,7 +12,7 @@ Pemain memahami masalah lewat inspeksi, mengubah program, lalu melihat akibatnya
 
 ```mermaid
 flowchart LR
-    A[Login / registrasi] --> H[Habitat astronaut]
+    A[Home: login / daftar / tamu] --> H[Habitat astronaut]
     H --> I[Inspeksi fasilitas]
     I --> H
     H --> T[Terminal dan tujuan puzzle]
@@ -24,7 +24,7 @@ flowchart LR
     T -->|Keluar saat idle| H
 ```
 
-Login sebagai pintu masuk adalah usulan PRD KT-02. Jika mode lokal dipilih, alurnya perlu ditambahkan bersama kebijakan akun/skor; belum ada tombol mode lokal wajib. Tiga permukaan utama: habitat, terminal, hasil. Inspeksi berupa panel singkat di atas habitat, bukan cutscene panjang. Ringkasan temuan dan bantuan bertahap mengikuti status Usulan PRD.
+Home menampilkan form akun, tombol mulai sebagai tamu, setelan dasar, dan papan skor P1. Peta Misi `[M]` juga memuat rekor pribadi dan papan skor supaya dapat dicek setelah bermain. Pilihan Home dan papan skor adalah implementasi atas permintaan pengguna; persetujuan kelompok belum dicatat. Setelan pilihan disimpan di komputer pemain. Tiga permukaan utama permainan tetap: habitat, terminal, hasil. Inspeksi berupa panel singkat di atas habitat, bukan cutscene panjang. Ringkasan temuan dan bantuan bertahap mengikuti status Usulan PRD.
 
 ## 3. Wireframe habitat — Usulan
 
@@ -175,7 +175,7 @@ Seluruh ekspor gambar referensi disimpan lokal di `docs/mars/design-refs/` agar 
 
 Floating terminal kini M1-P1 Panen, berisi tujuan dua tanaman/6 aksi, empat API nyata, editor, output scroll serta Run/Stop/Reset. State preview error/timeout diganti hasil runtime nyata; bantuan akhir membuka referensi tiga aksi. Robot memakai tekstur rover existing pada grid 2x1 di kebun, indikator ripe hilang setelah panen. Seluruh gerak/collider astronaut, font, aset dan viewport existing dipertahankan.
 
-Run memakai source saat ditekan; editor tetap dapat diubah untuk percobaan berikutnya. Esc menutup tanpa Stop; buka kembali menampilkan hasil/draf sama. Penanda selesai p1 hanya progres sesi, bukan pemulihan seluruh habitat. Peta misi tidak lagi menampilkan rekor/kelulusan palsu; konten lain diberi status belum tersedia/rancangan. Preview Before/After berlabel visual dan tidak mengubah progres. Empat ukuran existing diperiksa pada build desktop; teks pada 640x480 tetap kecil karena skala FitViewport, sehingga penerimaan keterbacaan/playtest manusia masih terbuka. Detail perilaku di [kontrak runtime](docs/mars/PYTHON_RUNTIME.md).
+Run memakai source saat ditekan; editor tetap dapat diubah untuk percobaan berikutnya. Esc menutup tanpa Stop; buka kembali menampilkan hasil/draf sama. Penanda selesai p1 hanya progres sesi, bukan pemulihan seluruh habitat. Peta Misi menampilkan status puzzle, rekor pribadi dan papan skor P1 dari backend lokal; konten puzzle lain tetap diberi status belum tersedia/rancangan. Preview Before/After berlabel visual dan tidak mengubah progres. Ukuran desktop historis diperiksa; perubahan Home/scoreboard sesi 22 Nov belum dapat diperiksa visual karena Gradle gagal start, dan playtest manusia masih terbuka. Detail perilaku di [kontrak runtime](docs/mars/PYTHON_RUNTIME.md).
 
 ## 11. Desain ulang Outpost 1680×1040, Follow Camera, Interaksi Rover & Terminal Resizable — 15 November 2026
 

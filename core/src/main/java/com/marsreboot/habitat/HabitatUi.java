@@ -22,6 +22,7 @@ import com.badlogic.gdx.scenes.scene2d.ui.ScrollPane.ScrollPaneStyle;
 import com.badlogic.gdx.scenes.scene2d.ui.Skin;
 import com.badlogic.gdx.scenes.scene2d.ui.Table;
 import com.badlogic.gdx.scenes.scene2d.ui.TextArea;
+import com.badlogic.gdx.scenes.scene2d.ui.TextField;
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton;
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton.TextButtonStyle;
 import com.badlogic.gdx.scenes.scene2d.ui.TextField.TextFieldStyle;
@@ -33,11 +34,13 @@ import com.badlogic.gdx.scenes.scene2d.utils.NinePatchDrawable;
 import com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable;
 import com.badlogic.gdx.utils.Align;
 import com.badlogic.gdx.utils.Disposable;
+import com.badlogic.gdx.Preferences;
 import com.badlogic.gdx.utils.viewport.ExtendViewport;
 import com.marsreboot.runtime.RunCoordinator;
 import com.marsreboot.runtime.RunCoordinator.Status;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 /**
  * Rounded, non-boxy Mars Outpost HUD & Unified Resizable Rover Terminal:
@@ -64,7 +67,26 @@ public final class HabitatUi implements Disposable {
 
     public static boolean isOutpostRestored() { return outpostRestored; }
     public static boolean isReducedMotion() { return reducedMotion; }
-    public static void setOutpostRestored(boolean restored) { outpostRestored = restored; }
+    public static boolean isHighContrastFocus() { return highContrastFocus; }
+    public static void setOutpostRestored(boolean restored) { outpostRestored = restored; saveSettings(); }
+    public static void setReducedMotion(boolean enabled) { reducedMotion = enabled; saveSettings(); }
+    public static void setHighContrastFocus(boolean enabled) { highContrastFocus = enabled; saveSettings(); }
+
+    public static void loadSettings() {
+        Preferences saved = Gdx.app.getPreferences("mars-reboot-settings");
+        outpostRestored = saved.getBoolean("outpostRestored", false);
+        reducedMotion = saved.getBoolean("reducedMotion", false);
+        highContrastFocus = saved.getBoolean("highContrastFocus", true);
+    }
+
+    private static void saveSettings() {
+        if (Gdx.app == null) return;
+        Preferences saved = Gdx.app.getPreferences("mars-reboot-settings");
+        saved.putBoolean("outpostRestored", outpostRestored);
+        saved.putBoolean("reducedMotion", reducedMotion);
+        saved.putBoolean("highContrastFocus", highContrastFocus);
+        saved.flush();
+    }
 
     public enum AuxOverlay { NONE, FIELD_LOG, MISSION_MAP, SETTINGS }
 
@@ -124,9 +146,20 @@ public final class HabitatUi implements Disposable {
     private final Table p1MissionCard;
     private final Label p1MissionStatusLabel;
     private final Label p1MissionDetailLabel;
+    private final TextField backendUsernameField;
+    private final TextField backendPasswordField;
+    private final Label backendStatusLabel;
+    private final Label backendBestScoreLabel;
+    private final Label backendLeaderboardLabel;
+    private final TextButton backendLoginButton;
+    private final TextButton backendRegisterButton;
+    private final TextButton backendLogoutButton;
+    private final TextButton saveScoreButton;
+    private final Cell<TextButton> saveScoreButtonCell;
     private final LabelStyle cyanStyle;
     private final LabelStyle emeraldStyle;
     private final LabelStyle amberStyle;
+    private final ScoreBackendClient scoreBackend;
 
     // Reflection fields inspected by desktop smoke tests
     private final Window inspection;
@@ -147,12 +180,22 @@ public final class HabitatUi implements Disposable {
     private HabitatWorld.Mode shown;
     private AuxOverlay activeOverlay = AuxOverlay.NONE;
     private RunCoordinator.View shownPuzzle;
+    private long scoreAttemptedGeneration = -1;
+    private long scoreSavedGeneration = -1;
+    private long scoreSubmissionGeneration = -1;
+    private String scoreSubmissionId;
     private boolean helpDrawerOpen = false;
     private boolean logManualExpanded = false;
 
     public HabitatUi(HabitatWorld world, RunCoordinator coordinator) {
+        this(world, coordinator, new ScoreBackendClient());
+    }
+
+    public HabitatUi(HabitatWorld world, RunCoordinator coordinator, ScoreBackendClient scoreBackend) {
         this.world = world;
         this.coordinator = coordinator;
+        this.scoreBackend = scoreBackend;
+        loadSettings();
 
         // Clear ~18 UI-unit body typography + 15 UI-unit top/bottom pills
         uiFont = loadBitmapFont("ui/ui_sans.fnt", "ui/ui_sans.png", 0.50f, false);
@@ -521,7 +564,7 @@ public final class HabitatUi implements Disposable {
         fieldLogWindow.add(closeLogBtn).height(32f).right().pad(0f, 10f, 8f, 10f);
 
         // --- 5. Mission Map [M] ---
-        missionMapWindow = createBaseWindow(" PETA MISI OUTPOST", glassWindowStyle, 600f, 380f);
+        missionMapWindow = createBaseWindow(" PETA MISI OUTPOST", glassWindowStyle, 650f, 520f);
         p1MissionCard = new Table();
         p1MissionCard.setBackground(cardCyanBg);
         p1MissionCard.pad(10f, 12f, 10f, 12f);
@@ -530,6 +573,53 @@ public final class HabitatUi implements Disposable {
         p1MissionCard.add(p1MissionStatusLabel).growX().minWidth(0).left().row();
         p1MissionCard.add(p1MissionDetailLabel).growX().minWidth(0).left().padTop(4f);
         missionMapWindow.add(p1MissionCard).growX().minWidth(0).pad(4f, 10f, 8f, 10f).row();
+
+        Table accountCard = new Table();
+        accountCard.setBackground(cardNeutralBg);
+        accountCard.pad(8f, 12f, 8f, 12f);
+        Label accountTitle = new Label("Akun dan rekor tersimpan", hudBoldStyle);
+        accountCard.add(accountTitle).growX().minWidth(0).left().colspan(3).row();
+
+        backendUsernameField = new TextField("", editorStyle);
+        backendUsernameField.setMessageText("Nama akun");
+        backendPasswordField = new TextField("", editorStyle);
+        backendPasswordField.setMessageText("Kata sandi (min. 8 karakter)");
+        backendPasswordField.setPasswordMode(true);
+        backendPasswordField.setPasswordCharacter('*');
+
+        accountCard.add(backendUsernameField).growX().minWidth(0).height(32f).padTop(6f).padRight(6f);
+        accountCard.add(backendPasswordField).growX().minWidth(0).height(32f).padTop(6f).row();
+
+        backendRegisterButton = new TextButton("Daftar", softBtnStyle);
+        backendRegisterButton.addListener(onAction(this::registerBackendAccount));
+        backendLoginButton = new TextButton("Masuk", primaryCyanStyle);
+        backendLoginButton.addListener(onAction(this::loginBackendAccount));
+        backendLogoutButton = new TextButton("Keluar", softBtnStyle);
+        backendLogoutButton.addListener(onAction(this::logoutBackendAccount));
+
+        accountCard.add(backendRegisterButton).height(30f).growX().padTop(6f).padRight(4f);
+        accountCard.add(backendLoginButton).height(30f).growX().padTop(6f).padRight(4f);
+        accountCard.add(backendLogoutButton).height(30f).growX().padTop(6f).row();
+
+        backendBestScoreLabel = new Label("Rekor P1: masuk untuk melihat", mutedStyle);
+        accountCard.add(backendBestScoreLabel).growX().minWidth(0).left().colspan(3).padTop(4f).row();
+
+        Table leaderboardRow = new Table();
+        backendLeaderboardLabel = wrapLabel("Papan skor P1: tekan Muat skor", mutedStyle);
+        leaderboardRow.add(backendLeaderboardLabel).growX().minWidth(0).left().padRight(8f);
+        TextButton refreshLeaderboardButton = new TextButton("Muat skor", softBtnStyle);
+        refreshLeaderboardButton.addListener(onAction(this::refreshBackendLeaderboard));
+        leaderboardRow.add(refreshLeaderboardButton).height(30f).right();
+        accountCard.add(leaderboardRow).growX().minWidth(0).colspan(3).padTop(6f).row();
+
+        saveScoreButton = new TextButton("Coba simpan skor P1 lagi", softBtnStyle);
+        saveScoreButton.addListener(onAction(() -> saveCurrentScore(coordinator.view())));
+        saveScoreButtonCell = accountCard.add(saveScoreButton).height(0f).growX().colspan(3).padTop(0f);
+        accountCard.row();
+
+        backendStatusLabel = wrapLabel("Masuk agar rekor tersimpan di backend lokal.", mutedStyle);
+        accountCard.add(backendStatusLabel).growX().minWidth(0).left().colspan(3).padTop(4f);
+        missionMapWindow.add(accountCard).growX().minWidth(0).pad(0f, 10f, 8f, 10f).row();
 
         Table pGrid = new Table();
         pGrid.defaults().pad(4f).growX().minWidth(0);
@@ -554,16 +644,17 @@ public final class HabitatUi implements Disposable {
         optCard.defaults().height(34f).padBottom(8f);
 
         reducedMotionBtn = new TextButton("", softBtnStyle);
-        reducedMotionBtn.addListener(onAction(() -> { reducedMotion = !reducedMotion; refreshSettingsLabels(); }));
+        reducedMotionBtn.addListener(onAction(() -> { setReducedMotion(!reducedMotion); refreshSettingsLabels(); }));
         highContrastBtn = new TextButton("", softBtnStyle);
         highContrastBtn.addListener(onAction(() -> {
-            highContrastFocus = !highContrastFocus;
+            setHighContrastFocus(!highContrastFocus);
             refreshSettingsLabels();
         }));
         previewVisualBtn = new TextButton("", softBtnStyle);
         previewVisualBtn.setName("previewVisualBtn");
         previewVisualBtn.addListener(onAction(() -> {
             outpostRestored = !outpostRestored;
+            saveSettings();
             refreshSettingsLabels();
         }));
 
@@ -597,6 +688,10 @@ public final class HabitatUi implements Disposable {
 
         refreshSettingsLabels();
         syncPuzzle();
+        if (scoreBackend.isLoggedIn()) {
+            backendStatusLabel.setText("Login sebagai " + scoreBackend.getUsername() + ".");
+            refreshBackendBestScore();
+        }
     }
 
     public Stage stage() { return stage; }
@@ -613,6 +708,10 @@ public final class HabitatUi implements Disposable {
         if (world.mode() != HabitatWorld.Mode.EXPLORING) return;
         activeOverlay = (activeOverlay == overlay) ? AuxOverlay.NONE : overlay;
         updateAuxOverlayVisibility();
+        if (activeOverlay == AuxOverlay.MISSION_MAP) {
+            refreshBackendLeaderboard();
+            if (scoreBackend.isLoggedIn()) refreshBackendBestScore();
+        }
     }
 
     public void closeAuxOverlays() {
@@ -694,6 +793,117 @@ public final class HabitatUi implements Disposable {
         }
     }
 
+    private void registerBackendAccount() {
+        String username = backendUsernameField.getText().trim();
+        String password = backendPasswordField.getText();
+
+        if (username.isEmpty() || password.isEmpty()) {
+            backendStatusLabel.setText("Isi nama akun dan kata sandi dulu.");
+            return;
+        }
+
+        try {
+            scoreBackend.register(username, password);
+            backendStatusLabel.setText("Akun dibuat. Tekan Masuk dengan kata sandi yang sama.");
+        } catch (Exception error) {
+            backendStatusLabel.setText("Daftar gagal: " + error.getMessage());
+        }
+    }
+
+    private void loginBackendAccount() {
+        String username = backendUsernameField.getText().trim();
+        String password = backendPasswordField.getText();
+
+        if (username.isEmpty() || password.isEmpty()) {
+            backendStatusLabel.setText("Isi nama akun dan kata sandi dulu.");
+            return;
+        }
+
+        try {
+            scoreBackend.login(username, password);
+            backendPasswordField.setText("");
+            backendStatusLabel.setText("Login sebagai " + scoreBackend.getUsername() + ".");
+            refreshBackendBestScore();
+            syncPuzzle();
+        } catch (Exception error) {
+            backendStatusLabel.setText("Login gagal: " + error.getMessage());
+        }
+    }
+
+    private void logoutBackendAccount() {
+        try {
+            scoreBackend.logout();
+            backendStatusLabel.setText("Kamu sudah keluar dari akun.");
+            backendBestScoreLabel.setText("Rekor P1: masuk untuk melihat");
+            syncPuzzle();
+        } catch (Exception error) {
+            backendStatusLabel.setText("Gagal keluar: " + error.getMessage());
+        }
+    }
+
+    private void refreshBackendBestScore() {
+        try {
+            Integer bestScore = scoreBackend.getBestScore();
+
+            if (bestScore == null) {
+                backendBestScoreLabel.setText("Rekor P1: belum ada skor");
+            } else {
+                backendBestScoreLabel.setText("Rekor terbaik P1: " + bestScore + " aksi");
+            }
+        } catch (Exception error) {
+            backendBestScoreLabel.setText("Rekor P1 belum bisa dimuat.");
+        }
+    }
+
+    private void refreshBackendLeaderboard() {
+        try {
+            List<String> rows = scoreBackend.getLeaderboard();
+            if (rows.isEmpty()) {
+                backendLeaderboardLabel.setText("Papan skor P1: belum ada skor.");
+                return;
+            }
+
+            StringBuilder text = new StringBuilder("Papan skor P1 (aksi paling sedikit):");
+            int shown = Math.min(5, rows.size());
+            for (int i = 0; i < shown; i++) {
+                text.append("\n").append(rows.get(i));
+            }
+            backendLeaderboardLabel.setText(text.toString());
+        } catch (Exception error) {
+            backendLeaderboardLabel.setText("Papan skor belum bisa dimuat. Cek backend lalu coba lagi.");
+        }
+    }
+
+    private void saveCurrentScore(RunCoordinator.View view) {
+        if (view.status() != Status.SUCCESS) {
+            backendStatusLabel.setText("Selesaikan puzzle P1 dulu sebelum menyimpan skor.");
+            return;
+        }
+
+        if (!scoreBackend.isLoggedIn()) {
+            backendStatusLabel.setText("Masuk dulu agar skor bisa disimpan ke akunmu.");
+            return;
+        }
+
+        if (scoreSubmissionGeneration != view.generation()) {
+            scoreSubmissionGeneration = view.generation();
+            scoreSubmissionId = UUID.randomUUID().toString();
+        }
+
+        scoreAttemptedGeneration = view.generation();
+
+        try {
+            int actionCount = view.snapshot().actionCount();
+            scoreBackend.submitScore(scoreSubmissionId, actionCount);
+            scoreSavedGeneration = view.generation();
+            backendStatusLabel.setText("Skor P1 berhasil disimpan.");
+            refreshBackendBestScore();
+            refreshBackendLeaderboard();
+        } catch (Exception error) {
+            backendStatusLabel.setText("Skor belum tersimpan: " + error.getMessage());
+        }
+    }
+
     private void syncPuzzle() {
         RunCoordinator.View view = coordinator.view();
         shownPuzzle = view;
@@ -708,6 +918,29 @@ public final class HabitatUi implements Disposable {
         Status st = view.status();
         updateStatusBadge(st, view.completed());
         updateMissionMapCard(st, view.completed(), harvests, actions, maxActions);
+
+        if (st == Status.SUCCESS) {
+            if (!scoreBackend.isLoggedIn()) {
+                backendStatusLabel.setText("Puzzle sukses. Masuk untuk menyimpan skornya.");
+            } else if (scoreAttemptedGeneration != view.generation()) {
+                saveCurrentScore(view);
+            }
+        }
+
+        boolean loggedIn = scoreBackend.isLoggedIn();
+        backendLoginButton.setDisabled(loggedIn);
+        backendRegisterButton.setDisabled(loggedIn);
+        backendLogoutButton.setDisabled(!loggedIn);
+        backendUsernameField.setDisabled(loggedIn);
+        backendPasswordField.setDisabled(loggedIn);
+
+        boolean scoreCanBeSaved = st == Status.SUCCESS && loggedIn;
+        saveScoreButton.setVisible(scoreCanBeSaved);
+        saveScoreButtonCell.height(scoreCanBeSaved ? 30f : 0f).padTop(scoreCanBeSaved ? 4f : 0f);
+        saveScoreButton.setDisabled(!scoreCanBeSaved || scoreSavedGeneration == view.generation());
+        saveScoreButton.setText(scoreSavedGeneration == view.generation()
+                ? "Skor P1 tersimpan"
+                : "Coba simpan skor P1 lagi");
 
         runButton.setDisabled(!view.canRun());
         stopButton.setDisabled(!view.canStop());
@@ -755,7 +988,7 @@ public final class HabitatUi implements Disposable {
                 consoleBox.setBackground(consoleSuccessBg);
                 consoleTitleLabel.setColor(COL_EMERALD);
                 title = "Sukses! " + harvests + "/2 tanaman dipanen (" + actions + "/" + maxActions + " aksi).";
-                hint = "Pencapaian sesi P1 tercatat.";
+                hint = "Skor dikirim otomatis jika kamu sudah login.";
             }
             case INCOMPLETE -> {
                 consoleBox.setBackground(consoleWarnBg);

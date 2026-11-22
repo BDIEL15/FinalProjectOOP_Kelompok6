@@ -6,11 +6,11 @@ Repository utama tim: game Java/libGDX, dokumentasi, aset, dan skill Codex–Ant
 
 ## Status dan target
 
-Target lengkap 9 puzzle dalam 3 misi, tahap awal puzzle 1–4. Habitat/kontrol dan visual dasar tersedia. Per 13 November 2026, kandidat puzzle 1 panen terhubung ke terminal Python nyata, robot/replay/hasil, Run/Stop/Reset dan progres sesi. Paket Windows x64 menyertakan CPython 3.15.2; Java 21+ masih diperlukan. Backend, puzzle 2–9, save lintas restart dan komputer kedua belum terverifikasi. Kandidat aturan tetap eksperimen, bukan persetujuan aslab atau penerimaan seluruh game.
+Target lengkap 9 puzzle dalam 3 misi, tahap awal puzzle 1–4. Habitat/kontrol dan visual dasar tersedia. Kandidat puzzle 1 panen terhubung ke terminal Python nyata, robot/replay/hasil, Run/Stop/Reset dan progres sesi. Paket Windows x64 menyertakan CPython 3.15.2; Java 21+ masih diperlukan. Home/login, setelan, backend akun/skor, dan papan skor P1 lokal kini sudah ditambahkan; sesi ini berhasil mengompilasi source Java 21 secara langsung, tetapi Gradle Wrapper berhenti karena `native-platform.dll`, jadi integrasi dan tampilan belum dinyatakan lulus. Puzzle 2–9, save lintas restart, server bersama, dan komputer kedua belum terverifikasi. Kandidat aturan tetap eksperimen, bukan persetujuan aslab atau penerimaan seluruh game.
 
 ## Progres pengerjaan
 
-Pembaruan: **13 November 2026**. Ringkasan mengikuti [backlog dan handoff](TASKS.md) serta [bukti aktual](VERIFICATION.md). Status selesai hanya berlaku pada hasil yang disebut di baris tersebut, bukan otomatis seluruh milestone terkait.
+Pembaruan: **22 November 2026**. Ringkasan mengikuti [backlog dan handoff](TASKS.md) serta [bukti aktual](VERIFICATION.md). Status selesai hanya berlaku pada hasil yang disebut di baris tersebut, bukan otomatis seluruh milestone terkait.
 
 **Legenda:** ✅ selesai untuk cakupan tertulis · 🟡 sebagian · ⬜ belum selesai/menunggu keputusan · ⛔ terhambat.
 
@@ -19,18 +19,18 @@ Pembaruan: **13 November 2026**. Ringkasan mengikuti [backlog dan handoff](TASKS
 | ✅ | Dokumen perencanaan, panduan tim, prompt, dan paket skill tersedia dalam repo | Semua; satu editor dokumen | Konteks telah dikonsolidasikan; keputusan teknis bertanda Usulan tetap perlu dipilih. Discovery skill pada laptop anggota belum diuji. |
 | ✅ | Arah visual dan referensi layar | 3 — Dunia/UI | Referensi desain tersedia di docs/mars/design-refs; bukan persetujuan seluruh aset produksi. |
 | 🟡 | Fondasi proyek libGDX dan toolchain tim | 1 + 4 | Modul core/lwjgl3 serta launcher tersedia; keberhasilan Wrapper/JDK pada seluruh komputer belum dibuktikan. |
-| ✅ | Habitat, gerak astronaut, collision, dan interaksi dasar dalam cakupan test existing | 3 — Dunia/UI | Catatan 40 assertion kontrol dan 29 assertion desktop lulus; bukan klaim seluruh pengujian keyboard/mouse manual selesai. |
+| ✅ | Habitat, gerak astronaut, collision, dan interaksi dasar dalam cakupan test existing | 3 — Dunia/UI | Catatan pengujian otomatis sebelumnya; bukan klaim seluruh pengujian keyboard/mouse manual selesai. |
 | ✅ | Panel inspeksi dan terminal editor sementara | 3 — Dunia/UI | Buka/tutup, fokus dan draf sesi telah diperiksa; terminal kini mengeksekusi Python nyata pada p1; editor penuh masih perlu penerimaan manusia. |
-| 🟡 | UI outpost, HUD, log, peta misi, bantuan dan pengaturan | 3 — Dunia/UI | Layar/preview tersedia; perlu dihubungkan ke state gameplay nyata dan pemeriksaan manual lengkap. |
+| 🟡 | Home, UI outpost, peta misi, dan setelan sederhana | 3 — Dunia/UI | Home/login/tamu/skor/opsi dasar tersambung di source; build Gradle dan pemeriksaan visual desktop belum lolos sesi ini. |
 | ✅ | Test fokus dan paket desktop melalui Gradle Wrapper | 1 + 4 | 13 Nov: robotTest 81 assertion, controlTest 40 assertion, compileJava desktop dan JAR lulus offline dengan cache mesin ini; belum bukti komputer kedua. |
 | 🟡 | Konfirmasi bahasa pemain dan keputusan runtime | Tim + aslab; pemilik 1 | CPython bundel dipilih/teruji untuk eksperimen p1; konfirmasi bahasa ke aslab masih terbuka. M-01/M-04. |
 | 🟡 | Kontrak API robot, fixture, batas, skor, dan HTTP | 1 + 2 + 4 | Draft tersedia; finalisasi dan validasi bersama pemilik UI sebelum implementasi paralel. M-07/M-09. |
 | 🟡 | Simulasi robot Java: grid, gerak, panen, sensor dan siram | 1 — Simulasi/runtime | Grid/gerak/panen/sensor/reset/batas serta adapter Python p1 teruji; siram belum dibuat. M-10. |
 | ✅ | Runtime Python p1 serta Run/Stop/Reset/error/timeout | 1 — Simulasi/runtime | 33 assertion controller/protokol + 33 integrasi Python nyata; 14 desktop puzzle. Terbatas eksperimen p1 Windows x64. M-04/M-11 tetap gate lebih luas. |
 | 🟡 | Puzzle 1 dan evaluator berhasil/gagal | 2 — Puzzle/evaluasi | Kandidat p1-a berjalan melalui terminal Python, replay dan progres sesi; review fixture/penerimaan tim belum selesai. M-16. |
-| ⬜ | Registrasi, login dan sesi backend | 4 — Backend/distribusi | Implementasi Spring Boot dan test autentikasi nyata. M-12. |
-| ⬜ | Penyimpanan/pengambilan skor dan rekor | 4 — Backend/distribusi | Uji isolasi akun, persistensi, validasi dan retry tanpa duplikasi. M-13. |
-| ⬜ | Satu alur terintegrasi dari login sampai skor tersimpan | Semua | Login → panel → terminal → robot → evaluasi → simpan/ambil skor; bukan mock/preview. M-17. |
+| 🟡 | Registrasi, login dan sesi backend | 4 — Backend/distribusi | Spring Security + H2 ada; API lokal pernah dicoba lewat PowerShell, tetapi Gradle build dan alur UI belum diverifikasi ulang sesi ini. M-12. |
+| 🟡 | Penyimpanan/pengambilan skor pribadi dan papan skor P1 | 4 — Backend/distribusi | P1 mengirim skor berhasil pada pemeriksaan manual sebelumnya; endpoint papan skor dan tampilan dalam game baru ditambahkan. Ranking multiakun belum diuji. M-13. |
+| 🟡 | Satu alur terintegrasi dari Home/login sampai skor tersimpan | Semua | Source Home → Habitat → skor backend tersambung; verifikasi build/game baru belum bisa dilakukan karena Gradle gagal start. M-17. |
 | ⬜ | Puzzle 2–4 dan latihan konsep yang dipilih | 2 + 3, integrasi 1 | Lengkapi loop, sensor panen, irigasi dan skenario pembeda. M-18–20. |
 | 🟡 | Progres dan pemulihan habitat dari hasil puzzle nyata | 1 + 2 + 3 | P1 selesai selama sesi setelah replay sah; seluruh habitat/misi belum terhubung. Before/After tetap preview. M-21. |
 | ⬜ | Save kode/progres lintas sesi dan retry skor, jika dipilih | 1 + 4 | Pilih kebijakan dahulu, lalu uji buka ulang, data rusak, profil dan jaringan. M-22. |
@@ -42,7 +42,7 @@ Pembaruan: **13 November 2026**. Ringkasan mengikuti [backlog dan handoff](TASKS
 | ⬜ | Kelengkapan dan pengumpulan luaran SOP | Semua; editor 2 | Proposal/PMP/GDD, laporan, kontribusi, video dan kredit; status pengumpulan belum dibuktikan. M-33. |
 | ⬜ | Publikasi game dan pemeriksaan tautan rilis | 4 + otorisasi pengguna | Bedakan paket lokal, push source GitHub, dan rilis game yang benar-benar dapat dimainkan. M-34. |
 
-**Prioritas berikutnya:** tim mencoba paket puzzle 1, meninjau fixture/keterbacaan editor dan mengonfirmasi bahasa ke aslab. Lanjutkan kontrak/backend serta domain siram sebelum memperluas puzzle 2–4. Ikuti TASKS; alur login/skor lengkap belum selesai.
+**Prioritas berikutnya:** perbaiki pemuatan native Gradle di mesin build, lalu jalankan game + backend untuk memeriksa Home, login, papan skor, dan simpan P1 di desktop. Minta review tim atas papan skor P1 lokal yang ditambahkan atas permintaan pengguna. Setelah itu lanjutkan fixture, aksesibilitas/editor, domain siram, dan puzzle 2–4. Ikuti TASKS; alur ini belum mendapat verifikasi Gradle/desktop pada sesi terakhir.
 
 **Cara memperbarui:** ubah simbol dan catatan setelah ada deliverable serta bukti; perbarui TASKS/VERIFICATION dalam perubahan yang sama. Jangan mencentang pekerjaan hanya karena mockup, preview, atau rencana tersedia. Checklist rinci tetap di TASKS; tabel ini ringkasan yang terbaca di halaman GitHub, tanpa persentase kemajuan rekaan. Penanggung jawab masih nomor peran sampai nama anggota ditetapkan.
 
@@ -63,6 +63,15 @@ Dari root clone pada Windows:
 ```
 
 Di IntelliJ jalankan task lwjgl3/application/run; task ini menyiapkan Python bundel otomatis. Untuk Run launcher langsung, jalankan `:lwjgl3:preparePython` sekali dahulu; runtime dicari dari lokasi kelas, tanpa PATH. Sinkronisasi pertama membutuhkan jaringan, cache tidak ikut clone. Paket uji ada di `lwjgl3/build/distributions/MarsReboot-1.0.0-windows-x64.zip`: ekstrak seluruhnya dan buka run.bat (Java 21+). Test paket dengan PATH tanpa Python sistem sudah lulus pada mesin ini; komputer kedua belum diuji. Detail: [kontrak runtime](docs/mars/PYTHON_RUNTIME.md) dan [VERIFICATION](VERIFICATION.md).
+
+### Mencoba Home, akun, dan papan skor
+
+1. Dari root proyek, buka terminal pertama dan jalankan perintah: .\backend\gradlew.bat bootRun. Biarkan proses backend tetap hidup di port 8081.
+2. Buka terminal kedua dan jalankan `.gradlew.bat :lwjgl3:run`. Home bisa dipakai tanpa login sebagai tamu, tetapi skor hanya bisa tersimpan saat backend aktif dan kamu sudah login.
+3. Di Home, isi nama/kata sandi lalu tekan **Daftar**, setelah itu **Masuk**. Klik **Mulai misi** untuk ke game. Setelan Home dapat dinyalakan/dimatikan dan tersimpan di komputer ini.
+4. Selesaikan P1. Jika login, skor dikirim saat puzzle berhasil. Tekan **Misi [M]** lalu **Muat skor** untuk melihat rekor pribadi dan lima skor teratas; di Home tombol **Muat Skor** menampilkan sampai 10 akun.
+
+Skor hanya berbagi di database backend lokal komputer ini (`127.0.0.1`); teman di komputer berbeda belum melihat papan yang sama.
 
 Kontrol awal: WASD/panah, E interaksi, Esc menutup panel/editor; source draf dipertahankan pada sesi layar, bukan otomatis tersimpan lintas restart. Periksa fitur/shortcut terbaru di DESIGN dan source existing.
 

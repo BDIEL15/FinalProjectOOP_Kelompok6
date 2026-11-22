@@ -2,7 +2,7 @@
 
 ## Tujuan dan status
 
-Repository ini adalah sumber utama **mars_reboot.py**: source libGDX core/lwjgl3, assets, dokumentasi dan skill berada pada root yang sama. Per 13 November 2026, kandidat puzzle 1 panen terhubung ke terminal Python nyata, robot/replay/hasil, Run/Stop/Reset dan progres sesi. Paket Windows x64 menyertakan CPython 3.15.2; Java 21+ masih diperlukan. Backend, puzzle 2–9, save lintas restart dan komputer kedua belum terverifikasi. Baca TEAM_GUIDE, TEAM_PROMPTS, [kontrak runtime](docs/mars/PYTHON_RUNTIME.md), serta handoff terbaru TASKS sebelum melanjutkan. Prototype web di prototype-web/ hanya referensi; jangan menjalankan generator ulang atau mencampur aturan kedua target.
+Repository ini adalah sumber utama **mars_reboot.py**: source libGDX core/lwjgl3, backend Spring, assets, dokumentasi dan skill berada pada root yang sama. Per 22 November 2026, kandidat puzzle 1 panen terhubung ke terminal Python nyata, robot/replay/hasil, Run/Stop/Reset dan progres sesi; Home/login/tamu, setelan, akun/skor lokal dan scoreboard P1 juga ada. Java 21 langsung mengompilasi core/backend, tetapi Gradle Wrapper gagal start karena `native-platform.dll`, sehingga UI terbaru belum diverifikasi. Puzzle 2–9, save lintas restart, server bersama dan komputer kedua belum terverifikasi. Baca TEAM_GUIDE, TEAM_PROMPTS, [kontrak runtime](docs/mars/PYTHON_RUNTIME.md), serta handoff terbaru TASKS sebelum melanjutkan. Prototype web di prototype-web/ hanya referensi; jangan menjalankan generator ulang atau mencampur aturan kedua target.
 
 Utamakan pekerjaan yang diminta pengguna pada giliran aktif. Keberadaan TASKS.md bukan izin untuk otomatis mengimplementasikan semua tugas, memasang software global, atau memublikasikan proyek.
 

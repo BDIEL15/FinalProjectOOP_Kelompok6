@@ -178,3 +178,4 @@ playwright-report/
 *.log
 /backend/build/
 /backend/target/
+data/mars-reboot.mv.db

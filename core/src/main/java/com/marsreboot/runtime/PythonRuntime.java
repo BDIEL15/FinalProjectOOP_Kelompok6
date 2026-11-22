@@ -22,10 +22,20 @@ public final class PythonRuntime implements Bridge {
     }
     public static PythonRuntime bundled() {
         String configured = System.getProperty("mars.pythonDir");
-        if (configured != null) return new PythonRuntime(Path.of(configured, "python.exe"));
+        if (configured != null) {
+            Path configuredPython = Path.of(configured, "python.exe");
+            if (Files.isRegularFile(configuredPython)) {
+                return new PythonRuntime(configuredPython);
+            }
+        }
         try {
             Path location = Path.of(PythonRuntime.class.getProtectionDomain().getCodeSource().getLocation().toURI());
-            if (Files.isRegularFile(location)) return new PythonRuntime(location.getParent().resolve("runtime/python/python.exe"));
+            if (Files.isRegularFile(location)) {
+                // Paket jadi menyimpan Python di samping JAR. Saat dijalankan dari IntelliJ,
+                // JAR core ada di core/build/libs dan runtime berada di root proyek/build.
+                Path packagedPython = location.getParent().resolve("runtime/python/python.exe");
+                if (Files.isRegularFile(packagedPython)) return new PythonRuntime(packagedPython);
+            }
             // IntelliJ/direct launch: derive the repo from compiled classes, never from PATH.
             for (Path base = location; base != null; base = base.getParent()) {
                 if (Files.isRegularFile(base.resolve("settings.gradle"))) {
@@ -53,7 +63,9 @@ public final class PythonRuntime implements Bridge {
         boolean normal = false;
         try {
             if (source.getBytes(StandardCharsets.UTF_8).length > 16 * 1024) throw new IOException("Source melebihi 16 KiB.");
-            if (!Files.isRegularFile(executable)) throw new IOException("Python bundel tidak ditemukan. Jalankan task preparePython.");
+            if (!Files.isRegularFile(executable)) {
+                throw new IOException("Python bundel tidak ditemukan di " + executable + ". Jalankan task preparePython.");
+            }
             scratch = Files.createTempDirectory("mars-p1-");
             Path runner = scratch.resolve("runner.py");
             try (InputStream resource = PythonRuntime.class.getResourceAsStream("/python/runner.py")) {

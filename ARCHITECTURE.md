@@ -1,6 +1,6 @@
 # ARCHITECTURE — mars_reboot.py
 
-Status diperbarui 13 November 2026. Per 13 November 2026, kandidat puzzle 1 panen terhubung ke terminal Python nyata, robot/replay/hasil, Run/Stop/Reset dan progres sesi. Paket Windows x64 menyertakan CPython 3.15.2; Java 21+ masih diperlukan. Backend, puzzle 2–9, save lintas restart dan komputer kedua belum terverifikasi. Rancangan lengkap di bawah tetap Usulan kecuali bagian yang sudah dipilih/diimplementasikan; kontrak p1 terkini ada di [kontrak runtime](docs/mars/PYTHON_RUNTIME.md). Java/libGDX dan versi existing dipertahankan.
+Status diperbarui 22 November 2026. Kandidat puzzle 1 tetap terhubung ke terminal Python nyata, robot/replay/hasil, Run/Stop/Reset dan progres sesi. Paket Windows x64 menyertakan CPython 3.15.2; Java 21+ masih diperlukan. Source Home/login/tamu, setelan, backend Spring lokal dan scoreboard P1 kini ditambahkan. Kompilasi `javac --release 21` berhasil untuk core dan backend pada sesi ini; Gradle Wrapper gagal start karena `native-platform.dll`, jadi belum ada verifikasi build penuh atau UI aktual sesi ini. Puzzle 2–9, save lintas restart dan komputer kedua belum diverifikasi. Rancangan lengkap di bawah tetap Usulan kecuali bagian yang sudah dipilih/diimplementasikan; kontrak p1 terkini ada di [kontrak runtime](docs/mars/PYTHON_RUNTIME.md). Java/libGDX dan versi existing dipertahankan.
 
 ## 1. Status dan pilihan stack
 
@@ -11,8 +11,8 @@ Status diperbarui 13 November 2026. Per 13 November 2026, kandidat puzzle 1 pane
 | UI Scene2D / editor TextArea | PROJECT §6 | Kandidat; perlu uji keyboard, indentasi, seleksi, scrolling, dan error. |
 | Bahasa pemain Python | PROJECT §10 / PRD KT-01 | Menunggu konfirmasi aslab. |
 | CPython proses terpisah | PROJECT §6 | Opsi eksperimen awal untuk source tepercaya; bukan sandbox. |
-| Spring Boot | SOP / PROJECT §6 | Wajib autentikasi dan skor; implementasi belum ada. |
-| JDK 21, JUnit, Gradle Wrapper, Spring Security/JPA, H2 file | Kandidat awal | Versi/kecocokan dikunci saat bootstrap; bukan dependency terpasang. |
+| Spring Boot | SOP / PROJECT §6 | Backend akun dan skor lokal diimplementasikan; verifikasi server berjalan dan akses dari komputer lain belum dilakukan pada sesi ini. |
+| JDK 21, Gradle Wrapper 9.8.0, Spring Boot 4.1.2, Spring Security/JPA, H2 | Konfigurasi aktif | Source core dan backend kompilasi langsung dengan JDK 21; Wrapper build terkini terhambat `native-platform.dll`. |
 
 Prototype web berada di `prototype-web/`; root ini adalah repository Java/libGDX MarsReboot. Command Wrapper: `.\gradlew.bat :lwjgl3:run`, `:lwjgl3:jar`, `:core:robotTest`, `:core:controlTest` dan `:lwjgl3:desktopSmokeTest`. Pada 13 November, robotTest/controlTest, compileJava desktop dan JAR berhasil melalui Wrapper dengan cache tersedia (VERIFICATION); desktopSmokeTest belum diulang melalui Wrapper. Struktur modul domain/backend berikut tetap usulan; tidak perlu menjalankan generator ulang atau memindahkan proyek existing.
 
@@ -134,9 +134,9 @@ Sukses adalah commit aplikasi setelah allRequiredPassed dan replay mencapai fina
 
 File rusak/versi lebih baru: jangan timpa atau menghapus diam-diam; tawarkan mulai sesi baru dan pertahankan cadangan. Migrasi hanya dibuat ketika ada versi nyata yang perlu didukung. source log eksekusi tidak dimasukkan ke laporan error jaringan. Penyimpanan progres dan retry score tetap fitur Usulan PRD, belum keputusan final.
 
-## 7. Backend dan kontrak HTTP — Usulan
+## 7. Backend dan kontrak HTTP — Implementasi lokal
 
-SOP mewajibkan autentikasi/skor, bukan endpoint atau metode sesi tertentu. Kandidat demo: Spring Boot + Spring Security + JPA + H2 file; autentikasi username/password dan sesi server melalui cookie pada klien desktop. Finalisasi konfigurasi sesi/CSRF serta klien cookie sebelum implementasi; jangan menonaktifkan proteksi secara global hanya untuk demo. Kredensial dipakai saat login, bukan dikirim ulang pada setiap skor. Endpoint daring memakai HTTPS; HTTP hanya untuk pengembangan loopback.
+Backend lokal menggunakan Spring Boot + Spring Security + JPA + H2 file. Login username/password memakai cookie sesi dan CSRF; desktop berbicara lewat klien HTTP yang menyimpan cookie. Jangan menonaktifkan proteksi secara global. Kredensial dipakai saat login, bukan dikirim ulang pada setiap skor. Endpoint ini hanya untuk pengembangan loopback; server publik membutuhkan HTTPS dan konfigurasi produksi.
 
 | Endpoint kandidat | Input / hasil minimum | Kasus gagal |
 | --- | --- | --- |
@@ -146,14 +146,16 @@ SOP mewajibkan autentikasi/skor, bukan endpoint atau metode sesi tertentu. Kandi
 | POST /api/auth/logout | sesi dan token CSRF bila diperlukan → 204, sesi diinvalidasi | 401 bila tidak aktif. |
 | POST /api/scores | submissionId, puzzleId, rulesVersion, fixtureVersion, score, metrik → 201/200 hasil tersimpan | 400/422 payload/versi/metrik salah; 401 sesi habis; 409 ID dipakai dengan payload berbeda. |
 | GET /api/scores/me | sesi; filter puzzle/version opsional → 200 rekor sendiri | 401 sesi habis. |
+| GET /api/scores/me/best | sesi dan puzzle/versi → skor pribadi terbaik | 401 sesi habis. |
+| GET /api/scores/leaderboard | puzzle/versi → sampai 10 pemain unik dengan skor terbaik (publik) | 400 filter tidak valid. |
 
 Score tidak menerima userId dari body sebagai otoritas; backend mengambil identitas sesi. Validasi integer nonnegatif, puzzle/version dikenal, sukses, bentuk metrik dan kesesuaian score dengan formula yang dipilih. Menolak source/output/field tambahan di kontrak skor agar privasi tidak bergantung pada kebetulan klien. Validasi ini belum membuktikan aksi robot benar karena server tidak menjalankan ulang source.
 
-submissionId dibuat sekali untuk hasil sukses lokal; retry memakai ID dan payload yang sama. Unik per userId+submissionId: pengiriman ulang sama tidak menambah duplikasi; payload berbeda ditolak. Rekor dibandingkan hanya pada userId+puzzleId+rulesVersion+fixtureVersion; simpan nilai lebih baik menurut RULES. Simpan skor dan pembaruan rekor dalam transaksi. Belum ada leaderboard atau sinkronisasi source/progres server.
+submissionId dibuat sekali untuk hasil sukses lokal; retry memakai ID dan payload yang sama. Unik per userId+submissionId: pengiriman ulang sama tidak menambah duplikasi; payload berbeda ditolak. Rekor dibandingkan hanya pada userId+puzzleId+rulesVersion+fixtureVersion; skor lebih kecil dianggap lebih baik dan disimpan. Papan skor mengambil skor terbaik tiap akun dan membatasi tampilan ke 10 pemain. Belum ada sinkronisasi source/progres server. Aturan kompetisi ini merupakan pilihan implementasi atas permintaan pengguna, belum persetujuan kelompok.
 
 Response error kandidat: code, message aman untuk pemain, requestId; tanpa stacktrace/credential. 401 membuka alur login ulang, 403 menunjukkan akses/proteksi ditolak, timeout/5xx menawarkan retry eksplisit tanpa retry tanpa batas. Status simpan tidak mengubah outcome puzzle.
 
-Entitas kandidat: User(id, username unik, passwordHash), ScoreSubmission(id, userId, submissionId, puzzle/versi, score/metrik), serta sesi melalui mekanisme framework. Tidak membuat implementasi session store sendiri. Validasi panjang/format field, strategi username case-sensitive/normalisasi, mekanisme CSRF, masa sesi, dan versi skema perlu dikunci dalam OpenAPI/konfigurasi saat kontrak dipilih. OpenAPI belum dibuat; tabel ini draft integrasi untuk ditinjau.
+Entitas aktif ada di `backend/src/main/java/com/marsreboot/backend/`: `UserEntity`, `ScoreEntity`, controller, service, repository dan `SecurityConfig`. Bentuk API dicatat di `backend/openapi.yaml`. H2 menyimpan data lokal; login tidak otomatis memulihkan sesi setelah aplikasi dibuka ulang. Pengguna perlu login lagi. Backend memakai localhost sehingga belum membuat papan skor bersama lintas komputer.
 
 ## 8. OOP dan design pattern
 
@@ -203,4 +205,4 @@ Sumber diperiksa 12 November 2026 untuk kelayakan rancangan; tidak menetapkan ve
 
 Package `com.marsreboot.runtime`: `PythonRuntime` membuat proses/fixture per Run, `RuntimeProtocol` memvalidasi envelope/byte/urutan sebelum aksi, `RunCoordinator` mengelola satu worker/result, pembatalan dan replay. Trace maksimal 256 snapshot dan output dibatasi; tidak ada antrean event tanpa batas. Worker tidak memutasi widget; UI menyajikan View immutable di render thread. `HabitatScreen` memiliki lifecycle coordinator; `HabitatUi` mengirim Run/Stop/Reset dan membaca View, `HabitatRenderer` menggambar rover/tanaman dari snapshot. Pengaturan preview visual terpisah dari progres p1.
 
-Python runner ada di assets/python/runner.py, memakai standard library dan tidak memiliki aturan dunia. Run/test/package memilih executable bundel secara eksplisit; manifest ada di runtime/python-runtime.json. Kontrak wire, proses, state, timeout/cleanup, perbedaan outcome domain/aplikasi, serta batas paket dijabarkan dalam [kontrak runtime](docs/mars/PYTHON_RUNTIME.md). Tidak ada dependency JSON/interpreter Java baru. Struktur domain/backend yang belum dibuat tetap usulan, tidak otomatis ditambahkan oleh integrasi ini.
+Python runner ada di assets/python/runner.py, memakai standard library dan tidak memiliki aturan dunia. Run/test/package memilih executable bundel secara eksplisit; manifest ada di runtime/python-runtime.json. Kontrak wire, proses, state, timeout/cleanup, perbedaan outcome domain/aplikasi, serta batas paket dijabarkan dalam [kontrak runtime](docs/mars/PYTHON_RUNTIME.md). Tidak ada dependency JSON/interpreter Java baru. Backend kini berada di `backend/`; baca §7 untuk akun/skor lokal dan batas integrasinya.

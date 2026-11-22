@@ -13,7 +13,12 @@ public final class ApiErrorWriter {
         response.setStatus(status.value());
         response.setCharacterEncoding(StandardCharsets.UTF_8.name());
         response.setContentType("application/json");
+
         String requestId = UUID.randomUUID().toString();
-        response.getWriter().write("{\"code\":\"" + code + "\",\"message\":\"" + message + "\",\"requestId\":\"" + requestId + "\"}");
+        String json = "{\"code\":\"" + code
+                + "\",\"message\":\"" + message
+                + "\",\"requestId\":\"" + requestId + "\"}";
+
+        response.getWriter().write(json);
     }
 }

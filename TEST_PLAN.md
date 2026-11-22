@@ -1,6 +1,6 @@
 # TEST_PLAN — mars_reboot.py
 
-Status: rencana uji, diperbarui 13 November 2026; habitat/kontrol dan kandidat domain robot puzzle 1 sudah diuji, seluruh penerimaan produk/puzzle belum selesai. Acuan [PRD](PRD.md), [RULES](RULES.md), [ARCHITECTURE](ARCHITECTURE.md), [DESIGN](DESIGN.md). Bukti aktual dicatat terpisah di [VERIFICATION](VERIFICATION.md). Angka/fixture Usulan baru menjadi acceptance gate setelah dipilih.
+Status: rencana uji, diperbarui 22 November 2026; habitat/kontrol dan kandidat domain robot puzzle 1 sudah diuji pada sesi terdahulu. UI Home/login/leaderboard dan Spring backend kini ditambahkan, tetapi belum lolos build/test Gradle pada sesi ini. Acuan [PRD](PRD.md), [RULES](RULES.md), [ARCHITECTURE](ARCHITECTURE.md), [DESIGN](DESIGN.md). Bukti aktual dicatat terpisah di [VERIFICATION](VERIFICATION.md). Angka/fixture Usulan baru menjadi acceptance gate setelah dipilih.
 
 ## 1. Lapisan bukti dan lingkungan
 
@@ -11,7 +11,7 @@ Status: rencana uji, diperbarui 13 November 2026; habitat/kontrol dan kandidat d
 - Desktop manual: build libGDX aktual pada ukuran target; Playwright bukan bukti desktop.
 - Distribusi/playtest: paket final di komputer lain dan pemain manusia.
 
-Catat OS, JDK, libGDX, Python, backend/database, build/commit atau hash artefak, fixture/rulesVersion, command aktual, hasil, dan keterbatasan. Command Wrapper existing dan batas eksekusinya kini dicatat pada handoff TASKS/VERIFICATION; Maven/backend belum tersedia. Script npm hanya untuk [prototype](PROTOTYPE.md). Jangan memasang tool global hanya untuk menandai checklist lulus.
+Catat OS, JDK, libGDX, Python, backend/database, build/commit atau hash artefak, fixture/rulesVersion, command aktual, hasil, dan keterbatasan. Command Wrapper existing dan batas eksekusinya kini dicatat pada handoff TASKS/VERIFICATION; backend Spring ada di `backend/`. Script npm hanya untuk [prototype](PROTOTYPE.md). Jangan memasang tool global hanya untuk menandai checklist lulus.
 
 Untuk subset habitat, jalankan `:core:controlTest` (gerak 30/60/144 FPS, diagonal, alias/oposisi arah, sweep collider/batas, range, modal, E/hold/Esc, clear input) dan `:lwjgl3:desktopSmokeTest` (window nyata, wiring Screen/Scene2D, input processor, fokus/draf, resize dan disposal). Test kedua opt-in, memerlukan desktop. Ini bukti parsial UI-01–04 saja: belum robot, hasil puzzle, EXP-02 lengkap atau AC-02/15 keseluruhan. Ulangi pengujian keyboard fisik tahan, drag, clipboard/seleksi/scroll dan keterbacaan pada ukuran minimum sebelum penerimaan UI.
 
@@ -61,12 +61,14 @@ Pemilik LIFE/PROTO/RUN: peran 1; SAVE: integrasi peran 1/4. Uji fake memudahkan 
 | API-02 | Dua akun membaca/menulis skor; userId palsu di body | Akses hanya milik sesi; field asing/versi tidak dikenal/metrik salah ditolak. |
 | API-03 | Simpan, ambil setelah restart, kirim ulang submissionId | Skor bertahan; retry sama tidak duplikasi; payload berbeda dengan ID sama ditolak. |
 | API-04 | Backend mati/timeout/5xx/401/403 | Status simpan terpisah, retry eksplisit, login ulang tanpa menghapus kode; tidak mengklaim tersimpan sebelum respons. |
+| API-05 | Papan skor untuk P1 dengan beberapa akun, skor sama, skor lebih baik dan lebih buruk | Satu baris per akun, skor lebih kecil di atas, peringkat konsisten, maksimal 10 akun; daftar dapat dibaca tanpa login. |
 | SEC-01 | Inspeksi paket, payload, log, dan konfigurasi | Tidak ada source/output di HTTP, password/secret tidak bocor; tidak mengklaim sandbox atau anticheat. |
 | UI-01 | Habitat → inspeksi → terminal → hasil → habitat | Petunjuk relevan, tidak perlu inspeksi ulang setiap gagal, progres terlihat. |
 | UI-02 | Multiline, indentasi, seleksi, clipboard, scrolling, error panjang | Source tetap utuh; fokus keluar/masuk; input gerak tidak aktif saat mengetik. |
 | UI-03 | Keyboard-only dan semua fase kontrol | Fokus terlihat; Stop bisa dicapai; tidak ada keyboard trap atau aksi ganda. |
 | UI-04 | 1280×720, 1440×900 dan resize | Kontrol/pesan tidak terpotong; teks terbaca; koordinat simulasi tidak berubah. Ukuran kandidat perlu dipilih. |
 | UI-05 | Kontras, indikator nonwarna, reduced motion, audio | Ukur warna aktual; state terbaca tanpa warna; motion tidak mengubah skor. |
+| UI-06 | Home, login/daftar, mulai sebagai tamu, setelan dan papan skor Home/Peta Misi | Alur jelas, pilihan setelan tersimpan, papan skor bisa dimuat ulang setelah skor baru dikirim, layout tidak terpotong. |
 | BUILD-01 | Paket desktop pada komputer kedua | Login, satu puzzle, Stop, dan skor berjalan dengan panduan prasyarat; catat OS/runtime/backend. |
 | OOP-01 | Demo empat pilar dan minimal enam pattern | Relasi kelas dan perilaku nyata; cocok dengan materi kelas/aslab, bukan nama saja. |
 | ASSET-01 | Manifest dan kredit | Asal/lisensi/ukuran/versi jelas; aset terbaca pada skala game. |
@@ -98,6 +100,7 @@ Peran 4 memegang API/SEC/BUILD, peran 3 memegang UI/ASSET, semua peran OOP dan p
 | AC-18 | CONTENT-01, EDU-01, UI-01 |
 | AC-19 | DOM-01, DOM-05, DOM-06 |
 | AC-20 | ASSET-01 |
+| AC-21 | UI-06, API-05 |
 
 Setiap FR/NFR terhubung ke AC di PRD; tabel ini meneruskan AC ke kasus uji. Pemetaan bukan hasil lulus. Case Usulan yang belum dipilih dicatat menunggu keputusan, bukan dilewati lalu dianggap memenuhi penerimaan.
 

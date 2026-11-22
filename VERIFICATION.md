@@ -1,6 +1,6 @@
 # VERIFICATION — mars_reboot.py
 
-Status diperbarui 14 November 2026. Bukti terbaru penyempurnaan UI, keterbacaan `18` unit UI, dan alur Puzzle 1 ada di bagian 9; bagian 8 dan sebelumnya adalah bukti historis tahap terdahulu. Rencana TEST_PLAN bukan hasil uji; prototype tetap terpisah di docs/prototype/VERIFICATION.md.
+Status diperbarui 22 November 2026. Bukti historis UI/Puzzle 1 ada di bagian 9–10. Implementasi Home/backend/scoreboard terbaru dicatat di bagian 11; belum ada build Gradle atau pemeriksaan visual desktop yang lulus pada sesi ini. Rencana TEST_PLAN bukan hasil uji; prototype tetap terpisah di docs/prototype/VERIFICATION.md.
 
 ## 1. Status produk
 
@@ -8,7 +8,7 @@ Status diperbarui 14 November 2026. Bukti terbaru penyempurnaan UI, keterbacaan 
 | --- | --- | --- |
 | Java/libGDX habitat | Root MarsReboot; `.\gradlew.bat --offline` lulus 14 Nov 2026: 40 assertion kontrol (`:core:controlTest`) dan 29 assertion desktop/Scene2D (`:lwjgl3:desktopSmokeTest`) | Habitat teruji; input tahan tombol OS manusia penuh belum disimulasikan. |
 | Runtime script dan Stop desktop | CPython bundel (`build/python/windows-x64`): 81 assertion robot (`:core:robotTest`), 33 controller/protokol (`:core:runtimeTest`), 33 integrasi Python (`:core:pythonIntegrationTest`) lulus 14 Nov 2026 | Teruji untuk p1 Windows x64; bukan sandbox atau seluruh platform. |
-| Backend/auth/skor | Belum ada implementasi atau integrasi nyata | Belum diuji. |
+| Backend/auth/skor | Source Spring Boot, akun/sesi, simpan/lihat skor, papan skor P1, dan klien game tersedia; uji API PowerShell oleh pengguna terdahulu membuktikan register/login/submit/baca skor personal. | Kompilasi javac sesi ini lulus; build Gradle sesi ini gagal start sebelum kompilasi. Ranking multiakun, UI desktop dan alur terbaru belum diuji. |
 | UI/aset/Figma | Adegan Outpost Mars `2×` (`HabitatRenderer`) dgn petak panen 2×1 tidak tertutup dan penanda lokal `PANEN P1 SELESAI (SESI)`; font BMFont `ui_sans`/`ui_sans_bold` (`36px`, skala `0.50f`) & `ui_mono` (`34px`, skala `0.53f`) ~`18` unit UI (`~12px` di `640×480`); terminal `556×518` di kiri + editor/output scroll berbatas + footer `Coba lagi`/`Kembali ke habitat` + `[O] Setelan` Preview Visual + Peta Misi P1 berbasis `RunCoordinator.View`; screenshot `1280×720`, `1440×900`, `900×600`, `640×480` diperiksa visual 14 Nov 2026 | Teruji desktop otomatis & inspeksi PNG pada keempat resolusi; drag mouse OS manusia dan review playtest tetap terbuka. |
 | Puzzle 1–9 | Kandidat p1-a melalui Python–Java–desktop (41 assertion desktop puzzle pada `:lwjgl3:puzzleDesktopTest`, 14 Nov 2026); P2–9 tampil jujur `BELUM TERSEDIA` | P1 teruji lintas alur inspeksi → terminal → Run → replay → hasil → ulang/kembali; puzzle 2–9 belum ada. |
 | Distribusi/playtest/publikasi | ZIP Windows + Python diuji 13 Nov dari folder spasi tanpa Python PATH; `:lwjgl3:bundleWindows` belum dibangun ulang pasca-penyempurnaan UI 14 Nov | Paket 13 Nov teruji lokal; re-bundle 14 Nov, komputer kedua, manusia, dan publikasi belum dilakukan. |
@@ -170,3 +170,17 @@ Pemeriksaan visual PNG di `lwjgl3/build/reports/habitat/` dan `lwjgl3/build/repo
 - Popover `[?] API` (`336×294`), output scroll berbatas, tombol `Stop` berkontras tinggi, badge `SELESAI`, penanda `PANEN BIO-DOME SELESAI`, `+1 PANEN`, sinar pemindai rover, dan efek halo status tampil utuh pada `1280×720`, `1440×900`, `900×600`; pada `640×480` kontrol tidak terpotong namun huruf font tetap halus/kecil karena downscale resolusi rendah.
 
 Batas terbuka: paket `:lwjgl3:bundleWindows` belum dibangun ulang pasca-ubah visual 15 Nov; penahanan keyboard/mouse fisik OS manusia pada jendela interaktif, komputer fisik kedua, save lintas restart, backend Spring Boot, serta puzzle 2–9 tetap belum dijalankan.
+
+## 11. Home, akun, scoreboard P1, setelan dan integrasi Java — 22 November 2026
+
+Scope sesi: Home baru (daftar/masuk/tamu), scoreboard P1, tiga setelan tersimpan, pembukaan scoreboard dari Peta Misi saat bermain, penyegaran rekor sesudah login, endpoint leaderboard dan dokumentasi. Logika puzzle/robot tidak diubah.
+
+| Pemeriksaan aktual | Hasil | Batas |
+| --- | --- | --- |
+| `javac --release 21` source `core` + libGDX 1.14.2 dari cache | PASS | Kompilasi Java saja; tidak menjalankan Gradle, test, window atau OpenGL. |
+| `javac --release 21` source Spring backend dengan dependency JAR cache, annotation processing dimatikan | PASS | Kompilasi Java saja; tidak menguji bootstrap Spring, database, endpoint atau query JPA saat runtime. |
+| `git diff --check` | PASS setelah seluruh perubahan sesi | Tidak menilai compile, API, atau perilaku UI. |
+| `gradlew.bat :core:compileJava :lwjgl3:compileJava --offline --console=plain` | FAIL sebelum kompilasi | Gradle tidak dapat memuat `native-platform.dll` pada Windows 11 amd64. Ini kendala startup Gradle, bukan hasil compile Gradle. |
+| UI Home/Peta Misi, auth baru dan ranking multiakun di game | BELUM DIJALANKAN | Belum dapat meluncurkan ulang desktop untuk sesi ini. Peta Misi memuat 5 baris teratas; Home memuat daftar sampai 10. |
+
+Catatan: pada sesi sebelumnya pengguna menjalankan backend dan membuktikan register, login, submit skor, serta baca rekor pribadi lewat PowerShell. Itu bukan verifikasi untuk source scoreboard terbaru. Backend lokal memakai `127.0.0.1:8081`; anggota komputer lain belum berbagi database. Tidak mengklaim test aplikasi atau visual desktop terbaru lulus.
