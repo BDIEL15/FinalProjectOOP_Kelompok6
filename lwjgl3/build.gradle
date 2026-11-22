@@ -220,3 +220,64 @@ tasks.withType(JavaExec.class).configureEach {
 if(enableGraalNative == 'true') {
   apply from: file("nativeimage.gradle")
 }
+
+// Official CPython is pinned by URL + SHA-256; no global Python installation is used.
+def pythonManifest = rootProject.file('runtime/python-runtime.json')
+def pythonDirectory = rootProject.layout.buildDirectory.dir('python/windows-x64')
+tasks.register('preparePython') {
+  group = 'build setup'
+  description = 'Downloads, verifies and extracts the pinned Windows x64 embedded CPython.'
+  inputs.file(pythonManifest)
+  outputs.dir(pythonDirectory)
+  doLast {
+    def pin = new groovy.json.JsonSlurper().parse(pythonManifest)
+    def archive = rootProject.layout.buildDirectory.file("python-download/python-${pin.version}-embed-amd64.zip").get().asFile
+    archive.parentFile.mkdirs()
+    if (!archive.exists()) {
+      if (gradle.startParameter.offline) throw new GradleException('Python ZIP is not cached; run preparePython once online.')
+      def connection = new URI(pin.url).toURL().openConnection()
+      connection.connectTimeout = 15000
+      connection.readTimeout = 30000
+      def partial = new File(archive.parentFile, archive.name + '.partial')
+      connection.inputStream.withCloseable { input -> partial.withOutputStream { out -> out << input } }
+      java.nio.file.Files.move(partial.toPath(), archive.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+    }
+    def digest = java.security.MessageDigest.getInstance('SHA-256')
+    archive.withInputStream { input ->
+      byte[] buffer = new byte[65536]
+      int count
+      while ((count = input.read(buffer)) > 0) digest.update(buffer, 0, count)
+    }
+    def actual = digest.digest().encodeHex().toString()
+    if (actual != pin.sha256) throw new GradleException('Python archive SHA-256 mismatch; extraction refused.')
+    copy { from zipTree(archive); into pythonDirectory }
+    new File(pythonDirectory.get().asFile, 'mars-runtime.json').text = groovy.json.JsonOutput.toJson(pin)
+  }
+}
+[ tasks.named('run'), tasks.named('desktopSmokeTest') ].each { provider ->
+  provider.configure {
+    dependsOn tasks.named('preparePython')
+    systemProperty 'mars.pythonDir', pythonDirectory.get().asFile.absolutePath
+  }
+}
+tasks.register('bundleWindows', Zip) {
+  group = 'distribution'
+  description = 'Builds the Windows x64 game ZIP with private CPython (Java 21 remains required).'
+  dependsOn tasks.named('jar'), tasks.named('preparePython')
+  archiveFileName = "MarsReboot-${projectVersion}-windows-x64.zip"
+  destinationDirectory = layout.buildDirectory.dir('distributions')
+  from(tasks.named('jar'))
+  from(pythonDirectory) { into 'runtime/python' }
+  from(pythonManifest) { into 'runtime' }
+  from(rootProject.file('distribution/windows'))
+}
+
+tasks.register('puzzleDesktopTest', JavaExec) {
+  group = 'verification'
+  dependsOn testClasses, tasks.named('preparePython')
+  classpath = sourceSets.test.runtimeClasspath
+  mainClass = 'com.marsreboot.habitat.PuzzleDesktopSmokeTest'
+  workingDir = rootProject.file('assets')
+  systemProperty 'mars.pythonDir', pythonDirectory.get().asFile.absolutePath
+  jvmArgs '--enable-native-access=ALL-UNNAMED', '--add-exports=java.base/jdk.internal.misc=ALL-UNNAMED'
+}

@@ -1,6 +1,6 @@
 # TEST_PLAN — mars_reboot.py
 
-Status: rencana uji, 12 November 2026; test habitat/kontrol Java dan smoke desktop dasar sudah dijalankan, seluruh penerimaan produk/puzzle belum selesai. Acuan [PRD](PRD.md), [RULES](RULES.md), [ARCHITECTURE](ARCHITECTURE.md), [DESIGN](DESIGN.md). Bukti aktual dicatat terpisah di [VERIFICATION](VERIFICATION.md). Angka/fixture Usulan baru menjadi acceptance gate setelah dipilih.
+Status: rencana uji, diperbarui 13 November 2026; habitat/kontrol dan kandidat domain robot puzzle 1 sudah diuji, seluruh penerimaan produk/puzzle belum selesai. Acuan [PRD](PRD.md), [RULES](RULES.md), [ARCHITECTURE](ARCHITECTURE.md), [DESIGN](DESIGN.md). Bukti aktual dicatat terpisah di [VERIFICATION](VERIFICATION.md). Angka/fixture Usulan baru menjadi acceptance gate setelah dipilih.
 
 ## 1. Lapisan bukti dan lingkungan
 
@@ -14,6 +14,8 @@ Status: rencana uji, 12 November 2026; test habitat/kontrol Java dan smoke deskt
 Catat OS, JDK, libGDX, Python, backend/database, build/commit atau hash artefak, fixture/rulesVersion, command aktual, hasil, dan keterbatasan. Command Wrapper existing dan batas eksekusinya kini dicatat pada handoff TASKS/VERIFICATION; Maven/backend belum tersedia. Script npm hanya untuk [prototype](PROTOTYPE.md). Jangan memasang tool global hanya untuk menandai checklist lulus.
 
 Untuk subset habitat, jalankan `:core:controlTest` (gerak 30/60/144 FPS, diagonal, alias/oposisi arah, sweep collider/batas, range, modal, E/hold/Esc, clear input) dan `:lwjgl3:desktopSmokeTest` (window nyata, wiring Screen/Scene2D, input processor, fokus/draf, resize dan disposal). Test kedua opt-in, memerlukan desktop. Ini bukti parsial UI-01–04 saja: belum robot, hasil puzzle, EXP-02 lengkap atau AC-02/15 keseluruhan. Ulangi pengujian keyboard fisik tahan, drag, clipboard/seleksi/scroll dan keterbacaan pada ukuran minimum sebelum penerimaan UI.
+
+Subset robot tersedia melalui `.\gradlew.bat :core:robotTest`: 81 assertion mencakup DOM-01/02, panen dan sensor DOM-03 (metrik young saja), referensi/negatif **p1-a saja** pada DOM-05/06, DOM-07/08, serta isolasi fixture/snapshot. DOM-04 siram, keputusan pelanggaran young puzzle 3, puzzle lain dan seluruh runtime/lifecycle belum tercakup. Test domain tidak membuktikan terminal/replay/progres atau sandbox Python.
 
 ## 2. Kasus uji aturan dan fixture
 
@@ -108,3 +110,9 @@ Setiap FR/NFR terhubung ke AC di PRD; tabel ini meneruskan AC ke kasus uji. Peme
 5. Distribusi: paket final komputer kedua dan halaman/luaran ditinjau; publikasi hanya jika diotorisasi.
 
 Format catatan: tanggal, target/build, ID test, command/langkah, hasil PASS/FAIL/BELUM DIJALANKAN, bukti, keterbatasan, pemilik tindak lanjut. Jangan mengganti laporan bug dengan checklist sukses. Jalankan test fokus dan gate terdekat; ulangi luas hanya setelah perubahan/temuan yang relevan.
+
+## 7. Pemeriksaan integrasi p1 yang tersedia
+
+`:core:runtimeTest` (ikut check) menguji controller/replay, byte/protokol, pembatalan, hasil lama dan blok cleanup. `:core:pythonIntegrationTest` memakai CPython bundel nyata, opt-in tanpa OpenGL. `:lwjgl3:puzzleDesktopTest` memakai pointer events Scene2D, source snapshot, Stop/Reset/error, Esc/reopen dan resize bersama interpreter nyata. Task desktop existing tetap tersedia. Ini subset LIFE/PROTO/RUN/UI p1, bukan bukti backend, seluruh save, komputer kedua atau playtest.
+
+Uji ZIP memakai JAR dari paket dan Python di folder ekstraksi berisi spasi, PATH hanya Windows System32 dan tanpa PYTHONHOME/PYTHONPATH. Jalur pengujian serta batas di [kontrak runtime](docs/mars/PYTHON_RUNTIME.md), bukti aktual di VERIFICATION. Jangan menganggap menjalankan test dari classpath development sebagai bukti paket ZIP.
