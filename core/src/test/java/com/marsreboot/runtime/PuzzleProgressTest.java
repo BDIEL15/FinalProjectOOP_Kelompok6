@@ -5,7 +5,11 @@ public final class PuzzleProgressTest {
   var runtime = new PythonRuntime(Path.of(System.getProperty("mars.pythonDir"),"python.exe"));
   var p3 = runtime.execute(PuzzleDefinition.THREE, PuzzleDefinition.THREE.reference(), 3, new java.util.concurrent.atomic.AtomicBoolean(),()->{});
   check(p3.status()==RunCoordinator.Status.SUCCESS && p3.snapshot().actionCount()==5 && p3.snapshot().harvestCount()==2,"P3 sensor reference: five actions, two ripe crops");
-  check(p3.snapshot().apiCallCount()==9 && p3.snapshot().invalidHarvestCount()==0,"four sensors, five actions");
+  check(p3.snapshot().actionCount()==PuzzleDefinition.THREE.referenceActions(),"referenceActions matches P3 reference run");
+  check(PuzzleDefinition.TWO.referenceActions()==7 && PuzzleDefinition.FOUR.referenceActions()==10 && PuzzleDefinition.ONE.referenceActions()==3,"reference action constants");
+  check(PuzzleDefinition.TWO.efficiencyStars(7)==3 && PuzzleDefinition.TWO.efficiencyStars(9)==2 && PuzzleDefinition.TWO.efficiencyStars(12)==1,"P2 efficiency tiers 3/2/1");
+  check(PuzzleDefinition.FOUR.efficiencyStars(10)==3 && PuzzleDefinition.FOUR.efficiencyStars(17)==2 && PuzzleDefinition.FOUR.efficiencyStars(18)==1,"P4 total tiers across two scenarios");
+  check(p3.snapshot().apiCallCount()==9 &&p3.snapshot().invalidHarvestCount()==0,"four sensors, five actions");
   check(p3.snapshot().crops().get(new com.marsreboot.robot.RobotSimulation.Position(1,0))==com.marsreboot.robot.RobotSimulation.Crop.YOUNG,"young remains young");
   var naive = runtime.execute(PuzzleDefinition.THREE,PuzzleDefinition.TWO.reference(),4,new java.util.concurrent.atomic.AtomicBoolean(),()->{});
   check(naive.status()==RunCoordinator.Status.INCOMPLETE && naive.snapshot().remainingTargets().isEmpty() && naive.snapshot().invalidHarvestCount()==2,"all ripe harvested but young attempts fail");

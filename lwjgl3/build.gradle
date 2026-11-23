@@ -276,6 +276,15 @@ tasks.register('bundleWindows', Zip) {
   from(rootProject.file('distribution/windows'))
 }
 
+tasks.register('titleDesktopTest', JavaExec) {
+  group = 'verification'
+  dependsOn testClasses
+  classpath = sourceSets.test.runtimeClasspath
+  mainClass = 'com.marsreboot.TitleDesktopCheck'
+  workingDir = rootProject.file('assets')
+  jvmArgs '--enable-native-access=ALL-UNNAMED'
+}
+
 tasks.register('puzzleDesktopTest', JavaExec) {
   group = 'verification'
   dependsOn testClasses, tasks.named('preparePython')

@@ -81,5 +81,5 @@ tasks.register('verifyDemo') {
 tasks.register('verifyDesktopDemo') {
   group = 'verification'
   description = 'Runs verifyDemo and the real desktop/OpenGL smoke checks (opens test windows).'
-  dependsOn 'verifyDemo', ':lwjgl3:desktopSmokeTest', ':lwjgl3:puzzleDesktopTest'
+  dependsOn 'verifyDemo', ':lwjgl3:desktopSmokeTest', ':lwjgl3:puzzleDesktopTest', ':lwjgl3:titleDesktopTest'
 }

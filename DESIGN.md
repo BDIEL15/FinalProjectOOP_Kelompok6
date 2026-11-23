@@ -12,7 +12,7 @@ Pemain memahami masalah lewat inspeksi, mengubah program, lalu melihat akibatnya
 
 ```mermaid
 flowchart LR
-    A[Login / registrasi] --> H[Habitat astronaut]
+    A[Home: login / daftar / tamu] --> H[Habitat astronaut]
     H --> I[Inspeksi fasilitas]
     I --> H
     H --> T[Terminal dan tujuan puzzle]
@@ -24,7 +24,7 @@ flowchart LR
     T -->|Keluar saat idle| H
 ```
 
-Login sebagai pintu masuk adalah usulan PRD KT-02. Jika mode lokal dipilih, alurnya perlu ditambahkan bersama kebijakan akun/skor; belum ada tombol mode lokal wajib. Tiga permukaan utama: habitat, terminal, hasil. Inspeksi berupa panel singkat di atas habitat, bukan cutscene panjang. Ringkasan temuan dan bantuan bertahap mengikuti status Usulan PRD.
+Home menampilkan form akun, tombol mulai sebagai tamu, setelan dasar, dan papan skor P1. Peta Misi `[M]` juga memuat rekor pribadi dan papan skor supaya dapat dicek setelah bermain. Pilihan Home dan papan skor adalah implementasi atas permintaan pengguna; persetujuan kelompok belum dicatat. Setelan pilihan disimpan di komputer pemain. Tiga permukaan utama permainan tetap: habitat, terminal, hasil. Inspeksi berupa panel singkat di atas habitat, bukan cutscene panjang. Ringkasan temuan dan bantuan bertahap mengikuti status Usulan PRD.
 
 ## 3. Wireframe habitat — Usulan
 
@@ -42,6 +42,8 @@ Login sebagai pintu masuk adalah usulan PRD KT-02. Jika mode lokal dipilih, alur
 ```
 
 HUD tidak menutupi jalur atau objek interaksi. Area dekat objek memiliki label teks. Usulan kontrol awal: WASD/panah untuk gerak, E untuk interaksi, Esc menutup panel; saat editor fokus, input gerak tidak aktif. Tidak ada rebind/gamepad yang ditambahkan sebagai fitur wajib.
+
+Tombol **Keluar** selalu tersedia di kanan atas Home dan HUD habitat. Tombol itu serta tombol tutup jendela/shortcut sistem operasi membuka dialog konfirmasi. Pemain dapat memilih **Lanjut bermain** atau **Keluar**; Esc membatalkan dan fokus awal berada pada **Lanjut bermain**. Dialog menjelaskan bahwa skor yang sudah tersimpan tetap aman. Skor yang belum berhasil dikirim belum dijamin tersimpan.
 
 **Implementasi adegan representatif 12 November 2026 (di atas baseline kontrol Codex):**
 - **Kontrol & kontrak collider tetap utuh:** WASD/panah mengikuti sumbu layar ortogonal dengan normalisasi diagonal; `FLOOR = Box(40,40,880,520)`, `PARTITION = Box(480,160,32,200)`, `GARDEN = Box(620,160,180,100)`, `PANEL = Box(240,400,100,40)`, `TERMINAL = Box(720,400,100,52)`, dan astronaut `24×28` di `(160,200)` dipertahankan 1:1 tanpa menggeser collider atau jangkauan `INTERACT_MARGIN = 18f`.
@@ -175,7 +177,7 @@ Seluruh ekspor gambar referensi disimpan lokal di `docs/mars/design-refs/` agar 
 
 Floating terminal kini M1-P1 Panen, berisi tujuan dua tanaman/6 aksi, empat API nyata, editor, output scroll serta Run/Stop/Reset. State preview error/timeout diganti hasil runtime nyata; bantuan akhir membuka referensi tiga aksi. Robot memakai tekstur rover existing pada grid 2x1 di kebun, indikator ripe hilang setelah panen. Seluruh gerak/collider astronaut, font, aset dan viewport existing dipertahankan.
 
-Run memakai source saat ditekan; editor tetap dapat diubah untuk percobaan berikutnya. Esc menutup tanpa Stop; buka kembali menampilkan hasil/draf sama. Penanda selesai p1 hanya progres sesi, bukan pemulihan seluruh habitat. Peta misi tidak lagi menampilkan rekor/kelulusan palsu; konten lain diberi status belum tersedia/rancangan. Preview Before/After berlabel visual dan tidak mengubah progres. Empat ukuran existing diperiksa pada build desktop; teks pada 640x480 tetap kecil karena skala FitViewport, sehingga penerimaan keterbacaan/playtest manusia masih terbuka. Detail perilaku di [kontrak runtime](docs/mars/PYTHON_RUNTIME.md).
+Run memakai source saat ditekan; editor tetap dapat diubah untuk percobaan berikutnya. Esc menutup tanpa Stop; buka kembali menampilkan hasil/draf sama. Penanda selesai p1 hanya progres sesi, bukan pemulihan seluruh habitat. Peta Misi menampilkan status puzzle, rekor pribadi dan papan skor P1 dari backend lokal; konten puzzle lain tetap diberi status belum tersedia/rancangan. Preview Before/After berlabel visual dan tidak mengubah progres. Ukuran desktop historis diperiksa; perubahan Home/scoreboard sesi 22 Nov belum dapat diperiksa visual karena Gradle gagal start, dan playtest manusia masih terbuka. Detail perilaku di [kontrak runtime](docs/mars/PYTHON_RUNTIME.md).
 
 ## 11. Desain ulang Outpost 1680×1040, Follow Camera, Interaksi Rover & Terminal Resizable — 15 November 2026
 
@@ -220,3 +222,13 @@ PythonEditing adalah transformasi teks tanpa libGDX; PythonCodeArea mengirim per
 Pemilih P4 Irigasi terbuka setelah P3. Draf/pencapaian sesi tetap terpisah. Tujuan/hasil berubah menjadi penyiraman: petak KERING/LEMBAP memakai warna berbeda dan label teks; HUD menampilkan sisa air/nomor skenario/aksi per skenario. Hasil akhir menyebut 2/2 skenario dan total aksi/air, bukan metrik panen. Kegagalan menyebut p4-a/p4-b. Replay menampilkan skenario berurutan dengan fixture/air awal masing-masing; tidak ada pemberian pencapaian baru hanya karena skenario pertama lulus.
 
 Panel [?] API kini dapat digulir dan menjelaskan needs_water/water khusus P4. Font, kamera, aset pixel art, editor autoindent dan layout terminal existing dipertahankan. Efek panen sebelumnya dihapus ketika berganti skenario; tidak membuat aset baru atau mengaktifkan seluruh habitat melalui preview.
+
+## Polish presentasi — 23 November 2026
+
+- **Petak:** kering = retakan zig-zag + bintik amber; lembap = kilau cyan + tetes; label teks tetap ada agar tidak bergantung warna. Saat kering→basah ada kilat 0,6 dtk dan percik.
+- **Kegagalan:** petak belum selesai diberi bingkai koral berdenyut + siku; baris error diberi penanda `!N` di gutter selama source belum diubah.
+- **Bantuan [?]:** tiga tingkat bertahap (konsep, API, kerangka sebagian) lewat tombol "Petunjuk berikutnya (n/3)"; solusi referensi tidak pernah ditampilkan (sesuai §6).
+- **Sukses:** ledakan partikel di Bio-Dome, guncangan ringan, dan bintang efisiensi 1–3 pada ringkasan. Semua efek gerak mati bila Kurangi Animasi aktif.
+- **Judul:** layar judul dengan cakrawala Mars dan tiga baris cerita; Enter/Spasi/klik memulai. Field Log `[J]` menampilkan tiga catatan puzzle aktif.
+- **Audio:** klik UI, siram, panen, sukses, gagal; dapat dimatikan di Setelan ("Efek Suara"). Suara tidak mengikuti Kurangi Animasi.
+- Status: usulan desain saya, belum disetujui tim; tidak mengubah mekanik atau fixture.

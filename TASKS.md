@@ -1,6 +1,6 @@
 # TASKS — mars_reboot.py
 
-Status 13 November 2026: Per 13 November 2026, kandidat puzzle 1 panen terhubung ke terminal Python nyata, robot/replay/hasil, Run/Stop/Reset dan progres sesi. Paket Windows x64 menyertakan CPython 3.15.2; Java 21+ masih diperlukan. Backend, puzzle 2–9, save lintas restart dan komputer kedua belum terverifikasi. Lihat handoff akhir dan VERIFICATION; checkbox product gate tidak otomatis selesai karena integrasi satu kandidat lulus.
+Status 23 November 2026: puzzle 1 panen dan paket Python terdahulu tetap tersedia. Home/login/tamu, setelan, papan skor P1 lokal, sambungan Spring Boot, dan dialog konfirmasi keluar sudah ada di source. Kompilasi Gradle core/lwjgl3 berhasil; layar terbaru dan dialog keluar belum diperiksa lewat game desktop. Puzzle 2–9, save lintas restart, ranking multiakun, server bersama dan komputer kedua masih terbuka. Lihat handoff akhir dan VERIFICATION; implementasi fitur tidak otomatis menyelesaikan gate produk.
 
 ## 1. Pembagian kerja dan aturan integrasi
 
@@ -39,12 +39,12 @@ Gerbang A: build dasar + runtime/editor terbukti. Kegagalan eksperimen dicatat d
 | --- | --- | --- | --- | --- |
 | [ ] M-10 | Domain grid/command/sensor | 1 | M-07, M-09 | Subset Java kandidat p1-a: grid, gerak, panen, sensor, reset/batas/snapshot teruji 81 assertion (13 Nov). DOM-04 siram dan kontrak penuh belum selesai; checkbox tetap terbuka. |
 | [ ] M-11 | Coordinator/runtime/replay | 1 | M-10, M-04, M-09 | Subset p1 Run/Stop/Reset/protokol/replay terimplementasi dan teruji; generalisasi multi-skenario belum dibuat. LIFE-01–04, PROTO-01, RUN-01–05; stale result dan antrean dibatasi. |
-| [ ] M-12 | Registrasi/login/sesi backend | 4 | M-03, M-09 | API-01 dengan data nyata; hash password dan akses akun terisolasi. |
-| [ ] M-13 | Simpan/ambil skor backend | 4 | M-12, M-07 | API-02/03; validasi, persistensi restart, transaksi dan idempotensi retry. |
+| [ ] M-12 | Registrasi/login/sesi backend | 4 | M-03, M-09 | Implementasi Spring Security + sesi/H2 tersedia; API akun pernah dicoba pengguna melalui PowerShell. Build dan uji penuh belum selesai pada sesi terbaru. API-01, hash password dan isolasi perlu verifikasi ulang. |
+| [ ] M-13 | Simpan/ambil skor backend | 4 | M-12, M-07 | Simpan/lihat skor P1 dan endpoint top 10 unik telah diimplementasikan; pengguna pernah membuktikan submit/baca skor pribadi. Ranking multiakun, build ulang dan test integrasi belum dikerjakan. API-02/03/05 tetap gate. |
 | [ ] M-14 | Habitat kecil dan interaksi | 3 | M-05, M-09 | Subset lokal dunia/kontrol dasar (Codex) + visual adegan representatif 2D top-down 3/4, panel inspeksi, dan floating terminal sementara (Antigravity) diimplementasikan dan diuji 12 Nov (handoff akhir); integrasi EXP-02/kontrak penuh belum selesai. Astronaut dapat ke panel/terminal; input gerak berhenti ketika editor fokus. |
 | [ ] M-15 | Terminal dan panel hasil | 3 | M-05, M-09 | Terminal p1 berisi editor/API/output/Run/Stop/Reset dengan runtime nyata; penerimaan editor penuh masih terbuka. Tujuan/API/source/output dan kontrol semua state; mock diberi label, kemudian dihubungkan M-11. |
 | [ ] M-16 | Puzzle 1 dan evaluator | 2 | M-10, M-07 | Kandidat p1-a reference/negatif telah diuji melalui terminal Python–Java–desktop, replay dan progres sesi. Review fixture/penerimaan tim belum selesai; checkbox tetap terbuka terhadap gate produk. |
-| [ ] M-17 | Integrasi klien–runtime–backend | 1–4, koordinator ditetapkan tim | M-11–16 | Login → panel → terminal → aksi/hasil → skor tersimpan dan terbaca setelah buka ulang. UI-01, RUN-01, API-03/04; bukan hanya mock. |
+| [ ] M-17 | Integrasi klien–runtime–backend | 1–4, koordinator ditetapkan tim | M-11–16 | Source Home → Habitat → klien skor terhubung; belum diverifikasi build/run desktop terbaru. Lengkapi login → puzzle → simpan/ambil dan API-04, lalu tandai selesai. UI-01, RUN-01, API-03/04; bukan hanya mock. |
 
 Gerbang B: setiap anggota dapat menjalankan build integrasi yang sama, mencoba satu alur, dan menjelaskan kontribusinya. Review sambungan sebelum memperluas puzzle.
 
@@ -456,3 +456,24 @@ Langkah berikutnya dan kriteria selesai:
 - **Verifikasi aktual:** test slice command/strategy gagal sebelum kelas tersedia lalu lulus. patternTest terhubung core:check, 64 pemeriksaan. verifyDemo lalu verifyDesktopDemo + bundleWindows exit 0: kontrol 46, editor 25, pattern 64, robot 81, runtime 33, air 21; referensi P1–P3 + 23 progres, Python 33, P4 33, desktop 30/109. ZIP baru diuji dari folder spasi, hanya fat JAR paket sebagai kelas aplikasi, Java 21 absolut, PATH hanya System32 dan Python paket: pattern 64, Python 33, referensi/progres P1–P3, P4 33, desktop 109 lulus. Report/hash di VERIFICATION §17.
 - **Dokumen:** audit OOP mencatat dua implementasi dan diagram relasi, empat kandidat tetap terbuka. README/ARCHITECTURE/TEST_PLAN/M-23 disinkronkan. M-23 tetap tidak selesai untuk keseluruhan enam pattern; tidak ada klaim persetujuan aslab.
 - **Berikutnya:** review tim dua pattern ini, rencanakan State/Observer bersama pemilik runtime/UI, dan Factory Method/Template Method sesuai variasi misi nyata serta materi kelas. Backend tetap melalui pemilik peran 4; komputer kedua/playtest manusia terbuka. Tidak ada commit/push/deployment.
+
+### 22 November 2026 — Implementasi Home, akun, papan skor P1, dan setelan
+
+- **Permintaan & batas:** menyelesaikan tugas kelompok selain puzzle yang dikerjakan teman: layar Home, login, scoreboard, Settings dan perapian UI; kode diminta sesederhana mungkin agar mudah dipelajari. Logika puzzle/robot tidak diubah. Scoreboard kompetitif lokal ditambahkan atas izin pengguna; persetujuan tim belum dicatat.
+- **Perubahan:** game mulai dari `HomeScreen`: daftar/masuk, lanjut sebagai tamu, muat papan skor, dan tiga setelan yang tersimpan. Satu `ScoreBackendClient` dipakai dari Home ke Habitat. Peta Misi `[M]` juga memuat rekor pribadi dan 5 pemain teratas; skor baru diperbarui setelah dikirim. Backend membuka `GET /api/scores/leaderboard`, mengambil skor terbaik tiap akun, mengurutkan aksi paling sedikit, dan membatasi hasil 10 akun. README/API/design/architecture/PRD/test plan diselaraskan.
+- **File pemilik utama:** `core/src/main/java/com/marsreboot/HomeScreen.java`, `MarsRebootGame.java`, `habitat/HabitatUi.java`, `habitat/HabitatScreen.java`, `habitat/ScoreBackendClient.java`; `backend/src/main/java/com/marsreboot/backend/score/LeaderboardEntry.java`, `ScoreController.java`, `ScoreRepository.java`, `ScoreService.java`, `config/SecurityConfig.java`, `backend/openapi.yaml`; README, PRD, DESIGN, ARCHITECTURE, TEST_PLAN, VERIFICATION dan TASKS. File puzzle tetap dipertahankan.
+- **Verifikasi aktual:** `javac --release 21` kompilasi langsung source `core` dengan libGDX 1.14.2 **lulus**; kompilasi langsung source backend memakai dependency JAR cache **lulus**; `git diff --check` **lulus setelah seluruh perubahan sesi**. `:core:compileJava :lwjgl3:compileJava --offline` melalui `gradlew.bat` **gagal sebelum build**: Gradle tidak dapat memuat `native-platform.dll` (Windows 11 amd64). Tidak menjalankan test aplikasi, server, API baru, atau UI desktop; tidak mengklaim leaderboard multiakun terbukti.
+- **Batas & langkah berikutnya:** setelah Gradle dapat start, jalankan backend `bootRun`, jalankan `lwjgl3/application/run`, login lalu mainkan P1 dan cek papan skor lewat `[M] Misi` → `Muat skor`. Bandingkan dua akun untuk memastikan urutan. Server saat ini loopback `127.0.0.1`, jadi belum berbagi skor dengan anggota di PC lain. M-12/13/17 tetap terbuka; review scoreboard oleh kelompok dan playtest desktop masih perlu. Tidak ada commit/push/deployment.
+
+### 23 November 2026 — Dialog konfirmasi keluar
+
+- **Perubahan:** tombol **Keluar** ditampilkan di kanan atas Home dan HUD habitat. Tombol itu dan tombol tutup jendela desktop menampilkan dialog **Keluar dari game?**. Pemain bisa melanjutkan bermain atau keluar; Esc membatalkan. Dialog menyatakan bahwa skor yang sudah tersimpan tetap aman.
+- **File utama:** `ExitConfirmationDialog.java`, `ExitConfirmationHost.java`, `MarsRebootGame.java`, `HomeScreen.java`, `HabitatUi.java`, `HabitatScreen.java`, `HabitatInput.java`, dan `Lwjgl3Launcher.java`. DESIGN, TEST_PLAN, dan VERIFICATION diperbarui.
+- **Verifikasi:** kompilasi Gradle `:core:compileJava :lwjgl3:compileJava --offline` lulus pada 23 November; `git diff --check` lulus. Test dan pemeriksaan visual desktop belum dijalankan. Skenario UI-07 masih perlu dicoba pada Home dan habitat.
+
+### 23 November 2026 — Claude: polish visual, umpan balik, bantuan, judul dan SFX
+
+- **Hasil:** HabitatRenderer/HabitatUi/PuzzleDefinition (petak kering/lembap, sorot gagal, penanda baris error, bantuan 3 tingkat, bintang efisiensi, partikel sukses, Field Log per puzzle); `TitleScreen` baru + `MarsRebootGame`; `SoundBank` + 5 WAV sintetis (`tools/GenerateSfx.java`); task `titleDesktopTest` masuk `verifyDesktopDemo`. Tinjauan kurva P1–P4 (langkah 8): tidak ada perubahan konten; batas 6/12/12/12 longgar (1,7–2,4× referensi), bintang berfungsi sebagai tantangan hemat aksi.
+- **Verifikasi aktual:** `build verifyDesktopDemo` exit 0 (kontrol 49, desktop puzzle 109, title desktop PASS). Rincian VERIFICATION §19.
+- **Belum:** suara belum didengar/ditest; efek gerak dan peralihan judul belum dilihat langsung; `bundleWindows` belum dibangun ulang; belum ada playtest manusia; belum ada commit.
+- **Berikutnya:** tim review ambang bintang, teks petunjuk dan cerita; playtest nyata; pertimbangkan terminal adaptif pada jendela kecil; bangun ulang paket sebelum build itch.io (6 Des 2026).

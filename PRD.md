@@ -1,8 +1,8 @@
 # PRD — `mars_reboot.py`
 
-Status dokumen: draft kebutuhan Mars, diperbarui 12 November 2026. Acuan keputusan: [PROJECT.md](PROJECT.md). Sumber SOP dan batas pemeriksaannya ada di [bagian 10](#10-kewajiban-sop-dan-luaran). Pembaruan ini mempertahankan ID kebutuhan dari draft yang sudah ada; bukan persetujuan baru atas rincian produk.
+Status dokumen: draft kebutuhan Mars, diperbarui 22 November 2026. Acuan keputusan: [PROJECT.md](PROJECT.md). Sumber SOP dan batas pemeriksaannya ada di [bagian 10](#10-kewajiban-sop-dan-luaran). Home dan scoreboard P1 ditambahkan atas permintaan pengguna; ini bukan persetujuan baru atas rincian produk oleh kelompok.
 
-**Status aktual (19 November 2026):** Per 19 November 2026, kandidat P1–P4 berjalan pada Java/libGDX dan CPython bundel, dengan UI pixel art baru, editor autoindent, replay dan progres sesi. P4 menguji source sama pada dua proses/fixture irigasi baru dan memberi progres hanya setelah keduanya lulus. Paket Windows lokal teruji; backend, save lintas restart, puzzle 5–9, komputer kedua serta penerimaan manusia/aslab belum selesai. Target lengkap tetap 9 puzzle/3 misi; kandidat terimplementasi bukan persetujuan seluruh Usulan. Bukti di VERIFICATION dan handoff TASKS.
+**Status aktual (23 November 2026):** Kandidat P1–P4 berjalan pada Java/libGDX dan CPython bundel, dengan UI pixel art baru, editor autoindent, replay dan progres sesi. P4 menguji source sama pada dua proses/fixture irigasi baru dan memberi progres hanya setelah keduanya lulus. Source Home/login/tamu, setelan, backend akun/skor Spring dan papan skor P1 lokal tersedia; backend hanya menyimpan skor P1. Puzzle 5–9, save lintas restart, leaderboard lintas komputer, komputer kedua serta penerimaan manusia/aslab belum selesai. Target lengkap tetap 9 puzzle/3 misi; kandidat terimplementasi bukan persetujuan seluruh Usulan. Root adalah repository Java/libGDX; prototype web terpisah di prototype-web/. Bukti di [VERIFICATION](VERIFICATION.md), kontrak di [kontrak runtime](docs/mars/PYTHON_RUNTIME.md).
 
 **Cara membaca status:** **Dipilih** berarti keputusan yang tercatat di PROJECT.md; **Wajib SOP** berarti ketentuan tugas; **Rancangan kerja** berarti perilaku yang dijabarkan PROJECT.md tetapi rincian finalnya belum seluruhnya dipilih; **Usulan** berarti tambahan yang belum disepakati; **Belum diputuskan** berarti perlu keputusan sebelum bagian terkait menjadi kontrak final. **Diimplementasikan** dan **Terverifikasi** memerlukan bukti kode dan pemeriksaan aktual, terpisah dari status keputusan. Status pada tabel berlaku juga untuk kriteria penerimaan yang merujuknya.
 
@@ -100,6 +100,7 @@ Kolom **Tahap**: `1` = puzzle 1–4/demo, `L` = tambahan untuk game lengkap. Gam
 | FR-022 | Konten puzzle 1–4 tersedia berurutan dalam satu area habitat kecil. | Dipilih (tahap 1–4 dan area kecil); rincian konten Rancangan kerja | 1 | PROJECT.md §2, §4–5 |
 | FR-023 | Konten puzzle 5–9 dan penutup cerita (pompa aktif) tersedia. | Dipilih (target 9); rincian konten Rancangan kerja | L | PROJECT.md §4–5 |
 | FR-024 | Pada akhir misi besar, kontrol kembali ke astronaut agar pemain melihat pemulihan dan masalah berikutnya, atau penutup setelah misi terakhir. | Rancangan kerja | 1 (misi 1), L (misi 2–3) | PROJECT.md §4 Transisi |
+| FR-025 | Halaman awal menyediakan login/daftar atau mulai sebagai tamu, setelan sederhana, dan papan skor 10 pemain terbaik P1; papan skor juga dapat dibuka dari Peta Misi. | Ditambahkan atas permintaan pengguna 22 November 2026; persetujuan tim belum dicatat | 1 | Implementasi HomeScreen dan HabitatUi |
 
 ## 6. Kebutuhan nonfungsional
 
@@ -127,7 +128,7 @@ Target angka performa (FPS, waktu muat), ukuran uji UI, dan ambang respons Stop 
 
 **Game lengkap:** puzzle 5–9, misi pompa, dan penutup cerita.
 
-**Ditunda atau di luar cakupan saat ini:** NPC, dialog bercabang, inventory, crafting, combat, timer oksigen/kelaparan, serta leaderboard kompetitif tidak ditambahkan ke demo oleh PROJECT.md. Multiplayer, gamepad, ponsel, dan beberapa robot bukan target rancangan sekarang. Rekursi, kompleksitas formal, greedy, divide and conquer, DP, geometri, dan silabus kompetitif lengkap ditunda sesuai PROJECT.md §4.
+**Ditunda atau di luar cakupan saat ini:** NPC, dialog bercabang, inventory, crafting, combat, serta timer oksigen/kelaparan tidak ditambahkan ke demo oleh PROJECT.md. Multiplayer, gamepad, ponsel, dan beberapa robot bukan target rancangan sekarang. Papan skor lokal P1 ditambahkan atas permintaan pengguna, tetapi belum menjadi keputusan kelompok dan tidak dibagikan antarkomputer karena backend masih berjalan di localhost. Rekursi, kompleksitas formal, greedy, divide and conquer, DP, geometri, dan silabus kompetitif lengkap ditunda sesuai PROJECT.md §4.
 
 **Usulan batas editor:** syntax highlighting, autocomplete, dan debugger per baris tidak menjadi syarat tahap 1. Editor multiline, fokus, indentasi, seleksi, scrolling, dan keterbacaan error tetap perlu diuji. Penambahan fitur atau perubahan pattern mengikuti keputusan tim/aslab dan dicatat di PROJECT.md; tidak ditetapkan oleh PRD ini sendiri.
 
@@ -157,6 +158,7 @@ Kriteria berikut adalah **rencana pemeriksaan**, belum hasil test. Statusnya men
 | AC-18 | Untuk game lengkap, solusi referensi puzzle 5–9 lulus seluruh skenario/latihan wajib. Ketiga misi dapat dilalui sampai pompa aktif dan penutup cerita, dengan kontrol kembali ke astronaut pada transisi misi. | FR-014, FR-023, FR-024 |
 | AC-19 | Jika pemisahan untuk test dipilih, fixture dan evaluator dapat diperiksa otomatis melalui antarmukanya tanpa membuka window atau menjalankan Python nyata. | NFR-008 |
 | AC-20 | Inventaris aset pihak ketiga memiliki asal, lisensi yang sesuai penggunaan, dan kredit; kredit tampil pada luaran yang diwajibkan SOP. | NFR-011 |
+| AC-21 | Home menyediakan masuk/daftar atau mulai sebagai tamu, setelan dasar tersimpan, dan papan skor P1 bisa dibuka serta dimuat ulang dari Home maupun Peta Misi setelah skor tersimpan. Peringkat menunjukkan skor aksi terkecil lebih dulu dan maksimal satu baris per akun. | FR-025 |
 
 ## 9. Keputusan produk terbuka
 

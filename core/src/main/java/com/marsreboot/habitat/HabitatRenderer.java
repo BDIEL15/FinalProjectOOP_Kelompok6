@@ -87,6 +87,8 @@ public final class HabitatRenderer implements Disposable {
     private final List<WorldParticle> particles = new ArrayList<>();
     private final Map<RobotSimulation.Position, RobotSimulation.Crop> prevCrops = new HashMap<>();
     private final float[] harvestPopTimer = new float[8];
+    private final java.util.Set<RobotSimulation.Position> prevDry = new java.util.HashSet<>();
+    private final float[] wetFlashTimer = new float[8];
 
     private float animTime;
     private int astroDir = 0; // 0:Down, 1:Up, 2:Left, 3:Right
@@ -476,6 +478,37 @@ public final class HabitatRenderer implements Disposable {
                 shapes.rect(box.x() + 10f, box.y() + 16f + r * 26f, box.width() - 20f, 8f);
             }
 
+            if (view.puzzle().watering()) {
+                if (dry) {
+                    // Cracked parched soil: stepped zig-zag fissures + dust specks
+                    shapes.setColor(Color.valueOf("1F1108"));
+                    float cx = box.x() + 14f;
+                    for (int s = 0; s < 6; s++) {
+                        float zx = cx + s * 12f;
+                        float zy = box.y() + 24f + (s % 2 == 0 ? 0f : 6f) + (s > 2 ? 18f : 0f);
+                        shapes.rect(zx, zy, 8f, 3f);
+                        shapes.rect(zx + (s % 2 == 0 ? 6f : 0f), zy + 3f, 3f, 8f);
+                    }
+                    shapes.setColor(Color.valueOf("B45309"));
+                    shapes.rect(box.x() + 10f, box.y() + 12f, 4f, 4f);
+                    shapes.rect(box.right() - 18f, box.y() + 40f, 4f, 4f);
+                } else {
+                    // Moist: cyan sheen rows + droplet pixels
+                    shapes.setColor(COL_CYAN.r, COL_CYAN.g, COL_CYAN.b, 0.22f);
+                    for (int r = 0; r < 3; r++) {
+                        shapes.rect(box.x() + 10f, box.y() + 18f + r * 26f, box.width() - 20f, 3f);
+                    }
+                    shapes.setColor(Color.valueOf("A5F3FC"));
+                    shapes.rect(box.x() + 16f, box.y() + 62f, 4f, 6f);
+                    shapes.rect(box.right() - 22f, box.y() + 38f, 4f, 6f);
+                }
+                if (wetFlashTimer[Math.min(cell, wetFlashTimer.length - 1)] > 0f) {
+                    float f = wetFlashTimer[Math.min(cell, wetFlashTimer.length - 1)] / 0.6f;
+                    shapes.setColor(COL_CYAN.r, COL_CYAN.g, COL_CYAN.b, f * 0.45f);
+                    shapes.rect(box.x(), box.y(), box.width(), box.height());
+                }
+            }
+
             // Left crisp Rover docking bay plate inside plot
             float padX = box.x() + 34f;
             float padY = box.y() + 50f;
@@ -503,6 +536,17 @@ public final class HabitatRenderer implements Disposable {
 
             // Coordinate plate below bed
             drawBevelRect(box.centerX() - 26f, gy + 10f, 52f, 20f, 3f, Color.valueOf("08101A"));
+
+            // Failure feedback: outline plots the run left undone (still dry / ripe and unharvested)
+            boolean failedRun = view.status() == RunCoordinator.Status.INCOMPLETE
+                || view.status() == RunCoordinator.Status.LIMIT_EXCEEDED;
+            boolean undone = view.puzzle().watering() ? dry : crop == RobotSimulation.Crop.RIPE;
+            if (failedRun && undone) {
+                float a = 0.55f + 0.4f * pulse;
+                drawSquareOutline(box.x() - 3f, box.y() - 3f, box.width() + 6f, box.height() + 6f, 3f,
+                    new Color(COL_CORAL.r, COL_CORAL.g, COL_CORAL.b, a));
+                drawPixelCornerBrackets(box, COL_CORAL, 6f, 10f, 3f, a);
+            }
         }
 
         // Smooth Rover position in world coordinates
@@ -634,6 +678,9 @@ public final class HabitatRenderer implements Disposable {
             if (freshRun) {
                 harvestTagTimer = 0f;
                 java.util.Arrays.fill(harvestPopTimer, 0f);
+                java.util.Arrays.fill(wetFlashTimer, 0f);
+                prevDry.clear();
+                prevDry.addAll(snap.dryCells());
                 visualRoverCellX = targetX;
                 visualRoverCellY = targetY;
                 visualRoverAngleDeg = 0f;
@@ -668,6 +715,7 @@ public final class HabitatRenderer implements Disposable {
             if (prev == RobotSimulation.Crop.RIPE && cur == RobotSimulation.Crop.EMPTY) {
                 int idx = Math.max(0, Math.min(harvestPopTimer.length - 1, pos.x()));
                 harvestPopTimer[idx] = 0.45f;
+                SoundBank.play(SoundBank.Sfx.HARVEST);
                 HabitatWorld.Box pod = HabitatWorld.hydroCellBox(pos.x(), pos.y(), 2);
                 HabitatWorld.Box rover = HabitatWorld.roverBayBox(visualRoverCellX, visualRoverCellY, view.puzzle().columns());
                 beamFromX = rover.centerX() + 14f;
@@ -698,21 +746,59 @@ public final class HabitatRenderer implements Disposable {
         prevCrops.clear();
         prevCrops.putAll(snap.crops());
 
+        // Dry -> wet transition: splash burst + flash on that plot
+        for (RobotSimulation.Position p : prevDry) {
+            if (!snap.dryCells().contains(p)) {
+                int idx = Math.max(0, Math.min(wetFlashTimer.length - 1, p.x()));
+                wetFlashTimer[idx] = 0.6f;
+                SoundBank.play(SoundBank.Sfx.WATER);
+                if (!reducedMotion) {
+                    HabitatWorld.Box pod = HabitatWorld.hydroCellBox(p.x(), p.y(), view.puzzle().columns());
+                    for (int k = 0; k < 8; k++) {
+                        float ang = MathUtils.PI * (0.15f + 0.7f * k / 7f);
+                        float spd = MathUtils.random(26f, 52f);
+                        spawnParticle(pod.centerX(), pod.y() + 70f,
+                            MathUtils.cos(ang) * spd * 0.6f, MathUtils.sin(ang) * spd,
+                            0.5f, 4f, k % 2 == 0 ? COL_CYAN : Color.valueOf("A5F3FC"));
+                    }
+                }
+            }
+        }
+        prevDry.clear();
+        prevDry.addAll(snap.dryCells());
+
         if (view.status() != prevStatus) {
             prevStatus = view.status();
             if (view.status() == RunCoordinator.Status.SUCCESS) {
                 statusPulseColor.set(COL_EMERALD);
                 statusPulseTimer = 0.65f;
+                SoundBank.play(SoundBank.Sfx.SUCCESS);
+                if (!reducedMotion) {
+                    // Restoration burst: emerald/cyan sparks rising from the whole Bio-Dome bed
+                    HabitatWorld.Box g = HabitatWorld.GARDEN;
+                    for (int k = 0; k < 28; k++) {
+                        spawnParticle(g.x() + MathUtils.random(12f, g.width() - 12f), g.y() + MathUtils.random(20f, g.height() * 0.6f),
+                            MathUtils.random(-14f, 14f), MathUtils.random(28f, 64f),
+                            MathUtils.random(0.7f, 1.2f), MathUtils.random(3f, 5f),
+                            k % 3 == 0 ? COL_AMBER : (k % 3 == 1 ? COL_EMERALD : COL_CYAN));
+                    }
+                    if (camera != null) camera.addTrauma(0.10f);
+                }
             } else if (view.status() == RunCoordinator.Status.ERROR || view.status() == RunCoordinator.Status.TIMEOUT) {
                 statusPulseColor.set(COL_CORAL);
                 statusPulseTimer = 0.65f;
+                SoundBank.play(SoundBank.Sfx.FAIL);
             } else if (view.status() == RunCoordinator.Status.INCOMPLETE || view.status() == RunCoordinator.Status.LIMIT_EXCEEDED) {
                 statusPulseColor.set(COL_AMBER);
                 statusPulseTimer = 0.65f;
+                SoundBank.play(SoundBank.Sfx.FAIL);
             }
         }
 
         if (dt > 0f) {
+            for (int i = 0; i < wetFlashTimer.length; i++) {
+                if (wetFlashTimer[i] > 0f) wetFlashTimer[i] = Math.max(0f, wetFlashTimer[i] - dt);
+            }
             if (scanBeamTimer > 0f) scanBeamTimer = Math.max(0f, scanBeamTimer - dt);
             if (statusPulseTimer > 0f) statusPulseTimer = Math.max(0f, statusPulseTimer - dt);
             if (harvestTagTimer > 0f) harvestTagTimer = Math.max(0f, harvestTagTimer - dt);

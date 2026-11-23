@@ -19,6 +19,16 @@ public enum PuzzleDefinition {
     public int columns() { return columns; }
     public int targetCount() { return this == THREE || this == FOUR ? 2 : columns; }
     public int actionLimit() { return actionLimit; }
+    /** Fewest total robot actions (all scenarios) of the reference solution; see PuzzleProgressTest. */
+    public int referenceActions() {
+        return switch (this) { case ONE -> 3; case TWO -> 7; case THREE -> 5; case FOUR -> 10; };
+    }
+    public int totalActionLimit() { return actionLimit * scenarioCount(); }
+    /** Efficiency rating for a passing run: 3 = reference-optimal, 2 = within halfway to the limit, 1 = passes. Display only. */
+    public int efficiencyStars(int totalActions) {
+        if (totalActions <= referenceActions()) return 3;
+        return totalActions <= (referenceActions() + totalActionLimit()) / 2 ? 2 : 1;
+    }
     public String scenarioId() { return scenarioId(0); }
     public String scenarioId(int index) {
         if (index < 0 || index >= scenarioCount()) throw new IllegalArgumentException("Scenario index");
@@ -39,6 +49,51 @@ public enum PuzzleDefinition {
         return this == THREE ? "Panen matang di x=0,2. Jangan mencoba panen muda di x=1,3; gunakan can_harvest()."
             : this == TWO ? "Panen empat tanaman. Latihan for; penggunaan loop belum dinilai otomatis."
             : "Panen dua tanaman matang.";
+    }
+    /** Field-log story notes (3 lines) shown in the [J] log for this puzzle. */
+    public List<String> logNotes() {
+        return switch (this) {
+            case ONE -> List.of("Lokasi: Bio-Dome sektor timur. Dua tanaman matang masih bisa diselamatkan.",
+                "Rover menunggu perintah. Klik rover untuk membuka editor kode.",
+                "Batas: " + actionLimit + " aksi. Perintah pertama: harvest() dan move().");
+            case TWO -> List.of("Panen pertama berhasil, tetapi ada empat tanaman berjajar di bed.",
+                "Menulis perintah yang sama empat kali melelahkan. Ulangi dengan for.",
+                "Batas: " + actionLimit + " aksi. Loop adalah latihan; penggunaannya belum dinilai otomatis.");
+            case THREE -> List.of("Sebagian tanaman masih muda. Memanennya sekarang merusak kebun.",
+                "Sensor can_harvest() membaca petak aktif tanpa memakai aksi.",
+                "Batas: " + actionLimit + " aksi. Mencoba panen tanaman muda membuat percobaan gagal.");
+            case FOUR -> List.of("Panel air menunjukkan jatah terbatas: 2 unit per skenario.",
+                "Hanya sebagian petak yang kering, dan posisinya berbeda di tiap skenario.",
+                "Batas: " + actionLimit + " aksi dan 2 air per skenario. Satu kode harus lulus keduanya.");
+        };
+    }
+
+    public static final int HINT_TIERS = 3;
+    /** Progressive help, tier 1..3: concept, relevant API, partial skeleton. Never the full reference solution. */
+    public String hint(int tier) {
+        if (tier < 1 || tier > HINT_TIERS) throw new IllegalArgumentException("Hint tier");
+        return switch (this) {
+            case ONE -> switch (tier) {
+                case 1 -> "Panen tanaman di petak rover, lalu pindah ke petak berikutnya.";
+                case 2 -> "harvest() memanen petak aktif; move(\"east\") menggeser rover satu petak.";
+                default -> "harvest()\nmove(\"east\")\n# panen lagi di petak kedua";
+            };
+            case TWO -> switch (tier) {
+                case 1 -> "Empat tanaman berjajar: pekerjaan yang sama diulang empat kali.";
+                case 2 -> "for x in range(4): mengulang blok di bawahnya. Jangan bergerak setelah petak terakhir.";
+                default -> "for x in range(4):\n    harvest()\n    # move east hanya jika x < 3";
+            };
+            case THREE -> switch (tier) {
+                case 1 -> "Tanaman muda tidak boleh dipanen. Periksa dulu sebelum memanen.";
+                case 2 -> "can_harvest() bernilai True hanya pada tanaman matang dan tidak memakai aksi.";
+                default -> "for x in range(4):\n    if can_harvest():\n        # panen di sini\n    # lalu gerak ke petak berikutnya";
+            };
+            case FOUR -> switch (tier) {
+                case 1 -> "Air hanya 2 unit per skenario. Siram hanya petak yang kering.";
+                case 2 -> "needs_water() membaca petak aktif. water() pada petak lembap membuang air.";
+                default -> "for x in range(4):\n    if needs_water():\n        # siram di sini\n    # lalu gerak ke petak berikutnya";
+            };
+        };
     }
     public RobotSimulation.Fixture fixture() { return fixture(0); }
     public RobotSimulation.Fixture fixture(int index) {

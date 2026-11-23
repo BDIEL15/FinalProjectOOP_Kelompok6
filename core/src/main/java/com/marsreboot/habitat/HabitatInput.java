@@ -53,6 +53,7 @@ public final class HabitatInput extends InputAdapter {
 
     @Override
     public boolean keyDown(int keycode) {
+        if (ui != null && ui.isExitConfirmationOpen()) return false;
         boolean fresh = held.add(keycode);
         if (keycode == Keys.ESCAPE) {
             if (fresh) {
@@ -79,6 +80,7 @@ public final class HabitatInput extends InputAdapter {
 
     @Override
     public boolean keyTyped(char character) {
+        if (ui != null && ui.isExitConfirmationOpen()) return false;
         return character == 27 || (suppressInteractionText && (character == 'e' || character == 'E'));
     }
 

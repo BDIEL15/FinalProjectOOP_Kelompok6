@@ -22,6 +22,7 @@ import com.badlogic.gdx.scenes.scene2d.ui.ScrollPane.ScrollPaneStyle;
 import com.badlogic.gdx.scenes.scene2d.ui.Skin;
 import com.badlogic.gdx.scenes.scene2d.ui.Table;
 import com.badlogic.gdx.scenes.scene2d.ui.TextArea;
+import com.badlogic.gdx.scenes.scene2d.ui.TextField;
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton;
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton.TextButtonStyle;
 import com.badlogic.gdx.scenes.scene2d.ui.TextField.TextFieldStyle;
@@ -33,12 +34,15 @@ import com.badlogic.gdx.scenes.scene2d.utils.NinePatchDrawable;
 import com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable;
 import com.badlogic.gdx.utils.Align;
 import com.badlogic.gdx.utils.Disposable;
+import com.badlogic.gdx.Preferences;
 import com.badlogic.gdx.utils.viewport.ExtendViewport;
+import com.marsreboot.ExitConfirmationDialog;
 import com.marsreboot.runtime.RunCoordinator;
 import com.marsreboot.runtime.PuzzleDefinition;
 import com.marsreboot.runtime.RunCoordinator.Status;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 /**
  * Rounded, non-boxy Mars Outpost HUD & Unified Resizable Rover Terminal:
@@ -65,7 +69,26 @@ public final class HabitatUi implements Disposable {
 
     public static boolean isOutpostRestored() { return outpostRestored; }
     public static boolean isReducedMotion() { return reducedMotion; }
-    public static void setOutpostRestored(boolean restored) { outpostRestored = restored; }
+    public static boolean isHighContrastFocus() { return highContrastFocus; }
+    public static void setOutpostRestored(boolean restored) { outpostRestored = restored; saveSettings(); }
+    public static void setReducedMotion(boolean enabled) { reducedMotion = enabled; saveSettings(); }
+    public static void setHighContrastFocus(boolean enabled) { highContrastFocus = enabled; saveSettings(); }
+
+    public static void loadSettings() {
+        Preferences saved = Gdx.app.getPreferences("mars-reboot-settings");
+        outpostRestored = saved.getBoolean("outpostRestored", false);
+        reducedMotion = saved.getBoolean("reducedMotion", false);
+        highContrastFocus = saved.getBoolean("highContrastFocus", true);
+    }
+
+    private static void saveSettings() {
+        if (Gdx.app == null) return;
+        Preferences saved = Gdx.app.getPreferences("mars-reboot-settings");
+        saved.putBoolean("outpostRestored", outpostRestored);
+        saved.putBoolean("reducedMotion", reducedMotion);
+        saved.putBoolean("highContrastFocus", highContrastFocus);
+        saved.flush();
+    }
 
     public enum AuxOverlay { NONE, FIELD_LOG, MISSION_MAP, SETTINGS }
 
@@ -92,6 +115,13 @@ public final class HabitatUi implements Disposable {
     private final Label goalStatusLabel;
     private final Label editorHeaderRangeLabel;
     private final Label lineNumbersLabel;
+    private Label logHeaderLabel;
+    private final Label[] logNoteLabels = new Label[3];
+    private TextButton nextHintBtn;
+    private PuzzleDefinition helpPuzzle;
+    private int helpTier;
+    private int errorLine;
+    private String errorSource;
     private final Label consoleTitleLabel;
     private final Label consoleDetailLabel;
     private final ScrollPane consoleScroll;
@@ -120,6 +150,7 @@ public final class HabitatUi implements Disposable {
 
     private final TextFieldStyle editorStyle;
     private final TextButton reducedMotionBtn;
+    private final TextButton soundBtn;
     private final TextButton highContrastBtn;
     private final TextButton previewVisualBtn;
     private final TextButton logToggleBtn;
@@ -128,9 +159,20 @@ public final class HabitatUi implements Disposable {
     private final Table p1MissionCard;
     private final Label p1MissionStatusLabel;
     private final Label p1MissionDetailLabel;
+    private final TextField backendUsernameField;
+    private final TextField backendPasswordField;
+    private final Label backendStatusLabel;
+    private final Label backendBestScoreLabel;
+    private final Label backendLeaderboardLabel;
+    private final TextButton backendLoginButton;
+    private final TextButton backendRegisterButton;
+    private final TextButton backendLogoutButton;
+    private final TextButton saveScoreButton;
+    private final Cell<TextButton> saveScoreButtonCell;
     private final LabelStyle cyanStyle;
     private final LabelStyle emeraldStyle;
     private final LabelStyle amberStyle;
+    private final ScoreBackendClient scoreBackend;
 
     // Reflection fields inspected by desktop smoke tests
     private final Window inspection;
@@ -141,6 +183,7 @@ public final class HabitatUi implements Disposable {
     private final Window fieldLogWindow;
     private final Window missionMapWindow;
     private final Window settingsWindow;
+    private final ExitConfirmationDialog exitDialog;
 
     private final TextButton runButton;
     private final TextButton stopButton;
@@ -151,12 +194,22 @@ public final class HabitatUi implements Disposable {
     private HabitatWorld.Mode shown;
     private AuxOverlay activeOverlay = AuxOverlay.NONE;
     private RunCoordinator.View shownPuzzle;
+    private long scoreAttemptedGeneration = -1;
+    private long scoreSavedGeneration = -1;
+    private long scoreSubmissionGeneration = -1;
+    private String scoreSubmissionId;
     private boolean helpDrawerOpen = false;
     private boolean logManualExpanded = false;
 
     public HabitatUi(HabitatWorld world, RunCoordinator coordinator) {
+        this(world, coordinator, new ScoreBackendClient());
+    }
+
+    public HabitatUi(HabitatWorld world, RunCoordinator coordinator, ScoreBackendClient scoreBackend) {
         this.world = world;
         this.coordinator = coordinator;
+        this.scoreBackend = scoreBackend;
+        loadSettings();
 
         // Clear ~18 UI-unit body typography + 15 UI-unit top/bottom pills
         uiFont = loadBitmapFont("ui/ui_sans.fnt", "ui/ui_sans.png", 0.50f, false);
@@ -205,6 +258,16 @@ public final class HabitatUi implements Disposable {
         WindowStyle warmWindowStyle = new WindowStyle(
             uiBoldFont, COL_TEXT_PRIMARY,
             makeRoundedWindow(Color.valueOf("0B111CEB"), COL_AMBER, 14, 34)
+        );
+        TextButtonStyle exitButtonStyle = makeButtonStyle(
+            uiBoldFont, COL_TEXT_PRIMARY,
+            Color.valueOf("641B24"), Color.valueOf("991B1B"), Color.valueOf("450A0A"),
+            COL_CORAL, Color.WHITE, 10
+        );
+        TextButtonStyle hudExitButtonStyle = makeButtonStyle(
+            hudBoldFont, COL_TEXT_PRIMARY,
+            Color.valueOf("641B24EC"), Color.valueOf("991B1BF4"), Color.valueOf("450A0AFF"),
+            COL_CORAL, Color.WHITE, 11
         );
 
         TextButtonStyle hudPillBtnStyle = makeButtonStyle(
@@ -267,6 +330,8 @@ public final class HabitatUi implements Disposable {
         logBtn.addListener(onAction(() -> toggleAuxOverlay(AuxOverlay.FIELD_LOG)));
         TextButton settingsBtn = new TextButton("[O] Setelan", hudPillBtnStyle);
         settingsBtn.addListener(onAction(() -> toggleAuxOverlay(AuxOverlay.SETTINGS)));
+        TextButton exitBtn = new TextButton("Keluar", hudExitButtonStyle);
+        exitBtn.addListener(onAction(this::showExitConfirmation));
 
         Table badgeBox = new Table();
         badgeBox.setBackground(statusPillBg);
@@ -278,6 +343,7 @@ public final class HabitatUi implements Disposable {
         topRightBar.add(missionBtn).height(28f);
         topRightBar.add(settingsBtn).height(28f);
         topRightBar.add(badgeBox).height(28f);
+        topRightBar.add(exitBtn).height(28f);
 
         Table topRow = new Table();
         topRow.pad(10f, 14f, 0f, 14f);
@@ -517,6 +583,12 @@ public final class HabitatUi implements Disposable {
         apiBody.pad(10f, 12f, 10f, 12f);
         puzzleHintLabel = wrapLabel("", bodyStyle);
         apiBody.add(puzzleHintLabel).growX().minWidth(0).left().padBottom(8f).row();
+        nextHintBtn = new TextButton("Petunjuk berikutnya (1/3)", softBtnStyle);
+        nextHintBtn.setName("nextHint");
+        nextHintBtn.addListener(onAction(() -> {
+            if (helpTier < PuzzleDefinition.HINT_TIERS) helpTier++;
+        }));
+        apiBody.add(nextHintBtn).height(30f).left().padBottom(10f).row();
         apiBody.add(wrapLabel("harvest() — Panen petak aktif (1 aksi)", bodyStyle)).growX().minWidth(0).left().padBottom(6f).row();
         apiBody.add(wrapLabel("move(\"east\"|\"west\"|\"north\"|\"south\") — Gerak rover (1 aksi)", bodyStyle)).growX().minWidth(0).left().padBottom(6f).row();
         apiBody.add(wrapLabel("can_harvest() — Cek tanaman matang (gratis)", mutedStyle)).growX().minWidth(0).left().padBottom(6f).row();
@@ -538,16 +610,19 @@ public final class HabitatUi implements Disposable {
         Table logCard = new Table();
         logCard.setBackground(cardNeutralBg);
         logCard.pad(12f, 14f, 12f, 14f);
-        logCard.add(wrapLabel("• Lokasi Target: kompleks Bio-Dome sektor Timur.", bodyStyle)).growX().minWidth(0).left().padBottom(6f).row();
-        logCard.add(wrapLabel("• Encounter Rover: klik langsung Rover di Bio-Dome untuk membuka editor kode.", mutedStyle)).growX().minWidth(0).left().padBottom(6f).row();
-        logCard.add(wrapLabel("• Kode dijalankan Python bundel terisolasi; batas Puzzle 1 adalah 6 aksi.", mutedStyle)).growX().minWidth(0).left();
+        logHeaderLabel = new Label("", cyanStyle);
+        logCard.add(logHeaderLabel).growX().minWidth(0).left().padBottom(8f).row();
+        for (int i = 0; i < logNoteLabels.length; i++) {
+            logNoteLabels[i] = wrapLabel("", i == 0 ? bodyStyle : mutedStyle);
+            logCard.add(logNoteLabels[i]).growX().minWidth(0).left().padBottom(i < logNoteLabels.length - 1 ? 6f : 0f).row();
+        }
         fieldLogWindow.add(logCard).growX().minWidth(0).pad(4f, 10f, 10f, 10f).row();
         TextButton closeLogBtn = new TextButton("Tutup [Esc]", primaryCyanStyle);
         closeLogBtn.addListener(onAction(() -> closeAuxOverlays()));
         fieldLogWindow.add(closeLogBtn).height(32f).right().pad(0f, 10f, 8f, 10f);
 
         // --- 5. Mission Map [M] ---
-        missionMapWindow = createBaseWindow(" PETA MISI OUTPOST", glassWindowStyle, 600f, 380f);
+        missionMapWindow = createBaseWindow(" PETA MISI OUTPOST", glassWindowStyle, 650f, 520f);
         p1MissionCard = new Table();
         p1MissionCard.setBackground(cardCyanBg);
         p1MissionCard.pad(10f, 12f, 10f, 12f);
@@ -563,6 +638,54 @@ public final class HabitatUi implements Disposable {
         missionMapWindow.add(p3MissionStatusLabel).growX().minWidth(0).pad(4f, 10f, 8f, 10f).row();
         p4MissionStatusLabel = wrapLabel("P4 Irigasi: selesaikan P3 untuk membuka.", mutedStyle);
         missionMapWindow.add(p4MissionStatusLabel).growX().minWidth(0).pad(4f, 10f, 8f, 10f).row();
+
+        Table accountCard = new Table();
+        accountCard.setBackground(cardNeutralBg);
+        accountCard.pad(8f, 12f, 8f, 12f);
+        Label accountTitle = new Label("Akun dan rekor tersimpan", hudBoldStyle);
+        accountCard.add(accountTitle).growX().minWidth(0).left().colspan(3).row();
+
+        backendUsernameField = new TextField("", editorStyle);
+        backendUsernameField.setMessageText("Nama akun");
+        backendPasswordField = new TextField("", editorStyle);
+        backendPasswordField.setMessageText("Kata sandi (min. 8 karakter)");
+        backendPasswordField.setPasswordMode(true);
+        backendPasswordField.setPasswordCharacter('*');
+
+        accountCard.add(backendUsernameField).growX().minWidth(0).height(32f).padTop(6f).padRight(6f);
+        accountCard.add(backendPasswordField).growX().minWidth(0).height(32f).padTop(6f).row();
+
+        backendRegisterButton = new TextButton("Daftar", softBtnStyle);
+        backendRegisterButton.addListener(onAction(this::registerBackendAccount));
+        backendLoginButton = new TextButton("Masuk", primaryCyanStyle);
+        backendLoginButton.addListener(onAction(this::loginBackendAccount));
+        backendLogoutButton = new TextButton("Keluar", softBtnStyle);
+        backendLogoutButton.addListener(onAction(this::logoutBackendAccount));
+
+        accountCard.add(backendRegisterButton).height(30f).growX().padTop(6f).padRight(4f);
+        accountCard.add(backendLoginButton).height(30f).growX().padTop(6f).padRight(4f);
+        accountCard.add(backendLogoutButton).height(30f).growX().padTop(6f).row();
+
+        backendBestScoreLabel = new Label("Rekor P1: masuk untuk melihat", mutedStyle);
+        accountCard.add(backendBestScoreLabel).growX().minWidth(0).left().colspan(3).padTop(4f).row();
+
+        Table leaderboardRow = new Table();
+        backendLeaderboardLabel = wrapLabel("Papan skor P1: tekan Muat skor", mutedStyle);
+        leaderboardRow.add(backendLeaderboardLabel).growX().minWidth(0).left().padRight(8f);
+        TextButton refreshLeaderboardButton = new TextButton("Muat skor", softBtnStyle);
+        refreshLeaderboardButton.addListener(onAction(this::refreshBackendLeaderboard));
+        leaderboardRow.add(refreshLeaderboardButton).height(30f).right();
+        accountCard.add(leaderboardRow).growX().minWidth(0).colspan(3).padTop(6f).row();
+
+        saveScoreButton = new TextButton("Coba simpan skor P1 lagi", softBtnStyle);
+        saveScoreButton.addListener(onAction(() -> saveCurrentScore(coordinator.view())));
+        saveScoreButtonCell = accountCard.add(saveScoreButton).height(0f).growX().colspan(3).padTop(0f);
+        accountCard.row();
+
+        backendStatusLabel = wrapLabel("Masuk agar rekor tersimpan di backend lokal.", mutedStyle);
+        accountCard.add(backendStatusLabel).growX().minWidth(0).left().colspan(3).padTop(4f);
+        missionMapWindow.add(accountCard).growX().minWidth(0).pad(0f, 10f, 8f, 10f).row();
+
         Table pGrid = new Table();
         pGrid.defaults().pad(4f).growX().minWidth(0);
         for (int p = 5; p <= 9; p++) {
@@ -579,33 +702,44 @@ public final class HabitatUi implements Disposable {
         missionMapWindow.add(closeMissionBtn).height(32f).right().pad(0f, 10f, 8f, 10f);
 
         // --- 6. Settings [O] ---
-        settingsWindow = createBaseWindow(" SETELAN & AKSESIBILITAS", glassWindowStyle, 480f, 290f);
+        settingsWindow = createBaseWindow(" SETELAN & AKSESIBILITAS", glassWindowStyle, 480f, 332f);
         Table optCard = new Table();
         optCard.setBackground(cardNeutralBg);
         optCard.pad(10f, 12f, 10f, 12f);
         optCard.defaults().height(34f).padBottom(8f);
 
         reducedMotionBtn = new TextButton("", softBtnStyle);
-        reducedMotionBtn.addListener(onAction(() -> { reducedMotion = !reducedMotion; refreshSettingsLabels(); }));
+        reducedMotionBtn.addListener(onAction(() -> { setReducedMotion(!reducedMotion); refreshSettingsLabels(); }));
+        soundBtn = new TextButton("", softBtnStyle);
+        soundBtn.addListener(onAction(() -> { SoundBank.setMuted(!SoundBank.isMuted()); refreshSettingsLabels(); }));
         highContrastBtn = new TextButton("", softBtnStyle);
         highContrastBtn.addListener(onAction(() -> {
-            highContrastFocus = !highContrastFocus;
+            setHighContrastFocus(!highContrastFocus);
             refreshSettingsLabels();
         }));
         previewVisualBtn = new TextButton("", softBtnStyle);
         previewVisualBtn.setName("previewVisualBtn");
         previewVisualBtn.addListener(onAction(() -> {
             outpostRestored = !outpostRestored;
+            saveSettings();
             refreshSettingsLabels();
         }));
 
         optCard.add(reducedMotionBtn).growX().minWidth(0).row();
+        optCard.add(soundBtn).growX().minWidth(0).row();
         optCard.add(highContrastBtn).growX().minWidth(0).row();
         optCard.add(previewVisualBtn).growX().minWidth(0).padBottom(0f);
         settingsWindow.add(optCard).growX().minWidth(0).pad(4f, 10f, 10f, 10f).row();
         TextButton closeSettingsBtn = new TextButton("Tutup [Esc]", primaryCyanStyle);
         closeSettingsBtn.addListener(onAction(() -> closeAuxOverlays()));
         settingsWindow.add(closeSettingsBtn).height(32f).right().pad(0f, 10f, 8f, 10f);
+
+        exitDialog = new ExitConfirmationDialog(
+            glassWindowStyle,
+            new LabelStyle(uiFont, COL_TEXT_SECONDARY),
+            primaryCyanStyle,
+            exitButtonStyle
+        );
 
         stage.addActor(inspection);
         stage.addActor(terminal);
@@ -619,6 +753,7 @@ public final class HabitatUi implements Disposable {
             @Override
             public boolean keyDown(InputEvent event, int keycode) {
                 if (world.mode() == HabitatWorld.Mode.EXPLORING) {
+                    if (isExitConfirmationOpen()) return false;
                     if (keycode == Keys.M) { toggleAuxOverlay(AuxOverlay.MISSION_MAP); return true; }
                     if (keycode == Keys.J) { toggleAuxOverlay(AuxOverlay.FIELD_LOG); return true; }
                     if (keycode == Keys.O) { toggleAuxOverlay(AuxOverlay.SETTINGS); return true; }
@@ -629,10 +764,19 @@ public final class HabitatUi implements Disposable {
 
         refreshSettingsLabels();
         syncPuzzle();
+        if (scoreBackend.isLoggedIn()) {
+            backendStatusLabel.setText("Login sebagai " + scoreBackend.getUsername() + ".");
+            refreshBackendBestScore();
+        }
     }
 
     public Stage stage() { return stage; }
-    public boolean hasOpenOverlay() { return activeOverlay != AuxOverlay.NONE; }
+    public boolean hasOpenOverlay() { return activeOverlay != AuxOverlay.NONE || isExitConfirmationOpen(); }
+    public boolean isExitConfirmationOpen() { return exitDialog.hasParent(); }
+
+    public void showExitConfirmation() {
+        exitDialog.open(stage);
+    }
 
     public void setHelpDrawerOpen(boolean open) {
         helpDrawerOpen = open;
@@ -645,6 +789,10 @@ public final class HabitatUi implements Disposable {
         if (world.mode() != HabitatWorld.Mode.EXPLORING) return;
         activeOverlay = (activeOverlay == overlay) ? AuxOverlay.NONE : overlay;
         updateAuxOverlayVisibility();
+        if (activeOverlay == AuxOverlay.MISSION_MAP) {
+            refreshBackendLeaderboard();
+            if (scoreBackend.isLoggedIn()) refreshBackendBestScore();
+        }
     }
 
     public void closeAuxOverlays() {
@@ -737,6 +885,118 @@ public final class HabitatUi implements Disposable {
         stage.setKeyboardFocus(editor);
     }
 
+    private void registerBackendAccount() {
+        String username = backendUsernameField.getText().trim();
+        String password = backendPasswordField.getText();
+
+        if (username.isEmpty() || password.isEmpty()) {
+            backendStatusLabel.setText("Isi nama akun dan kata sandi dulu.");
+            return;
+        }
+
+        try {
+            scoreBackend.register(username, password);
+            backendStatusLabel.setText("Akun dibuat. Tekan Masuk dengan kata sandi yang sama.");
+        } catch (Exception error) {
+            backendStatusLabel.setText("Daftar gagal: " + error.getMessage());
+        }
+    }
+
+    private void loginBackendAccount() {
+        String username = backendUsernameField.getText().trim();
+        String password = backendPasswordField.getText();
+
+        if (username.isEmpty() || password.isEmpty()) {
+            backendStatusLabel.setText("Isi nama akun dan kata sandi dulu.");
+            return;
+        }
+
+        try {
+            scoreBackend.login(username, password);
+            backendPasswordField.setText("");
+            backendStatusLabel.setText("Login sebagai " + scoreBackend.getUsername() + ".");
+            refreshBackendBestScore();
+            syncPuzzle();
+        } catch (Exception error) {
+            backendStatusLabel.setText("Login gagal: " + error.getMessage());
+        }
+    }
+
+    private void logoutBackendAccount() {
+        try {
+            scoreBackend.logout();
+            backendStatusLabel.setText("Kamu sudah keluar dari akun.");
+            backendBestScoreLabel.setText("Rekor P1: masuk untuk melihat");
+            syncPuzzle();
+        } catch (Exception error) {
+            backendStatusLabel.setText("Gagal keluar: " + error.getMessage());
+        }
+    }
+
+    private void refreshBackendBestScore() {
+        try {
+            Integer bestScore = scoreBackend.getBestScore();
+
+            if (bestScore == null) {
+                backendBestScoreLabel.setText("Rekor P1: belum ada skor");
+            } else {
+                backendBestScoreLabel.setText("Rekor terbaik P1: " + bestScore + " aksi");
+            }
+        } catch (Exception error) {
+            backendBestScoreLabel.setText("Rekor P1 belum bisa dimuat.");
+        }
+    }
+
+    private void refreshBackendLeaderboard() {
+        try {
+            List<String> rows = scoreBackend.getLeaderboard();
+            if (rows.isEmpty()) {
+                backendLeaderboardLabel.setText("Papan skor P1: belum ada skor.");
+                return;
+            }
+
+            StringBuilder text = new StringBuilder("Papan skor P1 (aksi paling sedikit):");
+            int shown = Math.min(5, rows.size());
+            for (int i = 0; i < shown; i++) {
+                text.append("\n").append(rows.get(i));
+            }
+            backendLeaderboardLabel.setText(text.toString());
+        } catch (Exception error) {
+            backendLeaderboardLabel.setText("Papan skor belum bisa dimuat. Cek backend lalu coba lagi.");
+        }
+    }
+
+    private void saveCurrentScore(RunCoordinator.View view) {
+        // Backend saat ini hanya menyimpan skor P1 (puzzleId=P1, fixture p1-a).
+        if (view.puzzle() != PuzzleDefinition.ONE || view.status() != Status.SUCCESS) {
+            backendStatusLabel.setText("Selesaikan puzzle P1 dulu sebelum menyimpan skor.");
+            return;
+        }
+
+        if (!scoreBackend.isLoggedIn()) {
+            backendStatusLabel.setText("Masuk dulu agar skor bisa disimpan ke akunmu.");
+            return;
+        }
+
+        if (scoreSubmissionGeneration != view.generation()) {
+            scoreSubmissionGeneration = view.generation();
+            scoreSubmissionId = UUID.randomUUID().toString();
+        }
+
+        scoreAttemptedGeneration = view.generation();
+
+        try {
+            int actionCount = view.snapshot().actionCount();
+            scoreBackend.submitScore(scoreSubmissionId, actionCount);
+            scoreSavedGeneration = view.generation();
+            backendStatusLabel.setText("Skor P1 berhasil disimpan.");
+            refreshBackendBestScore();
+            refreshBackendLeaderboard();
+        } catch (Exception error) {
+            backendStatusLabel.setText("Skor belum tersimpan: " + error.getMessage());
+        }
+    }
+
     private void syncPuzzle() {
         RunCoordinator.View view = coordinator.view();
         shownPuzzle = view;
@@ -758,7 +1018,19 @@ public final class HabitatUi implements Disposable {
         puzzleFourButton.setDisabled(!view.canRun() || !coordinator.isCompleted(PuzzleDefinition.THREE));
         puzzleFourButton.setText(coordinator.isCompleted(PuzzleDefinition.THREE) ? "P4 Irigasi" : "P4 [x]");
         p4MissionStatusLabel.setText(coordinator.isCompleted(PuzzleDefinition.FOUR) ? "P4 IRIGASI • SELESAI (2 SKENARIO)" : coordinator.isCompleted(PuzzleDefinition.THREE) ? "P4 IRIGASI • TERSEDIA — kode sama, dua skenario." : "P4 IRIGASI • TERKUNCI — selesaikan P3.");
-        puzzleHintLabel.setText(view.puzzle().instruction() + "\n" + view.puzzle().reference());
+        if (helpPuzzle != view.puzzle()) {
+            helpPuzzle = view.puzzle();
+            helpTier = 0;
+            logHeaderLabel.setText("PUZZLE " + helpPuzzle.number() + " / 9");
+            var notes = helpPuzzle.logNotes();
+            for (int i = 0; i < logNoteLabels.length; i++) logNoteLabels[i].setText("• " + notes.get(i));
+        }
+        StringBuilder help = new StringBuilder(view.puzzle().instruction());
+        for (int t = 1; t <= helpTier; t++) help.append("\n\nPetunjuk ").append(t).append(": ").append(view.puzzle().hint(t));
+        puzzleHintLabel.setText(help.toString());
+        boolean moreHints = helpTier < PuzzleDefinition.HINT_TIERS;
+        nextHintBtn.setDisabled(!moreHints);
+        nextHintBtn.setText(moreHints ? "Petunjuk berikutnya (" + (helpTier + 1) + "/" + PuzzleDefinition.HINT_TIERS + ")" : "Semua petunjuk dibuka");
         puzzleStats.setText("M1-P" + view.puzzle().number() + " | PANEN " + harvests + "/" + targets + " | AKSI " + actions + "/" + maxActions);
         goalSummaryLabel.setText("Panen " + harvests + "/" + targets + " • Aksi " + actions + "/" + maxActions);
 
@@ -768,8 +1040,41 @@ public final class HabitatUi implements Disposable {
             goalSummaryLabel.setText("Siram " + harvests + "/2 • Air " + snap.waterRemaining() + "/2");
         }
         Status st = view.status();
+        if (st == Status.ERROR) {
+            if (errorLine == 0) {
+                errorLine = parseErrorLine(view.message());
+                errorSource = editor.getText();
+            }
+        } else {
+            errorLine = 0;
+            errorSource = null;
+        }
         updateStatusBadge(st, view.completed());
         updateMissionMapCard(st, view.completed(), harvests, actions, maxActions);
+
+        boolean scorablePuzzle = view.puzzle() == PuzzleDefinition.ONE;
+        if (st == Status.SUCCESS && scorablePuzzle) {
+            if (!scoreBackend.isLoggedIn()) {
+                backendStatusLabel.setText("Puzzle sukses. Masuk untuk menyimpan skornya.");
+            } else if (scoreAttemptedGeneration != view.generation()) {
+                saveCurrentScore(view);
+            }
+        }
+
+        boolean loggedIn = scoreBackend.isLoggedIn();
+        backendLoginButton.setDisabled(loggedIn);
+        backendRegisterButton.setDisabled(loggedIn);
+        backendLogoutButton.setDisabled(!loggedIn);
+        backendUsernameField.setDisabled(loggedIn);
+        backendPasswordField.setDisabled(loggedIn);
+
+        boolean scoreCanBeSaved = st == Status.SUCCESS && loggedIn && scorablePuzzle;
+        saveScoreButton.setVisible(scoreCanBeSaved);
+        saveScoreButtonCell.height(scoreCanBeSaved ? 30f : 0f).padTop(scoreCanBeSaved ? 4f : 0f);
+        saveScoreButton.setDisabled(!scoreCanBeSaved || scoreSavedGeneration == view.generation());
+        saveScoreButton.setText(scoreSavedGeneration == view.generation()
+                ? "Skor P1 tersimpan"
+                : "Coba simpan skor P1 lagi");
 
         runButton.setDisabled(!view.canRun());
         stopButton.setDisabled(!view.canStop());
@@ -817,10 +1122,15 @@ public final class HabitatUi implements Disposable {
                 consoleBox.setBackground(consoleSuccessBg);
                 consoleTitleLabel.setColor(COL_EMERALD);
                 title = "Sukses! " + harvests + "/" + targets + " tanaman dipanen (" + actions + "/" + maxActions + " aksi).";
-                hint = "Pencapaian sesi puzzle tercatat.";
+                int totalActs = watering ? view.totalActions() : actions;
+                int stars = view.puzzle().efficiencyStars(totalActs);
+                String rating = "Efisiensi " + stars + "/3" + (stars == 3 ? " (optimal)"
+                    : ", optimal " + view.puzzle().referenceActions() + " aksi");
+                hint = "Pencapaian sesi tercatat. " + rating + "."
+                    + (view.puzzle() == PuzzleDefinition.ONE ? " Skor P1 dikirim otomatis jika kamu sudah login." : "");
                 if (watering) {
                     title = "Sukses! " + view.scenariosPassed() + "/2 skenario lulus.";
-                    hint = "Total " + view.totalActions() + " aksi dan " + view.totalWaterUsed() + " air (batas 12 aksi/2 air per skenario).";
+                    hint = "Total " + view.totalActions() + " aksi dan " + view.totalWaterUsed() + " air. " + rating + ".";
                 }
             }
             case INCOMPLETE -> {
@@ -829,7 +1139,7 @@ public final class HabitatUi implements Disposable {
                 title = view.puzzle().rejectsYoungHarvest() && snap.invalidHarvestCount() > 0
                     ? "Tidak lulus: mencoba panen tanaman muda." : "Target belum selesai (" + harvests + "/" + targets + " dipanen).";
                 if (watering) title = "Belum lulus: " + view.scenarioId() + " (" + harvests + "/2 petak disiram).";
-                hint = watering ? view.message() + " Gunakan needs_water() agar air tidak terbuang pada petak lembap." : view.puzzle() == PuzzleDefinition.THREE ? view.message() + " " + view.puzzle().instruction() : "Panen setiap tanaman dari x=0 sampai x=" + (targets - 1) + ". Gunakan [?] API untuk contoh.";
+                hint = watering ? view.message() + " Gunakan needs_water() agar air tidak terbuang pada petak lembap." : view.puzzle() == PuzzleDefinition.THREE ? view.message() + " " + view.puzzle().instruction() : "Panen setiap tanaman dari x=0 sampai x=" + (targets - 1) + ". Buka [?] API untuk petunjuk bertahap.";
             }
             case LIMIT_EXCEEDED -> {
                 consoleBox.setBackground(consoleWarnBg);
@@ -871,8 +1181,11 @@ public final class HabitatUi implements Disposable {
         boolean showSuccessActions = st == Status.SUCCESS;
         successSummaryRow.setVisible(showSuccessActions);
         successSummaryRowCell.height(showSuccessActions ? 32f : 0f).padTop(showSuccessActions ? 4f : 0f);
-        successSummaryLabel.setText(watering ? view.totalActions() + " aksi • " + view.totalWaterUsed() + " air"
-            : harvests + " dipanen • " + actions + " aksi");
+        int summaryActs = watering ? view.totalActions() : actions;
+        String starText = st == Status.SUCCESS ? "  [" + "*".repeat(view.puzzle().efficiencyStars(summaryActs))
+            + "-".repeat(3 - view.puzzle().efficiencyStars(summaryActs)) + "]" : "";
+        successSummaryLabel.setText((watering ? view.totalActions() + " aksi • " + view.totalWaterUsed() + " air"
+            : harvests + " dipanen • " + actions + " aksi") + starText);
     }
 
     private void updateStatusBadge(Status st, boolean completed) {
@@ -921,6 +1234,17 @@ public final class HabitatUi implements Disposable {
         }
     }
 
+    /** Parses the "Baris N: ..." prefix added by PythonRuntime; 0 when absent. */
+    static int parseErrorLine(String message) {
+        if (message == null || !message.startsWith("Baris ")) return 0;
+        int i = 6, n = 0;
+        while (i < message.length() && Character.isDigit(message.charAt(i)) && n < 100000) {
+            n = n * 10 + (message.charAt(i) - '0');
+            i++;
+        }
+        return i > 6 ? n : 0;
+    }
+
     private void updateVisibleEditorGutter() {
         int totalLines = Math.max(1, editor.getLines());
         int showing = Math.max(1, editor.getLinesShowing());
@@ -928,9 +1252,10 @@ public final class HabitatUi implements Disposable {
         int endLine = Math.min(totalLines, firstLine + showing);
 
         StringBuilder sb = new StringBuilder();
+        boolean markError = errorLine > 0 && errorSource != null && errorSource.equals(editor.getText());
         for (int i = firstLine + 1; i <= endLine; i++) {
             if (sb.length() > 0) sb.append('\n');
-            sb.append(i);
+            sb.append(markError && i == errorLine ? "!" + i : String.valueOf(i));
         }
         lineNumbersLabel.setText(sb.toString());
         editorHeaderRangeLabel.setText("Baris " + (firstLine + 1) + "-" + endLine + " / " + totalLines);
@@ -938,6 +1263,7 @@ public final class HabitatUi implements Disposable {
 
     private void refreshSettingsLabels() {
         reducedMotionBtn.setText("Kurangi Animasi Kamera & Partikel: " + (reducedMotion ? "AKTIF" : "MATI"));
+        soundBtn.setText("Efek Suara: " + (SoundBank.isMuted() ? "MATI" : "AKTIF"));
         highContrastBtn.setText("Bingkai Fokus Kontras Tinggi: " + (highContrastFocus ? "AKTIF" : "STANDAR"));
         previewVisualBtn.setText("Preview Visual Outpost Pulih (Kosmetik): " + (outpostRestored ? "AKTIF" : "MATI"));
     }
@@ -1027,6 +1353,7 @@ public final class HabitatUi implements Disposable {
         return new ChangeListener() {
             @Override
             public void changed(ChangeEvent event, Actor actor) {
+                SoundBank.play(SoundBank.Sfx.CLICK);
                 action.run();
             }
         };

@@ -35,5 +35,17 @@
     {"path": "habitat/astronaut_eva_sheet.png", "width": 192, "height": 224, "worldBounds": "28x32 world collider (4x4 frames of 48x56)", "role": "4-direction EVA astronaut crisp pixel walk & idle sprite sheet"},
     {"path": "habitat/astronaut_eva.png", "width": 48, "height": 56, "worldBounds": "28x32 world collider", "role": "EVA astronaut default facing crisp pixel frame"},
     {"path": "habitat/light_glow.png", "width": 128, "height": 128, "worldBounds": "radial 2D additive glow (Linear)", "role": "Smooth radial point light map for Pathway-style 2D ambient lighting"}
-  ]
+  ],
+  "audio": {
+    "origin": "Synthesized by tools/GenerateSfx.java (sine/square tones, zero third-party audio)",
+    "license": "Project-owned internal assets",
+    "format": "WAV 16-bit mono 22050 Hz",
+    "assets": [
+      {"path": "audio/sfx_click.wav", "role": "UI button click"},
+      {"path": "audio/sfx_water.wav", "role": "Plot turns from dry to wet"},
+      {"path": "audio/sfx_harvest.wav", "role": "Ripe crop harvested"},
+      {"path": "audio/sfx_success.wav", "role": "Puzzle solved"},
+      {"path": "audio/sfx_fail.wav", "role": "Run ended incomplete/error/limit"}
+    ]
+  }
 }

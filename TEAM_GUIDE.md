@@ -1,13 +1,13 @@
 # TEAM_GUIDE — Mulai kerja bersama mars_reboot.py
 
-Panduan tim, 13 November 2026. Buka **root clone MarsReboot**: folder yang memuat settings.gradle, gradlew, core/, lwjgl3/, dan AGENTS.md. Dokumentasi, source game, aset, dan skill sekarang berada pada satu repo. Nama orang/koordinator dan assignment tugas masih harus diisi tim; empat peran di bawah adalah pembagian yang disarankan, bukan nama kontributor rekaan.
+Panduan tim, diperbarui 22 November 2026. Buka **root clone MarsReboot**: folder yang memuat settings.gradle, gradlew, core/, lwjgl3/, backend/, dan AGENTS.md. Dokumentasi, source game, aset, dan skill berada pada satu repo. Nama orang/koordinator dan assignment tugas masih harus diisi tim; empat peran di bawah adalah pembagian yang disarankan, bukan nama kontributor rekaan.
 
 ## 1. Game yang sedang dibuat
 
 Pemain menjadi astronaut yang menyelidiki kerusakan habitat Mars. Dari panel/inspeksi, pemain memahami masalah, lalu menulis program di terminal untuk robot. Robot memanen, menyiram dan mencari jalan; keberhasilan program memulihkan habitat. Target **9 puzzle dalam 3 misi**, dikerjakan mulai **puzzle 1–4**.
 
 - **Sudah tersedia berdasarkan bukti terdahulu:** habitat, gerak/collision astronaut, interaksi, panel, terminal multiline sementara, visual outpost dan layar preview. Periksa source/handoff terbaru sebelum mengklaim status lebih jauh.
-- **Integrasi terbaru:** Per 13 November 2026, kandidat puzzle 1 panen terhubung ke terminal Python nyata, robot/replay/hasil, Run/Stop/Reset dan progres sesi. Paket Windows x64 menyertakan CPython 3.15.2; Java 21+ masih diperlukan. Backend, puzzle 2–9, save lintas restart dan komputer kedua belum terverifikasi. Kontrak dan command di [kontrak runtime](docs/mars/PYTHON_RUNTIME.md); backend dan layar preview tetap dibedakan dari fitur nyata.
+- **Integrasi terbaru:** Per 22 November 2026, kandidat puzzle 1 panen tetap terhubung ke terminal Python nyata, robot/replay/hasil, Run/Stop/Reset dan progres sesi. Home/login/tamu, setelan, backend akun/skor lokal dan papan skor P1 ditambahkan; `javac` langsung lulus, tetapi Gradle Wrapper gagal start sebelum build sehingga desktop terbaru belum diverifikasi. Puzzle 2–9, save lintas restart, server bersama, dan komputer kedua masih terbuka. Detail backend di `backend/README.md`; runtime di [kontrak runtime](docs/mars/PYTHON_RUNTIME.md).
 - **Keputusan terbuka:** konfirmasi Python ke aslab, penerimaan fixture/UX, API/skor backend/database/sesi serta paket final komputer kedua. CPython bundel Windows x64 kini dipilih untuk eksperimen p1; bukan persetujuan seluruh Usulan.
 
 Sumber: [PROJECT](PROJECT.md), [PRD](PRD.md), [RULES](RULES.md), dan [bukti aktual](VERIFICATION.md). Jangan menambah combat, crafting, survival timer, multiplayer, atau engine baru dari ide AI sendiri.
@@ -25,7 +25,7 @@ Sumber: [PROJECT](PROJECT.md), [PRD](PRD.md), [RULES](RULES.md), dan [bukti aktu
 | .agents/skills/ + skills-lock.json | Paket skill yang sama untuk Codex/Antigravity; tool eksternal tidak otomatis terpasang. |
 | prototype-web/ + docs/prototype/ | Source dan arsip web lama untuk referensi; bukan game Mars atau backend. |
 
-Backend belum dibuat/disatukan build; jangan menganggap ada folder backend aktif atau membuat backend kedua tanpa membaca handoff. Batas root/modul ditetapkan pada tugas bootstrap terkait.
+Folder `backend/` sekarang berisi Spring Boot untuk akun dan skor lokal, dan klien UI sudah tersambung di source game. Kompilasi langsung lulus pada 22 November 2026; Gradle Wrapper gagal start pada mesin itu sehingga run desktop terbaru belum diverifikasi. Jangan membuat backend kedua; baca `backend/README.md`, `ARCHITECTURE.md` §7, dan handoff terbaru di `TASKS.md` sebelum mengubah kontrak.
 
 ## 3. Pertama kali clone
 

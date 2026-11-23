@@ -1,12 +1,12 @@
 # BACKEND_HANDOFF — mars_reboot.py
 
-Tanggal: 13 November 2026. Panduan serah-terima ke anggota manusia dan AI; **usulan pembagian kerja**, bukan penetapan nama anggota atau izin bootstrap/push/deployment. Backend di sini berarti Spring Boot untuk akun/autentikasi dan skor. Simulasi robot, evaluator puzzle, runtime Python, dan renderer tetap bagian klien Java/libGDX.
+Tanggal diperbarui: 22 November 2026. Panduan serah-terima ke anggota manusia dan AI; **usulan pembagian kerja**, bukan penetapan nama anggota atau izin push/deployment. Backend di sini berarti Spring Boot untuk akun/autentikasi dan skor. Simulasi robot, evaluator puzzle, runtime Python, dan renderer tetap bagian klien Java/libGDX.
 
 ## 1. Status dan tujuan bersama
 
 - Game lengkap menargetkan 9 puzzle dalam 3 misi; tahap awal puzzle 1–4.
-- Source game existing berada di core/ dan lwjgl3/ pada repo yang sama dengan panduan ini. Habitat/kontrol dan visual tersedia; terminal/akun/hasil masih memuat preview. Periksa status source terbaru sebelum bekerja, jangan menganggap tampilan akun atau rekor sebagai integrasi backend.
-- Backend/OpenAPI belum ditemukan pada repository dokumentasi dan daftar modul game yang diperiksa. Lokasi source backend, repository bersama, nama pemilik, dan commit dasar belum ditetapkan. Jangan membuat backend duplikat jika anggota lain sudah mulai; cari dan baca handoff mereka dahulu.
+- Source game existing berada di core/ dan lwjgl3/ pada repo yang sama dengan panduan ini. Home, login, scoreboard P1 dan Peta Misi sudah tersambung di source desktop, tetapi tampilan terbaru belum bisa diverifikasi lewat Gradle pada sesi 22 Nov.
+- Source backend ada di `backend/`; OpenAPI ada di `backend/openapi.yaml`. Akun, sesi, skor pribadi dan papan skor publik lokal sudah diimplementasikan. Pengguna sebelumnya membuktikan register/login/submit/baca skor pribadi melalui PowerShell; endpoint/ranking leaderboard terbaru belum diuji. Jangan membuat backend duplikat.
 - Hasil awal yang dituju: registrasi/login nyata → simpan skor contoh yang mengikuti kontrak → ambil kembali setelah buka ulang. Tahap berikutnya memakai hasil puzzle nyata. Data contoh wajib diberi label, bukan bukti pemain sudah menyelesaikan puzzle.
 
 ## 2. Pembagian untuk tim empat orang — Usulan
@@ -30,9 +30,9 @@ Tentukan satu pemilik integrasi klien HTTP dan layar login sebelum kode dibuat; 
 3. [PRD.md](PRD.md): FR-001/002/017/018, NFR-005/006/007, AC-01/08/16 serta keputusan KT-02.
 4. [ARCHITECTURE.md](ARCHITECTURE.md) bagian 7: **satu sumber draft kontrak HTTP**, sesi, validasi dan persistensi.
 5. [RULES.md](RULES.md) bagian 5: metrik dan formula skor kandidat. Jangan menetapkan formula sendiri di backend.
-6. [TEST_PLAN.md](TEST_PLAN.md): API-01–04 dan SEC-01; [TASKS.md](TASKS.md): M-09, M-12/13/17/22 serta handoff terakhir.
+6. [TEST_PLAN.md](TEST_PLAN.md): API-01–05 dan SEC-01; [TASKS.md](TASKS.md): M-09, M-12/13/17/22 serta handoff terakhir.
 
-Kontrak endpoint di ARCHITECTURE masih Usulan. Lokasi backend, versi Spring/JDK/build, database, sesi/CSRF, normalisasi akun, validasi field, dan deployment belum otomatis dipilih. Catat keputusan tim/pengguna dan sinkronkan dokumen pemilik sebelum mengimplementasikan kontrak yang berbeda. Jika membuat OpenAPI, tautkan dari ARCHITECTURE dan gunakan untuk contoh request/response serta mock klien. File OpenAPI belum dibuat oleh panduan ini.
+Kontrak akun/skor aktual dijelaskan di `ARCHITECTURE.md` §7, `backend/README.md` dan `backend/openapi.yaml`. Pilihan lokal (Spring Boot, H2, sesi/CSRF, normalisasi) sudah berupa implementasi, tetapi belum semuanya dicatat sebagai keputusan kelompok/produksi. Papan skor kompetitif lokal ditambahkan atas permintaan pengguna; minta review kelompok sebelum menyebutnya sebagai keputusan tim. Sinkronkan dokumen pemilik bila kontrak berubah.
 
 ## 4. Kontrak yang harus dijaga
 

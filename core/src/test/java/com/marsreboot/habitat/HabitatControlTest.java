@@ -83,6 +83,23 @@ public final class HabitatControlTest {
     }
 
     private static void collisionAndExpandedBounds() {
+        check(HabitatUi.parseErrorLine("Baris 12: NameError") == 12 && HabitatUi.parseErrorLine("Baris x") == 0
+                && HabitatUi.parseErrorLine(null) == 0 && HabitatUi.parseErrorLine("Timeout") == 0,
+            "error line parsed from 'Baris N:' prefix, 0 otherwise");
+        boolean hintsSafe = true;
+        for (var puzzle : com.marsreboot.runtime.PuzzleDefinition.values()) {
+            for (int tier = 1; tier <= com.marsreboot.runtime.PuzzleDefinition.HINT_TIERS; tier++) {
+                String hint = puzzle.hint(tier);
+                hintsSafe &= !hint.isBlank() && !hint.contains(puzzle.reference());
+            }
+        }
+        boolean notesOk = true;
+        for (var puzzle : com.marsreboot.runtime.PuzzleDefinition.values()) {
+            var notes = puzzle.logNotes();
+            notesOk &= notes.size() == 3 && notes.stream().noneMatch(String::isBlank);
+        }
+        check(notesOk, "every puzzle has exactly three non-blank field-log notes");
+        check(hintsSafe,"progressive hints are non-empty and never contain the full reference solution");
         check(WIDTH > CAMERA_WIDTH && HEIGHT > CAMERA_HEIGHT,
             "expanded outpost world exceeds single camera view");
 

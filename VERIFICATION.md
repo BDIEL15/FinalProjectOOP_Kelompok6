@@ -1,6 +1,6 @@
 # VERIFICATION — mars_reboot.py
 
-Status diperbarui 14 November 2026. Bukti terbaru penyempurnaan UI, keterbacaan `18` unit UI, dan alur Puzzle 1 ada di bagian 9; bagian 8 dan sebelumnya adalah bukti historis tahap terdahulu. Rencana TEST_PLAN bukan hasil uji; prototype tetap terpisah di docs/prototype/VERIFICATION.md.
+Status diperbarui 23 November 2026. Bukti historis UI/Puzzle 1 ada di bagian 9–10. Implementasi Home/backend/scoreboard terbaru dicatat di bagian 11. Kompilasi Gradle core/lwjgl3 lulus hari ini, tetapi game dan dialog konfirmasi keluar belum diperiksa secara visual di desktop. Rencana TEST_PLAN bukan hasil uji; prototype tetap terpisah di docs/prototype/VERIFICATION.md.
 
 ## 1. Status produk
 
@@ -8,10 +8,18 @@ Status diperbarui 14 November 2026. Bukti terbaru penyempurnaan UI, keterbacaan 
 | --- | --- | --- |
 | Java/libGDX habitat | Root MarsReboot; `.\gradlew.bat --offline` lulus 14 Nov 2026: 40 assertion kontrol (`:core:controlTest`) dan 29 assertion desktop/Scene2D (`:lwjgl3:desktopSmokeTest`) | Habitat teruji; input tahan tombol OS manusia penuh belum disimulasikan. |
 | Runtime script dan Stop desktop | CPython bundel (`build/python/windows-x64`): 81 assertion robot (`:core:robotTest`), 33 controller/protokol (`:core:runtimeTest`), 33 integrasi Python (`:core:pythonIntegrationTest`) lulus 14 Nov 2026 | Teruji untuk p1 Windows x64; bukan sandbox atau seluruh platform. |
-| Backend/auth/skor | Belum ada implementasi atau integrasi nyata | Belum diuji. |
+| Backend/auth/skor | Source Spring Boot, akun/sesi, simpan/lihat skor, papan skor P1, dan klien game tersedia; uji API PowerShell oleh pengguna terdahulu membuktikan register/login/submit/baca skor personal. | Kompilasi source langsung dan kompilasi Gradle core/lwjgl3 lulus pada 23 Nov. Ranking multiakun, UI desktop dan alur terbaru belum diuji. |
+| Konfirmasi keluar desktop | Dialog modal tersedia untuk Home dan habitat; penutupan jendela dibatalkan sampai pemain memilih. | Belum diuji lewat peluncuran desktop; lihat UI-07 di TEST_PLAN. |
 | UI/aset/Figma | Adegan Outpost Mars `2×` (`HabitatRenderer`) dgn petak panen 2×1 tidak tertutup dan penanda lokal `PANEN P1 SELESAI (SESI)`; font BMFont `ui_sans`/`ui_sans_bold` (`36px`, skala `0.50f`) & `ui_mono` (`34px`, skala `0.53f`) ~`18` unit UI (`~12px` di `640×480`); terminal `556×518` di kiri + editor/output scroll berbatas + footer `Coba lagi`/`Kembali ke habitat` + `[O] Setelan` Preview Visual + Peta Misi P1 berbasis `RunCoordinator.View`; screenshot `1280×720`, `1440×900`, `900×600`, `640×480` diperiksa visual 14 Nov 2026 | Teruji desktop otomatis & inspeksi PNG pada keempat resolusi; drag mouse OS manusia dan review playtest tetap terbuka. |
 | Puzzle 1–9 | Kandidat p1-a melalui Python–Java–desktop (41 assertion desktop puzzle pada `:lwjgl3:puzzleDesktopTest`, 14 Nov 2026); P2–9 tampil jujur `BELUM TERSEDIA` | P1 teruji lintas alur inspeksi → terminal → Run → replay → hasil → ulang/kembali; puzzle 2–9 belum ada. |
 | Distribusi/playtest/publikasi | ZIP Windows + Python diuji 13 Nov dari folder spasi tanpa Python PATH; `:lwjgl3:bundleWindows` belum dibangun ulang pasca-penyempurnaan UI 14 Nov | Paket 13 Nov teruji lokal; re-bundle 14 Nov, komputer kedua, manusia, dan publikasi belum dilakukan. |
+
+## 12. Kompilasi dialog konfirmasi keluar — 23 November 2026
+
+| Pemeriksaan | Hasil aktual | Batas |
+| --- | --- | --- |
+| `gradlew.bat :core:compileJava :lwjgl3:compileJava --offline --console=plain` | PASS, exit 0 | Core dan launcher desktop terkompilasi. Tidak menjalankan test, server, atau game desktop; dialog belum dilihat saat berjalan. |
+| `git diff --check` | PASS | Pemeriksaan whitespace saja. |
 
 ## 2. Pemeriksaan dokumentasi sesi rewrite
 
@@ -314,3 +322,33 @@ ZIP baru diuji ulang setelah JAR berubah. Ekstraksi ke `lwjgl3/build/Command Str
 Artefak: `lwjgl3/build/distributions/MarsReboot-1.0.0-windows-x64.zip`, SHA-256 `4dc4c09107d99c049c29750cdbbedcc38e6274fc1753cc1912579c6b6ade3531`. Hash lama §15–16 tetap bukti historis, bukan identitas paket terbaru.
 
 Audit OOP diperbarui dengan relasi kelas dan test dua pattern. Empat kandidat lain serta penerimaan aslab masih terbuka; M-23 tidak dicentang selesai. Komputer kedua, playtest manusia, backend dan P5–P9 belum dibuktikan. Tidak ada commit/push/deployment.
+
+## 18. Home, akun, scoreboard P1, setelan dan integrasi Java — 22 November 2026
+
+Scope sesi: Home baru (daftar/masuk/tamu), scoreboard P1, tiga setelan tersimpan, pembukaan scoreboard dari Peta Misi saat bermain, penyegaran rekor sesudah login, endpoint leaderboard dan dokumentasi. Logika puzzle/robot tidak diubah.
+
+| Pemeriksaan aktual | Hasil | Batas |
+| --- | --- | --- |
+| `javac --release 21` source `core` + libGDX 1.14.2 dari cache | PASS | Kompilasi Java saja; tidak menjalankan Gradle, test, window atau OpenGL. |
+| `javac --release 21` source Spring backend dengan dependency JAR cache, annotation processing dimatikan | PASS | Kompilasi Java saja; tidak menguji bootstrap Spring, database, endpoint atau query JPA saat runtime. |
+| `git diff --check` | PASS setelah seluruh perubahan sesi | Tidak menilai compile, API, atau perilaku UI. |
+| `gradlew.bat :core:compileJava :lwjgl3:compileJava --offline --console=plain` | FAIL sebelum kompilasi | Gradle tidak dapat memuat `native-platform.dll` pada Windows 11 amd64. Ini kendala startup Gradle, bukan hasil compile Gradle. |
+| UI Home/Peta Misi, auth baru dan ranking multiakun di game | BELUM DIJALANKAN | Belum dapat meluncurkan ulang desktop untuk sesi ini. Peta Misi memuat 5 baris teratas; Home memuat daftar sampai 10. |
+
+Catatan: pada sesi sebelumnya pengguna menjalankan backend dan membuktikan register, login, submit skor, serta baca rekor pribadi lewat PowerShell. Itu bukan verifikasi untuk source scoreboard terbaru. Backend lokal memakai `127.0.0.1:8081`; anggota komputer lain belum berbagi database. Tidak mengklaim test aplikasi atau visual desktop terbaru lulus.
+
+## 19. Polish visual, umpan balik, bantuan, judul dan SFX — 23 November 2026
+
+Perubahan presentasi dan konten tampilan; tidak menyentuh HabitatWorld, RobotSimulation, fixture atau protokol. Fitur: petak kering/lembap terbaca (retak vs kilau, kilat cyan + percik saat petak menjadi basah); sorot koral dan siku pada petak belum selesai saat gagal; penanda `!N` di gutter pada baris error (`parseErrorLine`); bantuan 3 tingkat pada [?] (konsep → API → kerangka sebagian, tanpa solusi penuh); bintang efisiensi (`referenceActions` P1=3, P2=7, P3=5, P4=10 total; 3 bintang bila ≤ referensi, 2 bila ≤ separuh jalan ke batas, selain itu 1); ledakan partikel dan guncangan kamera saat sukses (mati bila Kurangi Animasi aktif); layar judul `TitleScreen` dengan tiga baris cerita; Field Log `[J]` per puzzle; lima SFX WAV sintetis (`assets/audio/`, dibuat `tools/GenerateSfx.java`, tercatat di `asset-manifest.json`) dengan tombol Efek Suara di Setelan.
+
+Command aktual:
+
+```powershell
+.\gradlew.bat --offline build verifyDesktopDemo --console=plain
+```
+
+Run terakhir (sesudah SFX) **exit 0**: kontrol 49, editor 25, pattern 64, robot 81, controller/protokol 33, air 21, referensi P1–P3 + progres, Python 33, P4 33, desktop Scene2D 30, desktop puzzle 109, dan `titleDesktopTest` baru (waktu cerita, screenshot, Enter memulai tepat sekali; OpenGL nyata).
+
+Belum dibuktikan: suara benar-benar terdengar (tidak ada test audio; volume/nada belum didengar), animasi partikel/denyut dan peralihan judul→habitat pada peluncur nyata, playtest manusia, dan `bundleWindows` ulang (hash ZIP §17 bukan identitas paket terbaru). Ambang bintang, petunjuk, dan teks cerita adalah usulan, belum disetujui tim. Keterbatasan: P3 posisi panen-muda tidak tersimpan sehingga tidak dapat disorot; timeout tanpa nomor baris; terminal masih menutup sebagian bed pada 640×480 (offset kamera 0,27 memotong bed ke-4 sehingga dikembalikan 0,20). Tidak ada commit/push/deployment.
+
+Paket sesudah polish §19 (23 November 2026): `.\gradlew.bat --offline :lwjgl3:bundleWindows --console=plain` **exit 0**. Artefak `lwjgl3/build/distributions/MarsReboot-1.0.0-windows-x64.zip` (30.575.171 byte), SHA-256 `abc65060b4dc0af1c8e6deba7512c0a1bdb4c702fe717fdcfcbab68bea1b90b6`. Daftar isi JAR diperiksa: memuat `TitleScreen`, `SoundBank` dan lima `audio/sfx_*.wav`. **Belum** diekstrak/dijalankan dari folder spasi tanpa Python sistem, belum dicoba manual (suara/judul), belum playtest. Hash §17 kini hanya bukti historis; ZIP generik `MarsReboot-1.0.0.zip` bukan paket pemain.
