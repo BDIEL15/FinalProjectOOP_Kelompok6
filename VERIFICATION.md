@@ -1,6 +1,6 @@
 # VERIFICATION — mars_reboot.py
 
-Status diperbarui 22 November 2026. Bukti historis UI/Puzzle 1 ada di bagian 9–10. Implementasi Home/backend/scoreboard terbaru dicatat di bagian 11; belum ada build Gradle atau pemeriksaan visual desktop yang lulus pada sesi ini. Rencana TEST_PLAN bukan hasil uji; prototype tetap terpisah di docs/prototype/VERIFICATION.md.
+Status diperbarui 23 November 2026. Bukti historis UI/Puzzle 1 ada di bagian 9–10. Implementasi Home/backend/scoreboard terbaru dicatat di bagian 11. Kompilasi Gradle core/lwjgl3 lulus hari ini, tetapi game dan dialog konfirmasi keluar belum diperiksa secara visual di desktop. Rencana TEST_PLAN bukan hasil uji; prototype tetap terpisah di docs/prototype/VERIFICATION.md.
 
 ## 1. Status produk
 
@@ -8,10 +8,18 @@ Status diperbarui 22 November 2026. Bukti historis UI/Puzzle 1 ada di bagian 9�
 | --- | --- | --- |
 | Java/libGDX habitat | Root MarsReboot; `.\gradlew.bat --offline` lulus 14 Nov 2026: 40 assertion kontrol (`:core:controlTest`) dan 29 assertion desktop/Scene2D (`:lwjgl3:desktopSmokeTest`) | Habitat teruji; input tahan tombol OS manusia penuh belum disimulasikan. |
 | Runtime script dan Stop desktop | CPython bundel (`build/python/windows-x64`): 81 assertion robot (`:core:robotTest`), 33 controller/protokol (`:core:runtimeTest`), 33 integrasi Python (`:core:pythonIntegrationTest`) lulus 14 Nov 2026 | Teruji untuk p1 Windows x64; bukan sandbox atau seluruh platform. |
-| Backend/auth/skor | Source Spring Boot, akun/sesi, simpan/lihat skor, papan skor P1, dan klien game tersedia; uji API PowerShell oleh pengguna terdahulu membuktikan register/login/submit/baca skor personal. | Kompilasi javac sesi ini lulus; build Gradle sesi ini gagal start sebelum kompilasi. Ranking multiakun, UI desktop dan alur terbaru belum diuji. |
+| Backend/auth/skor | Source Spring Boot, akun/sesi, simpan/lihat skor, papan skor P1, dan klien game tersedia; uji API PowerShell oleh pengguna terdahulu membuktikan register/login/submit/baca skor personal. | Kompilasi source langsung dan kompilasi Gradle core/lwjgl3 lulus pada 23 Nov. Ranking multiakun, UI desktop dan alur terbaru belum diuji. |
+| Konfirmasi keluar desktop | Dialog modal tersedia untuk Home dan habitat; penutupan jendela dibatalkan sampai pemain memilih. | Belum diuji lewat peluncuran desktop; lihat UI-07 di TEST_PLAN. |
 | UI/aset/Figma | Adegan Outpost Mars `2×` (`HabitatRenderer`) dgn petak panen 2×1 tidak tertutup dan penanda lokal `PANEN P1 SELESAI (SESI)`; font BMFont `ui_sans`/`ui_sans_bold` (`36px`, skala `0.50f`) & `ui_mono` (`34px`, skala `0.53f`) ~`18` unit UI (`~12px` di `640×480`); terminal `556×518` di kiri + editor/output scroll berbatas + footer `Coba lagi`/`Kembali ke habitat` + `[O] Setelan` Preview Visual + Peta Misi P1 berbasis `RunCoordinator.View`; screenshot `1280×720`, `1440×900`, `900×600`, `640×480` diperiksa visual 14 Nov 2026 | Teruji desktop otomatis & inspeksi PNG pada keempat resolusi; drag mouse OS manusia dan review playtest tetap terbuka. |
 | Puzzle 1–9 | Kandidat p1-a melalui Python–Java–desktop (41 assertion desktop puzzle pada `:lwjgl3:puzzleDesktopTest`, 14 Nov 2026); P2–9 tampil jujur `BELUM TERSEDIA` | P1 teruji lintas alur inspeksi → terminal → Run → replay → hasil → ulang/kembali; puzzle 2–9 belum ada. |
 | Distribusi/playtest/publikasi | ZIP Windows + Python diuji 13 Nov dari folder spasi tanpa Python PATH; `:lwjgl3:bundleWindows` belum dibangun ulang pasca-penyempurnaan UI 14 Nov | Paket 13 Nov teruji lokal; re-bundle 14 Nov, komputer kedua, manusia, dan publikasi belum dilakukan. |
+
+## 12. Kompilasi dialog konfirmasi keluar — 23 November 2026
+
+| Pemeriksaan | Hasil aktual | Batas |
+| --- | --- | --- |
+| `gradlew.bat :core:compileJava :lwjgl3:compileJava --offline --console=plain` | PASS, exit 0 | Core dan launcher desktop terkompilasi. Tidak menjalankan test, server, atau game desktop; dialog belum dilihat saat berjalan. |
+| `git diff --check` | PASS | Pemeriksaan whitespace saja. |
 
 ## 2. Pemeriksaan dokumentasi sesi rewrite
 

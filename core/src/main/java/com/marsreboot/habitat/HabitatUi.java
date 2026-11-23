@@ -36,6 +36,7 @@ import com.badlogic.gdx.utils.Align;
 import com.badlogic.gdx.utils.Disposable;
 import com.badlogic.gdx.Preferences;
 import com.badlogic.gdx.utils.viewport.ExtendViewport;
+import com.marsreboot.ExitConfirmationDialog;
 import com.marsreboot.runtime.RunCoordinator;
 import com.marsreboot.runtime.RunCoordinator.Status;
 import java.util.ArrayList;
@@ -170,6 +171,7 @@ public final class HabitatUi implements Disposable {
     private final Window fieldLogWindow;
     private final Window missionMapWindow;
     private final Window settingsWindow;
+    private final ExitConfirmationDialog exitDialog;
 
     private final TextButton runButton;
     private final TextButton stopButton;
@@ -245,6 +247,16 @@ public final class HabitatUi implements Disposable {
             uiBoldFont, COL_TEXT_PRIMARY,
             makeRoundedWindow(Color.valueOf("0B111CEB"), COL_AMBER, 14, 34)
         );
+        TextButtonStyle exitButtonStyle = makeButtonStyle(
+            uiBoldFont, COL_TEXT_PRIMARY,
+            Color.valueOf("641B24"), Color.valueOf("991B1B"), Color.valueOf("450A0A"),
+            COL_CORAL, Color.WHITE, 10
+        );
+        TextButtonStyle hudExitButtonStyle = makeButtonStyle(
+            hudBoldFont, COL_TEXT_PRIMARY,
+            Color.valueOf("641B24EC"), Color.valueOf("991B1BF4"), Color.valueOf("450A0AFF"),
+            COL_CORAL, Color.WHITE, 11
+        );
 
         TextButtonStyle hudPillBtnStyle = makeButtonStyle(
             hudBoldFont, COL_TEXT_PRIMARY,
@@ -306,6 +318,8 @@ public final class HabitatUi implements Disposable {
         logBtn.addListener(onAction(() -> toggleAuxOverlay(AuxOverlay.FIELD_LOG)));
         TextButton settingsBtn = new TextButton("[O] Setelan", hudPillBtnStyle);
         settingsBtn.addListener(onAction(() -> toggleAuxOverlay(AuxOverlay.SETTINGS)));
+        TextButton exitBtn = new TextButton("Keluar", hudExitButtonStyle);
+        exitBtn.addListener(onAction(this::showExitConfirmation));
 
         Table badgeBox = new Table();
         badgeBox.setBackground(statusPillBg);
@@ -317,6 +331,7 @@ public final class HabitatUi implements Disposable {
         topRightBar.add(missionBtn).height(28f);
         topRightBar.add(settingsBtn).height(28f);
         topRightBar.add(badgeBox).height(28f);
+        topRightBar.add(exitBtn).height(28f);
 
         Table topRow = new Table();
         topRow.pad(10f, 14f, 0f, 14f);
@@ -666,6 +681,13 @@ public final class HabitatUi implements Disposable {
         closeSettingsBtn.addListener(onAction(() -> closeAuxOverlays()));
         settingsWindow.add(closeSettingsBtn).height(32f).right().pad(0f, 10f, 8f, 10f);
 
+        exitDialog = new ExitConfirmationDialog(
+            glassWindowStyle,
+            new LabelStyle(uiFont, COL_TEXT_SECONDARY),
+            primaryCyanStyle,
+            exitButtonStyle
+        );
+
         stage.addActor(inspection);
         stage.addActor(terminal);
         stage.addActor(helpDrawer);
@@ -678,6 +700,7 @@ public final class HabitatUi implements Disposable {
             @Override
             public boolean keyDown(InputEvent event, int keycode) {
                 if (world.mode() == HabitatWorld.Mode.EXPLORING) {
+                    if (isExitConfirmationOpen()) return false;
                     if (keycode == Keys.M) { toggleAuxOverlay(AuxOverlay.MISSION_MAP); return true; }
                     if (keycode == Keys.J) { toggleAuxOverlay(AuxOverlay.FIELD_LOG); return true; }
                     if (keycode == Keys.O) { toggleAuxOverlay(AuxOverlay.SETTINGS); return true; }
@@ -695,7 +718,12 @@ public final class HabitatUi implements Disposable {
     }
 
     public Stage stage() { return stage; }
-    public boolean hasOpenOverlay() { return activeOverlay != AuxOverlay.NONE; }
+    public boolean hasOpenOverlay() { return activeOverlay != AuxOverlay.NONE || isExitConfirmationOpen(); }
+    public boolean isExitConfirmationOpen() { return exitDialog.hasParent(); }
+
+    public void showExitConfirmation() {
+        exitDialog.open(stage);
+    }
 
     public void setHelpDrawerOpen(boolean open) {
         helpDrawerOpen = open;

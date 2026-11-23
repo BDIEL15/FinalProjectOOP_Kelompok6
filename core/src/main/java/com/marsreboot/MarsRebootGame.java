@@ -1,6 +1,7 @@
 package com.marsreboot;
 
 import com.badlogic.gdx.Game;
+import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Screen;
 import com.marsreboot.habitat.ScoreBackendClient;
 import com.marsreboot.habitat.HabitatScreen;
@@ -21,6 +22,16 @@ public class MarsRebootGame extends Game {
         if (oldScreen != null) {
             oldScreen.dispose();
         }
+    }
+
+    public void requestExitConfirmation() {
+        Gdx.app.postRunnable(() -> {
+            if (getScreen() instanceof ExitConfirmationHost host) {
+                host.showExitConfirmation();
+            } else {
+                Gdx.app.exit();
+            }
+        });
     }
 
     @Override

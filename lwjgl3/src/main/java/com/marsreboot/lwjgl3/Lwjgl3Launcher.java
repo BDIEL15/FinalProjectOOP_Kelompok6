@@ -2,6 +2,7 @@ package com.marsreboot.lwjgl3;
 
 import com.badlogic.gdx.backends.lwjgl3.Lwjgl3Application;
 import com.badlogic.gdx.backends.lwjgl3.Lwjgl3ApplicationConfiguration;
+import com.badlogic.gdx.backends.lwjgl3.Lwjgl3WindowAdapter;
 import com.marsreboot.MarsRebootGame;
 
 /** Launches the desktop (LWJGL3) application. */
@@ -12,7 +13,16 @@ public class Lwjgl3Launcher {
     }
 
     private static Lwjgl3Application createApplication() {
-        return new Lwjgl3Application(new MarsRebootGame(), getDefaultConfiguration());
+        MarsRebootGame game = new MarsRebootGame();
+        Lwjgl3ApplicationConfiguration configuration = getDefaultConfiguration();
+        configuration.setWindowListener(new Lwjgl3WindowAdapter() {
+            @Override
+            public boolean closeRequested() {
+                game.requestExitConfirmation();
+                return false;
+            }
+        });
+        return new Lwjgl3Application(game, configuration);
     }
 
     private static Lwjgl3ApplicationConfiguration getDefaultConfiguration() {
