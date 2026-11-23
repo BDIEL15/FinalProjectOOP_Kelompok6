@@ -281,7 +281,7 @@ flowchart TD
 *   [`HabitatInput`](core/src/main/java/com/marsreboot/habitat/HabitatInput.java) + [`FollowCamera`](core/src/main/java/com/marsreboot/habitat/FollowCamera.java): kontrol WASD/panah, E untuk interaksi, klik rover; reduced motion dihormati.
 *   [`HabitatUi`](core/src/main/java/com/marsreboot/habitat/HabitatUi.java): panel inspeksi, terminal editor, pemilih puzzle, log, dan pengaturan.
 *   [`PythonEditing`](core/src/main/java/com/marsreboot/habitat/PythonEditing.java) + [`PythonCodeArea`](core/src/main/java/com/marsreboot/habitat/PythonCodeArea.java): bantuan mengetik di editor.
-*   [`SoundBank`](core/src/main/java/com/marsreboot/habitat/SoundBank.java): efek suara game.
+*   [`SoundBank`](core/src/main/java/com/marsreboot/habitat/SoundBank.java): efek suara game; panduan dan pekerjaan audio terbuka di [AUDIO](docs/mars/AUDIO.md).
 
 ---
 
@@ -474,6 +474,7 @@ Pembaruan: **23 November 2026** (gabungan branch P1–P4 dan backend/Home). Pyth
 | [BACKEND_HANDOFF](BACKEND_HANDOFF.md) / [backend/README](backend/README.md) | Batas akun/skor, endpoint, dan cara membaca kode backend. |
 | [Audit OOP/pattern](docs/mars/OOP_AUDIT.md) | Bukti source, kekurangan enam kandidat, dan langkah kerja tim. |
 | [Kontrak runtime Python](docs/mars/PYTHON_RUNTIME.md) | Protokol, batas, dan paket runtime bundel. |
+| [Panduan audio](docs/mars/AUDIO.md) | Lokasi SFX, cara menambah suara/musik, dan pekerjaan audio yang masih terbuka. |
 | [SKILLS](SKILLS.md) / [skills-lock.json](skills-lock.json) | Paket skill bersama. |
 | [PROTOTYPE](PROTOTYPE.md) | Referensi Farm Code Lab, source opsional di prototype-web/. |
 

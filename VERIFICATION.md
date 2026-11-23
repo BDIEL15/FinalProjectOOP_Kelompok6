@@ -352,3 +352,14 @@ Run terakhir (sesudah SFX) **exit 0**: kontrol 49, editor 25, pattern 64, robot 
 Belum dibuktikan: suara benar-benar terdengar (tidak ada test audio; volume/nada belum didengar), animasi partikel/denyut dan peralihan judul→habitat pada peluncur nyata, playtest manusia, dan `bundleWindows` ulang (hash ZIP §17 bukan identitas paket terbaru). Ambang bintang, petunjuk, dan teks cerita adalah usulan, belum disetujui tim. Keterbatasan: P3 posisi panen-muda tidak tersimpan sehingga tidak dapat disorot; timeout tanpa nomor baris; terminal masih menutup sebagian bed pada 640×480 (offset kamera 0,27 memotong bed ke-4 sehingga dikembalikan 0,20). Tidak ada commit/push/deployment.
 
 Paket sesudah polish §19 (23 November 2026): `.\gradlew.bat --offline :lwjgl3:bundleWindows --console=plain` **exit 0**. Artefak `lwjgl3/build/distributions/MarsReboot-1.0.0-windows-x64.zip` (30.575.171 byte), SHA-256 `abc65060b4dc0af1c8e6deba7512c0a1bdb4c702fe717fdcfcbab68bea1b90b6`. Daftar isi JAR diperiksa: memuat `TitleScreen`, `SoundBank` dan lima `audio/sfx_*.wav`. **Belum** diekstrak/dijalankan dari folder spasi tanpa Python sistem, belum dicoba manual (suara/judul), belum playtest. Hash §17 kini hanya bukti historis; ZIP generik `MarsReboot-1.0.0.zip` bukan paket pemain.
+
+## 20. Gabungan branch P1–P4 + backend/Home — 23 November 2026
+
+| Pemeriksaan aktual | Hasil | Batas |
+| --- | --- | --- |
+| `.\gradlew.bat --offline build verifyDesktopDemo` pada working tree gabungan | PASS (exit 0): kontrol 49, editor 25, pattern 64, robot 81, protokol 33, air 21, progres P1–P3, Python 33, P4 33, desktop 30, puzzle desktop 109, title screen | Test otomatis; alur Home/login tidak dicakup suite desktop. |
+| Clone bersih branch `abdiel/puzzle-p1-p4` dari GitHub, `.\gradlew.bat build verifyDemo` | PASS (exit 0), termasuk unduhan Python bundel | Satu mesin; tanpa suite OpenGL. |
+| Backend di clone bersih: `compileJava` lalu `bootRun` (Gradle 9.8.0 terpasang) | PASS; Tomcat port 8081 | Wrapper backend (Gradle 9.6.0) gagal mengunduh distribusinya di jaringan mesin ini; di komputer lain dengan internet normal perlu dicoba ulang. |
+| `curl` ke backend: csrf → register → login → `POST /api/scores` (P1, 3 aksi) → `me/best` → `leaderboard` | PASS, semua HTTP 200; papan skor menampilkan akun uji peringkat 1 | Akun uji di database H2 clone sementara; bukan uji multiakun/isolasi. |
+
+Belum dibuktikan: alur Title → Home → login → P1 → simpan skor dari dalam game, suara terdengar, komputer kedua, playtest manusia.

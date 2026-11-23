@@ -477,3 +477,10 @@ Langkah berikutnya dan kriteria selesai:
 - **Verifikasi aktual:** `build verifyDesktopDemo` exit 0 (kontrol 49, desktop puzzle 109, title desktop PASS). Rincian VERIFICATION §19.
 - **Belum:** suara belum didengar/ditest; efek gerak dan peralihan judul belum dilihat langsung; `bundleWindows` belum dibangun ulang; belum ada playtest manusia; belum ada commit.
 - **Berikutnya:** tim review ambang bintang, teks petunjuk dan cerita; playtest nyata; pertimbangkan terminal adaptif pada jendela kecil; bangun ulang paket sebelum build itch.io (6 Des 2026).
+
+### 23 November 2026 — Gabung branch P1–P4 dengan main (backend/Home) dan persiapan tugas audio
+
+- **Hasil:** branch `abdiel/puzzle-p1-p4` menggabungkan main (backend Spring, Home/login/tamu, papan skor P1, dialog keluar) dengan P1–P4, TitleScreen, SFX dan README arsitektur. Urutan layar Title → Home → Habitat. Skor backend hanya dikirim untuk P1 (backend memakai `puzzleId=P1`), supaya hasil P2–P4 tidak tercampur. Panduan audio baru di [docs/mars/AUDIO.md](docs/mars/AUDIO.md).
+- **Verifikasi aktual:** lihat VERIFICATION §20 (clone bersih dari GitHub: `build verifyDemo` exit 0; backend compile + bootRun + register/login/simpan skor/papan skor HTTP 200).
+- **Belum:** alur Title → Home → login → main P1 → skor belum dicoba manusia pada desktop; suara belum didengar; komputer kedua belum diuji.
+- **Berikutnya:** merge PR ke main; pemilik audio mulai dari AUDIO.md; pemilik branch `puzzle` menggabungkan main terbaru sebelum PR (ada `content.PuzzleDefinition` yang tumpang-tindih dengan `runtime.PuzzleDefinition`).
