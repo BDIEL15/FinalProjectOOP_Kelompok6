@@ -14,6 +14,7 @@ import com.badlogic.gdx.scenes.scene2d.ui.TextButton;
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton.TextButtonStyle;
 import com.badlogic.gdx.scenes.scene2d.ui.TextField;
 import com.badlogic.gdx.scenes.scene2d.ui.TextField.TextFieldStyle;
+import com.badlogic.gdx.scenes.scene2d.ui.Window.WindowStyle;
 import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener;
 import com.badlogic.gdx.scenes.scene2d.utils.Drawable;
 import com.badlogic.gdx.utils.Align;
@@ -23,7 +24,7 @@ import com.marsreboot.habitat.ScoreBackendClient;
 import java.util.List;
 
 /** Halaman awal untuk masuk, memilih setelan, atau memulai permainan. */
-public final class HomeScreen extends ScreenAdapter {
+public final class HomeScreen extends ScreenAdapter implements ExitConfirmationHost {
     private static final Color CYAN = Color.valueOf("38BDF8");
     private static final Color WHITE = Color.valueOf("F8FAFC");
     private static final Color MUTED = Color.valueOf("CBD5E1");
@@ -46,6 +47,8 @@ public final class HomeScreen extends ScreenAdapter {
     private final TextButton motionButton;
     private final TextButton contrastButton;
     private final TextButton previewButton;
+    private final TextButton exitButton;
+    private final ExitConfirmationDialog exitDialog;
 
     public HomeScreen(MarsRebootGame game, ScoreBackendClient scoreBackend) {
         this.game = game;
@@ -72,6 +75,9 @@ public final class HomeScreen extends ScreenAdapter {
         motionButton = button("", false);
         contrastButton = button("", false);
         previewButton = button("", false);
+        exitButton = button("Keluar", false);
+        exitDialog = createExitDialog();
+        exitButton.addListener(onClick(this::showExitConfirmation));
 
         statusLabel = label("Masuk untuk menyimpan skor. Kamu juga bisa bermain sebagai tamu.", MUTED, bodyFont);
         statusLabel.setWrap(true);
@@ -83,6 +89,29 @@ public final class HomeScreen extends ScreenAdapter {
         refreshSettingButtons();
     }
 
+    private ExitConfirmationDialog createExitDialog() {
+        WindowStyle windowStyle = new WindowStyle(titleFont, CYAN, box(Color.valueOf("111C2BF5")));
+        TextButtonStyle exitStyle = new TextButtonStyle(skin.get(TextButtonStyle.class));
+        exitStyle.font = bodyFont;
+        exitStyle.fontColor = WHITE;
+        exitStyle.overFontColor = WHITE;
+        exitStyle.downFontColor = WHITE;
+        exitStyle.focused = box(Color.valueOf("B91C1C"));
+        exitStyle.up = box(Color.valueOf("7F1D1D"));
+        exitStyle.over = box(Color.valueOf("991B1B"));
+        exitStyle.down = box(Color.valueOf("641B24"));
+        return new ExitConfirmationDialog(
+                windowStyle,
+                new Label.LabelStyle(bodyFont, MUTED),
+                buttonStyle(false),
+                exitStyle);
+    }
+
+    @Override
+    public void showExitConfirmation() {
+        exitDialog.open(stage);
+    }
+
     private void buildPage() {
         Table root = new Table();
         root.setFillParent(true);
@@ -91,8 +120,11 @@ public final class HomeScreen extends ScreenAdapter {
         stage.addActor(root);
 
         Table heading = new Table();
-        heading.add(label("MARS REBOOT", CYAN, titleFont)).left().row();
-        heading.add(label("Pulihkan habitat Mars, satu perintah pada satu waktu.", MUTED, bodyFont)).left();
+        Table title = new Table();
+        title.add(label("MARS REBOOT", CYAN, titleFont)).left().row();
+        title.add(label("Pulihkan habitat Mars, satu perintah pada satu waktu.", MUTED, bodyFont)).left();
+        heading.add(title).left().expandX();
+        heading.add(exitButton).right().width(100f).height(34f);
         root.add(heading).growX().left().padBottom(16f).row();
 
         Table main = new Table();
@@ -264,6 +296,10 @@ public final class HomeScreen extends ScreenAdapter {
     }
 
     private TextButton button(String text, boolean primary) {
+        return new TextButton(text, buttonStyle(primary));
+    }
+
+    private TextButtonStyle buttonStyle(boolean primary) {
         TextButtonStyle style = new TextButtonStyle(skin.get(TextButtonStyle.class));
         style.font = bodyFont;
         style.fontColor = primary ? Color.valueOf("071827") : WHITE;
@@ -274,7 +310,7 @@ public final class HomeScreen extends ScreenAdapter {
         style.over = box(primary ? Color.valueOf("7DD3FC") : Color.valueOf("344A64"));
         style.down = box(primary ? Color.valueOf("0284C7") : Color.valueOf("1B293B"));
         style.disabled = box(Color.valueOf("1A2432"));
-        return new TextButton(text, style);
+        return style;
     }
 
     private Label label(String text, Color color, BitmapFont font) {

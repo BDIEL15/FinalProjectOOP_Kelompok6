@@ -1,6 +1,6 @@
 # TEST_PLAN — mars_reboot.py
 
-Status: rencana uji, diperbarui 22 November 2026; habitat/kontrol dan kandidat domain robot puzzle 1 sudah diuji pada sesi terdahulu. UI Home/login/leaderboard dan Spring backend kini ditambahkan, tetapi belum lolos build/test Gradle pada sesi ini. Acuan [PRD](PRD.md), [RULES](RULES.md), [ARCHITECTURE](ARCHITECTURE.md), [DESIGN](DESIGN.md). Bukti aktual dicatat terpisah di [VERIFICATION](VERIFICATION.md). Angka/fixture Usulan baru menjadi acceptance gate setelah dipilih.
+Status: rencana uji, diperbarui 23 November 2026; habitat/kontrol dan kandidat domain robot puzzle 1 sudah diuji pada sesi terdahulu. Home/login/leaderboard dan Spring backend sudah dikompilasi lewat Gradle, tetapi belum diuji ulang di desktop/API pada sesi terbaru. Dialog konfirmasi keluar tercatat pada UI-07. Acuan [PRD](PRD.md), [RULES](RULES.md), [ARCHITECTURE](ARCHITECTURE.md), [DESIGN](DESIGN.md). Bukti aktual dicatat terpisah di [VERIFICATION](VERIFICATION.md). Angka/fixture Usulan baru menjadi acceptance gate setelah dipilih.
 
 ## 1. Lapisan bukti dan lingkungan
 
@@ -69,6 +69,7 @@ Pemilik LIFE/PROTO/RUN: peran 1; SAVE: integrasi peran 1/4. Uji fake memudahkan 
 | UI-04 | 1280×720, 1440×900 dan resize | Kontrol/pesan tidak terpotong; teks terbaca; koordinat simulasi tidak berubah. Ukuran kandidat perlu dipilih. |
 | UI-05 | Kontras, indikator nonwarna, reduced motion, audio | Ukur warna aktual; state terbaca tanpa warna; motion tidak mengubah skor. |
 | UI-06 | Home, login/daftar, mulai sebagai tamu, setelan dan papan skor Home/Peta Misi | Alur jelas, pilihan setelan tersimpan, papan skor bisa dimuat ulang setelah skor baru dikirim, layout tidak terpotong. |
+| UI-07 | Tombol Keluar kanan atas dan tutup jendela dari Home/habitat; navigasi keyboard pada dialog | Tombol Keluar/X/Alt+F4 membuka konfirmasi; Lanjut bermain/Esc membatalkan, Keluar menutup game; dialog memblokir input gameplay dan tidak menghapus skor yang sudah tersimpan. |
 | BUILD-01 | Paket desktop pada komputer kedua | Login, satu puzzle, Stop, dan skor berjalan dengan panduan prasyarat; catat OS/runtime/backend. |
 | OOP-01 | Demo empat pilar dan minimal enam pattern | Relasi kelas dan perilaku nyata; cocok dengan materi kelas/aslab, bukan nama saja. |
 | ASSET-01 | Manifest dan kredit | Asal/lisensi/ukuran/versi jelas; aset terbaca pada skala game. |

@@ -5,13 +5,14 @@ import com.badlogic.gdx.InputMultiplexer;
 import com.badlogic.gdx.ScreenAdapter;
 import com.badlogic.gdx.utils.ScreenUtils;
 import com.badlogic.gdx.utils.viewport.ExtendViewport;
+import com.marsreboot.ExitConfirmationHost;
 import com.marsreboot.runtime.PythonRuntime;
 import com.marsreboot.runtime.RunCoordinator;
 
 /**
  * Lifecycle, smooth follow camera framing, world click-to-rover routing, and UI layering.
  */
-public final class HabitatScreen extends ScreenAdapter {
+public final class HabitatScreen extends ScreenAdapter implements ExitConfirmationHost {
     private final HabitatWorld world;
     private final ExtendViewport viewport;
     private final FollowCamera followCamera;
@@ -88,6 +89,12 @@ public final class HabitatScreen extends ScreenAdapter {
     }
 
     public RunCoordinator.View puzzleView() { return coordinator.view(); }
+
+    @Override
+    public void showExitConfirmation() {
+        input.clear();
+        ui.showExitConfirmation();
+    }
 
     @Override
     public void dispose() {
