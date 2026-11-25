@@ -1,3 +1,4 @@
+
 package com.marsreboot.content;
 
 import java.util.HashSet;
@@ -12,6 +13,8 @@ public class ScenarioFixture {
     private final int robotStartX;
     private final int robotStartY;
     private final int initialWaterSupply;
+    private final int actionLimit;
+    private final int apiCallLimit;
     private final List<TileFixture> tiles;
 
     public ScenarioFixture(
@@ -21,6 +24,8 @@ public class ScenarioFixture {
         int robotStartX,
         int robotStartY,
         int initialWaterSupply,
+        int actionLimit,
+        int apiCallLimit,
         List<TileFixture> tiles
     ) {
         if (scenarioId == null || scenarioId.isBlank()) {
@@ -38,6 +43,10 @@ public class ScenarioFixture {
 
         if (initialWaterSupply < 0) {
             throw new IllegalArgumentException("Water supply cannot be negative.");
+        }
+
+        if (actionLimit < 1 || apiCallLimit < 1) {
+            throw new IllegalArgumentException("Limits must be positive.");
         }
 
         if (tiles == null) {
@@ -68,6 +77,8 @@ public class ScenarioFixture {
         this.robotStartX = robotStartX;
         this.robotStartY = robotStartY;
         this.initialWaterSupply = initialWaterSupply;
+        this.actionLimit = actionLimit;
+        this.apiCallLimit = apiCallLimit;
         this.tiles = List.copyOf(tiles);
     }
 
@@ -93,6 +104,14 @@ public class ScenarioFixture {
 
     public int getInitialWaterSupply() {
         return initialWaterSupply;
+    }
+
+    public int getActionLimit() {
+        return actionLimit;
+    }
+
+    public int getApiCallLimit() {
+        return apiCallLimit;
     }
 
     public List<TileFixture> getTiles() {

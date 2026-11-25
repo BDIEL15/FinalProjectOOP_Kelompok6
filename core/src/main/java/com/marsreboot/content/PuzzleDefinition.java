@@ -10,12 +10,15 @@ public class PuzzleDefinition {
     private final int rulesVersion;
     private final int fixtureVersion;
     private final List<ScenarioFixture> scenarios;
+    private final ScenarioGoal goal;
 
     public PuzzleDefinition(
         String puzzleId,
         int rulesVersion,
         int fixtureVersion,
-        List<ScenarioFixture> scenarios) {
+        List<ScenarioFixture> scenarios,
+        ScenarioGoal goal
+    ) {
         if (puzzleId == null || puzzleId.isBlank()) {
             throw new IllegalArgumentException("Puzzle ID cannot be empty.");
         }
@@ -26,6 +29,10 @@ public class PuzzleDefinition {
 
         if (scenarios == null || scenarios.isEmpty()) {
             throw new IllegalArgumentException("Puzzle must have at least one scenario.");
+        }
+
+        if (goal == null) {
+            throw new IllegalArgumentException("Goal cannot be null.");
         }
 
         Set<String> scenarioIds = new HashSet<>();
@@ -44,6 +51,7 @@ public class PuzzleDefinition {
         this.rulesVersion = rulesVersion;
         this.fixtureVersion = fixtureVersion;
         this.scenarios = List.copyOf(scenarios);
+        this.goal = goal;
     }
 
     public String getPuzzleId() {
@@ -60,5 +68,9 @@ public class PuzzleDefinition {
 
     public List<ScenarioFixture> getScenarios() {
         return scenarios;
+    }
+
+    public ScenarioGoal getGoal() {
+        return goal;
     }
 }

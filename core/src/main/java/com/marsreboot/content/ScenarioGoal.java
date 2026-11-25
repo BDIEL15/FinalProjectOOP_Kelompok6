@@ -1,13 +1,17 @@
-
 package com.marsreboot.content;
 
 public class ScenarioGoal {
     private final int requiredHarvestCount;
     private final int requiredWaterCount;
 
-    public ScenarioGoal(int requiredHarvestCount, int requiredWaterCount) {
+    public ScenarioGoal(
+        int requiredHarvestCount,
+        int requiredWaterCount
+    ) {
         if (requiredHarvestCount < 0 || requiredWaterCount < 0) {
-            throw new IllegalArgumentException("Goal counts cannot be negative.");
+            throw new IllegalArgumentException(
+                "Goal cannot be negative."
+            );
         }
 
         this.requiredHarvestCount = requiredHarvestCount;
