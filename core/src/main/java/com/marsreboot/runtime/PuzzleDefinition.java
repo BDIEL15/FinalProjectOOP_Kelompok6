@@ -11,7 +11,7 @@ import java.util.*;
 
 /** Candidate content; concept-use verification is separate from world success. */
 public enum PuzzleDefinition {
-    ONE(1, 2), TWO(2, 4), THREE(3, 4), FOUR(4, 4);
+    ONE(1, 2), TWO(2, 4), THREE(3, 4), FOUR(4, 4), FIVE(5,2);
     private final int number, columns;
 
     PuzzleDefinition(int number, int columns) {
@@ -23,7 +23,10 @@ public enum PuzzleDefinition {
     public int columns() { return columns; }
 
     public int targetCount() {
-        return this == THREE || this == FOUR ? 2 : columns;
+        return switch (this) {
+            case THREE, FOUR, FIVE -> 2;
+            case ONE, TWO -> columns;
+        };
     }
 
     public int actionLimit() {
@@ -37,6 +40,7 @@ public enum PuzzleDefinition {
             case TWO -> 7;
             case THREE -> 5;
             case FOUR -> 10;
+            case FIVE -> 10;
         };
     }
 
@@ -72,22 +76,35 @@ public enum PuzzleDefinition {
         return contentDefinition().getScenarios().size();
     }
 
-    public boolean watering() { return this == FOUR; }
+    public boolean watering() { return this == FOUR || this == FIVE; }
     public boolean rejectsYoungHarvest() { return this == THREE; }
 
     public EvaluationStrategy evaluationStrategy() {
         return switch (this) {
-            case ONE, TWO -> new HarvestEvaluation();
+            case ONE, TWO-> new HarvestEvaluation();
             case THREE -> new MatureHarvestEvaluation(new HarvestEvaluation());
-            case FOUR -> new IrrigationEvaluation();
+            case FOUR, FIVE -> new IrrigationEvaluation();
         };
     }
 
     public String instruction() {
-        if (this == FOUR) return "Siram semua petak kering di dua skenario dengan kode yang sama. Air 2 unit/skenario; gunakan needs_water().";
-        return this == THREE ? "Panen matang di x=0,2. Jangan mencoba panen muda di x=1,3; gunakan can_harvest()."
-            : this == TWO ? "Panen empat tanaman. Latihan for; penggunaan loop belum dinilai otomatis."
-            : "Panen dua tanaman matang.";
+        if (this == FOUR) {
+            return "Siram semua petak kering di dua skenario dengan kode yang sama. Air 2 unit/skenario; gunakan needs_water().";
+        }
+
+        if (this == THREE) {
+            return "Panen matang di x=0,2. Jangan mencoba panen muda di x=1,3; gunakan can_harvest().";
+        }
+
+        if (this == FIVE) {
+            return "Siram semua petak kering pada grid 2x2. Gunakan needs_water() dan bergerak ke empat arah.";
+        }
+
+        if (this == TWO) {
+            return "Panen empat tanaman. Latihan for; penggunaan loop belum dinilai otomatis.";
+        }
+
+        return "Panen dua tanaman matang.";
     }
 
     /** Field-log story notes (3 lines) shown in the [J] log for this puzzle. */
@@ -108,6 +125,12 @@ public enum PuzzleDefinition {
             case FOUR -> List.of("Panel air menunjukkan jatah terbatas: 2 unit per skenario.",
                 "Hanya sebagian petak yang kering, dan posisinya berbeda di tiap skenario.",
                 "Batas: " + actionLimit() + " aksi dan 2 air per skenario. Satu kode harus lulus keduanya.");
+
+            case FIVE -> List.of(
+                "Rover menemukan kebun baru dengan empat petak dalam grid 2x2.",
+                "Posisi petak kering berubah di setiap skenario. Gunakan needs_water() sebelum menyiram.",
+                "Batas: " + actionLimit() + " aksi dan 2 air per skenario."
+            );
         };
     }
 
@@ -141,16 +164,27 @@ public enum PuzzleDefinition {
                 case 2 -> "needs_water() membaca petak aktif. water() pada petak lembap membuang air.";
                 default -> "for x in range(4):\n    if needs_water():\n        # siram di sini\n    # lalu gerak ke petak berikutnya";
             };
+
+            case FIVE -> switch (tier) {
+                case 1 -> "Periksa kondisi air di setiap petak sebelum menyiram.";
+                case 2 -> "needs_water() membaca kondisi petak aktif. Gunakan water() hanya jika petak kering.";
+                default -> "if needs_water():\n    water()\nmove(\"north\")\n# lanjutkan pemeriksaan petak lainnya";
+            };
         };
     }
 
     private com.marsreboot.content.PuzzleDefinition contentDefinition() {
-        return switch (this) {
-            case ONE -> PuzzleCatalog.createPuzzle1();
-            case TWO -> PuzzleCatalog.createPuzzle2();
-            case THREE -> PuzzleCatalog.createPuzzle3();
-            case FOUR -> PuzzleCatalog.createPuzzle4();
-        };
+        return PuzzleCatalog.createPuzzle(
+            switch (this) {
+                case ONE -> "puzzle-1";
+                case TWO -> "puzzle-2";
+                case THREE -> "puzzle-3";
+                case FOUR -> "puzzle-4";
+                case FIVE -> "puzzle-5";
+            },
+            1,
+            1
+        );
     }
 
     public RobotSimulation.Fixture fixture() { return fixture(0); }
@@ -219,6 +253,13 @@ public enum PuzzleDefinition {
 
         if (this == THREE) return "# Panen hanya yang matang; can_harvest() membaca petak aktif.\nfor x in range(4):\n    # Periksa sensor sebelum harvest().\n    if x < 3:\n        move(\"east\")\n";
 
+        if (this == FIVE) {
+            return "# Periksa kondisi air pada setiap petak.\n"
+                + "# Gunakan needs_water() untuk mengecek petak kering.\n"
+                + "# Gunakan water() untuk menyiram.\n"
+                + "# Rover dapat bergerak north, east, south, dan west.\n";
+        }
+
         return "# Panen empat tanaman. Coba gunakan for.\nfor x in range(4):\n    harvest()\n    # Bergerak east jika masih ada petak berikutnya.\n";
     }
 
@@ -229,6 +270,19 @@ public enum PuzzleDefinition {
 
         if (this == THREE) return "for x in range(4):\n    if can_harvest():\n        harvest()\n    if x < 3:\n        move(\"east\")";
 
+        if (this == FIVE) {
+            return "if needs_water():\n"
+                + "    water()\n"
+                + "move(\"north\")\n"
+                + "if needs_water():\n"
+                + "    water()\n"
+                + "move(\"east\")\n"
+                + "if needs_water():\n"
+                + "    water()\n"
+                + "move(\"south\")\n"
+                + "if needs_water():\n"
+                + "    water()";
+        }
         return "for x in range(4):\n    harvest()\n    if x < 3:\n        move(\"east\")";
     }
 }

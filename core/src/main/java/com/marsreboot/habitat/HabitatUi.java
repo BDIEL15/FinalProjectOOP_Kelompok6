@@ -94,8 +94,8 @@ public final class HabitatUi implements Disposable {
 
     private final HabitatWorld world;
     private final RunCoordinator coordinator;
-    private TextButton puzzleOneButton, puzzleTwoButton, puzzleThreeButton, puzzleFourButton;
-    private Label p2MissionStatusLabel, p3MissionStatusLabel, p4MissionStatusLabel, puzzleHintLabel;
+    private TextButton puzzleOneButton, puzzleTwoButton, puzzleThreeButton, puzzleFourButton, puzzleFiveButton;
+    private Label p2MissionStatusLabel, p3MissionStatusLabel, p4MissionStatusLabel, p5MissionStatusLabel, puzzleHintLabel;
     private final java.util.Map<PuzzleDefinition,String> drafts = new java.util.EnumMap<>(PuzzleDefinition.class);
     private final Stage stage = new Stage(new ExtendViewport(960f, 600f));
     private final Skin skin = new Skin(Gdx.files.internal("ui/uiskin.json"));
@@ -428,8 +428,14 @@ public final class HabitatUi implements Disposable {
         puzzleFourButton = new TextButton("P4 [x]", hudPillBtnStyle);
         puzzleFourButton.setName("selectPuzzle4");
         puzzleFourButton.addListener(onAction(() -> changePuzzle(PuzzleDefinition.FOUR)));
-        selector.add(puzzleOneButton).padRight(6f); selector.add(puzzleTwoButton).padRight(6f);
-        selector.add(puzzleThreeButton).padRight(6f); selector.add(puzzleFourButton);
+        puzzleFiveButton = new TextButton("P5 [x]", hudPillBtnStyle);
+        puzzleFiveButton.setName("selectPuzzle5");
+        puzzleFiveButton.addListener(onAction(() -> changePuzzle(PuzzleDefinition.FIVE)));
+        selector.add(puzzleOneButton).padRight(6f);
+        selector.add(puzzleTwoButton).padRight(6f);
+        selector.add(puzzleThreeButton).padRight(6f);
+        selector.add(puzzleFourButton).padRight(6f);
+        selector.add(puzzleFiveButton);
         terminal.add(selector).growX().minWidth(0).padBottom(4f).row();
 
         // 2a. Compact 1-Line Objective Strip
@@ -638,6 +644,8 @@ public final class HabitatUi implements Disposable {
         missionMapWindow.add(p3MissionStatusLabel).growX().minWidth(0).pad(4f, 10f, 8f, 10f).row();
         p4MissionStatusLabel = wrapLabel("P4 Irigasi: selesaikan P3 untuk membuka.", mutedStyle);
         missionMapWindow.add(p4MissionStatusLabel).growX().minWidth(0).pad(4f, 10f, 8f, 10f).row();
+        p5MissionStatusLabel = wrapLabel("P5 Panen: selesaikan P4 untuk membuka.", mutedStyle);
+        missionMapWindow.add(p5MissionStatusLabel).growX().minWidth(0).pad(4f, 10f, 8f, 10f).row();
 
         Table accountCard = new Table();
         accountCard.setBackground(cardNeutralBg);
@@ -688,7 +696,7 @@ public final class HabitatUi implements Disposable {
 
         Table pGrid = new Table();
         pGrid.defaults().pad(4f).growX().minWidth(0);
-        for (int p = 5; p <= 9; p++) {
+        for (int p = 6; p <= 9; p++) {
             Table c = new Table();
             c.setBackground(cardNeutralBg);
             c.pad(7f, 10f, 7f, 10f);
@@ -1018,6 +1026,9 @@ public final class HabitatUi implements Disposable {
         puzzleFourButton.setDisabled(!view.canRun() || !coordinator.isCompleted(PuzzleDefinition.THREE));
         puzzleFourButton.setText(coordinator.isCompleted(PuzzleDefinition.THREE) ? "P4 Irigasi" : "P4 [x]");
         p4MissionStatusLabel.setText(coordinator.isCompleted(PuzzleDefinition.FOUR) ? "P4 IRIGASI • SELESAI (2 SKENARIO)" : coordinator.isCompleted(PuzzleDefinition.THREE) ? "P4 IRIGASI • TERSEDIA — kode sama, dua skenario." : "P4 IRIGASI • TERKUNCI — selesaikan P3.");
+        puzzleFiveButton.setDisabled(!view.canRun() || !coordinator.isCompleted(PuzzleDefinition.FOUR));
+        puzzleFiveButton.setText(coordinator.isCompleted(PuzzleDefinition.FOUR) ? "P5 Panen" : "P5 [x]");
+        p5MissionStatusLabel.setText(coordinator.isCompleted(PuzzleDefinition.FIVE) ? "P5 PANEN • SELESAI (SESI)" : coordinator.isCompleted(PuzzleDefinition.FOUR) ? "P5 PANEN • TERSEDIA — pilih P5 pada terminal Rover." : "P5 PANEN • TERKUNCI — selesaikan P4.");
         if (helpPuzzle != view.puzzle()) {
             helpPuzzle = view.puzzle();
             helpTier = 0;

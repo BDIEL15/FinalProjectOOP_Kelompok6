@@ -53,12 +53,25 @@ public final class RunCoordinator implements AutoCloseable {
     public RunCoordinator(Bridge bridge) { this.bridge = bridge; }
     private Snapshot initial() { return new RobotSimulation(puzzle.fixture(activeScenario)).snapshot(); }
     public boolean isCompleted(PuzzleDefinition p) { return completedPuzzles.contains(p); }
+
     public boolean selectPuzzle(PuzzleDefinition selected) {
-        if (closed || blocked || future != null || replay != null || (selected == PuzzleDefinition.TWO && !isCompleted(PuzzleDefinition.ONE)) || (selected == PuzzleDefinition.THREE && !isCompleted(PuzzleDefinition.TWO)) || (selected == PuzzleDefinition.FOUR && !isCompleted(PuzzleDefinition.THREE))) return false;
+        if (closed || blocked || future != null || replay != null
+            || (selected == PuzzleDefinition.TWO
+            && !isCompleted(PuzzleDefinition.ONE))
+            || (selected == PuzzleDefinition.THREE
+            && !isCompleted(PuzzleDefinition.TWO))
+            || (selected == PuzzleDefinition.FOUR
+            && !isCompleted(PuzzleDefinition.THREE))
+            || (selected == PuzzleDefinition.FIVE
+            && !isCompleted(PuzzleDefinition.FOUR))) {
+            return false;
+        }
+
         puzzle = java.util.Objects.requireNonNull(selected);
         completed = isCompleted(selected);
         reset();
-        message = puzzle.instruction() + " Maksimal " + puzzle.actionLimit() + " aksi.";
+        message = puzzle.instruction() + " Maksimal "
+            + puzzle.actionLimit() + " aksi.";
         return true;
     }
 

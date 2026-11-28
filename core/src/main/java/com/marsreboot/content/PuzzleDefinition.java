@@ -1,4 +1,3 @@
-
 package com.marsreboot.content;
 
 import java.util.HashSet;
